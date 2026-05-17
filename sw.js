@@ -1,5 +1,8 @@
 const CACHE = 'dashboard-pwa-v1';
-const ASSETS = ['./', './index.html', './manifest.json', './icon.svg', './topbar.js'];
+const ASSETS = [
+  './', './index.html', './manifest.json', './icon.svg',
+  './topbar.js', './tabs.js', './gym.html', './stack.html', './po-water.html',
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

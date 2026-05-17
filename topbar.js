@@ -173,18 +173,18 @@ body.topbar-modal-open {
   // -------- HTML --------
   const html = `
 <header class="topbar" id="topbar" role="navigation" aria-label="Quick stats">
-  <a href="index.html" class="topbar-pill" id="topbarGoals">
+  <a href="#home" class="topbar-pill" id="topbarGoals">
     <span class="topbar-pill-dot"></span>
     <span class="topbar-pill-label">GOALS</span>
     <span class="topbar-pill-count" id="topbarGoalsCount">—/—</span>
   </a>
-  <a href="health.html" class="topbar-pill" id="topbarStack">
+  <a href="#stack" class="topbar-pill" id="topbarStack">
     <span class="topbar-pill-dot"></span>
     <span class="topbar-pill-label">STACK</span>
     <span class="topbar-pill-count" id="topbarStackCount">—/—</span>
   </a>
   <div class="topbar-water-wrap">
-    <a href="health.html#water" class="topbar-water-pill" id="topbarWater">
+    <a href="#water" class="topbar-water-pill" id="topbarWater">
       <span class="topbar-pill-dot"></span>
       <span class="topbar-pill-label">WATER</span>
       <span class="topbar-pill-count" id="topbarWaterCount">—/—</span>
@@ -404,9 +404,35 @@ body.topbar-modal-open {
     sync();
   }
 
+  function wireDashboardTabs() {
+    if (!window.DashTabs) return;
+    const goalsEl = document.getElementById('topbarGoals');
+    const stackEl = document.getElementById('topbarStack');
+    const waterEl = document.getElementById('topbarWater');
+    if (goalsEl && document.getElementById('tab-panel-home')) {
+      goalsEl.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.DashTabs.show('home');
+      });
+    }
+    if (stackEl && document.getElementById('tab-panel-stack')) {
+      stackEl.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.DashTabs.show('stack');
+      });
+    }
+    if (waterEl && document.getElementById('tab-panel-water')) {
+      waterEl.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.DashTabs.show('water');
+      });
+    }
+  }
+
   // -------- Boot --------
   function boot() {
     injectStyleAndHTML();
+    wireDashboardTabs();
     const btn = document.getElementById('topbarWaterAdd');
     if (btn) btn.addEventListener('click', (e) => { e.preventDefault(); addWater(); });
     render();
@@ -419,6 +445,15 @@ body.topbar-modal-open {
     window.addEventListener('focus', render);
     window.addEventListener('goals-changed', render);
     window.addEventListener('dashboard-synced', render);
+    window.addEventListener('message', (e) => {
+      if (e.data && (
+        e.data.type === 'po-water-updated' ||
+        e.data.type === 'stack-updated' ||
+        e.data.type === 'dashboard-synced'
+      )) {
+        pullCloudState();
+      }
+    });
     document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
 
     // Periodic refresh so counts stay current after midnight rollover etc.
@@ -431,9 +466,10 @@ body.topbar-modal-open {
     if (!window.supabase || TOPBAR_SUPABASE_URL.indexOf('PASTE-') === 0) return;
     try {
       const supa = window.supabase.createClient(TOPBAR_SUPABASE_URL, TOPBAR_SUPABASE_KEY);
-      const [{ data: dash }, { data: health }] = await Promise.all([
+      const [{ data: dash }, { data: health }, { data: stack }] = await Promise.all([
         supa.from('app_state').select('data').eq('key', 'dashboard').maybeSingle(),
         supa.from('app_state').select('data').eq('key', 'health').maybeSingle(),
+        supa.from('app_state').select('data').eq('key', 'stack').maybeSingle(),
       ]);
       if (dash && dash.data && typeof dash.data === 'object') {
         Object.keys(dash.data).forEach((k) => {
@@ -447,9 +483,11 @@ body.topbar-modal-open {
         if (h.po_water_v1 != null) {
           try { localStorage.setItem('po_water_v1', JSON.stringify(h.po_water_v1)); } catch (e) {}
         }
-        Object.keys(h).forEach((k) => {
+      }
+      if (stack && stack.data && typeof stack.data === 'object') {
+        Object.keys(stack.data).forEach((k) => {
           if (k.startsWith('stack:')) {
-            try { localStorage.setItem(k, JSON.stringify(h[k])); } catch (e) {}
+            try { localStorage.setItem(k, JSON.stringify(stack.data[k])); } catch (e) {}
           }
         });
       }

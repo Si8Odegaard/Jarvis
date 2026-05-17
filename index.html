@@ -75,6 +75,90 @@
     }
 
     body.has-topbar { padding-top: 0; }
+    body.has-dash-tabs {
+      padding-bottom: calc(88px + env(safe-area-inset-bottom));
+    }
+
+    .tab-panels { position: relative; z-index: 2; }
+    .tab-panel { display: none; }
+    .tab-panel.is-active { display: block; }
+    .tab-panel[hidden] { display: none !important; }
+
+    .tab-iframe {
+      display: block;
+      width: 100%;
+      min-height: calc(100dvh - 120px);
+      border: 0;
+      background: transparent;
+    }
+
+    .tabbar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 50;
+      display: flex;
+      justify-content: center;
+      padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+      background: linear-gradient(180deg, rgba(5,5,6,0) 0%, rgba(5,5,6,0.78) 38%, rgba(5,5,6,0.94) 100%);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      pointer-events: none;
+    }
+    .tabbar-inner {
+      pointer-events: auto;
+      display: flex;
+      width: 100%;
+      max-width: min(460px, 100%);
+      gap: 6px;
+      padding: 6px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 18px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+      backdrop-filter: blur(24px) saturate(1.2);
+      -webkit-backdrop-filter: blur(24px) saturate(1.2);
+    }
+    .tabbar .tab {
+      flex: 1 1 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 10px;
+      border-radius: 13px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      color: var(--text-secondary);
+      text-decoration: none;
+      background: transparent;
+      border: 1px solid transparent;
+      cursor: pointer;
+      font-family: inherit;
+      transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .tabbar .tab:hover { color: var(--text-primary); }
+    .tabbar .tab[aria-current="page"] {
+      color: var(--text-primary);
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(255,255,255,0.10);
+    }
+    .tabbar .tab-icon {
+      width: 18px;
+      height: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .tabbar .tab-icon svg { width: 100%; height: 100%; display: block; }
+
+    @media (max-width: 380px) {
+      .tabbar .tab span:not(.tab-icon) { display: none; }
+      .tabbar .tab { padding: 12px; }
+    }
 
     body::before {
       content: '';
@@ -686,7 +770,9 @@
     }
   </style>
 </head>
-<body class="has-topbar dashboard-page">
+<body class="has-topbar has-dash-tabs dashboard-page">
+  <div class="tab-panels">
+  <section id="tab-panel-home" class="tab-panel is-active">
   <main>
     <p class="sync-banner" id="syncBanner">Connecting…</p>
 
@@ -783,7 +869,14 @@
       </div>
     </div>
   </main>
+  </section>
 
+  <section id="tab-panel-stack" class="tab-panel" hidden aria-label="Stack"></section>
+  <section id="tab-panel-gym" class="tab-panel" hidden aria-label="Gym"></section>
+  <section id="tab-panel-water" class="tab-panel" hidden aria-label="Water"></section>
+  </div>
+
+  <script src="tabs.js" defer></script>
   <script src="topbar.js" defer></script>
   <script>
   (function () {
@@ -1028,7 +1121,12 @@
         window.dispatchEvent(new CustomEvent('dashboard-synced'));
         storeReady = true;
       } catch (e) {
-        banner.textContent = 'Cloud sync offline — using local copy';
+        const msg = (e && e.message) ? String(e.message) : '';
+        if (msg.indexOf('app_state') !== -1 || msg.indexOf('PGRST205') !== -1) {
+          banner.textContent = 'Cloud sync needs setup — run SQL block.txt in Supabase SQL Editor';
+        } else {
+          banner.textContent = 'Cloud sync offline — using local copy';
+        }
         banner.classList.add('is-error');
         migrateFromLocalStorage();
         mirrorDashStateToLocalStorage();
