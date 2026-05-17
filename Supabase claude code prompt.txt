@@ -1,0 +1,6 @@
+Here are my Supabase keys:
+- Project URL: https://YOUR-PROJECT.supabase.co
+- Publishable key: sb_publishable_xxxxxxxxxxx
+
+Find SUPABASE_URL and SUPABASE_KEY in both index.html and po-coach.html
+and swap them out for mine, then deploy.
