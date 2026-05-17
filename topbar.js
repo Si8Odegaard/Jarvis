@@ -14,8 +14,8 @@
   // -------- Supabase config (same project as the rest of the dashboard) --------
   // For your audience's standalone, replace these with placeholders
   // and have them paste their own values, just like the other pages.
-  const TOPBAR_SUPABASE_URL = 'PASTE-YOUR-SUPABASE-PROJECT-URL-HERE';
-  const TOPBAR_SUPABASE_KEY = 'PASTE-YOUR-SUPABASE-PUBLISHABLE-KEY-HERE';
+  const TOPBAR_SUPABASE_URL = 'https://cskbbioyniryonkukamw.supabase.co';
+  const TOPBAR_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNza2JiaW95bmlyeW9ua3VrYW13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NjE2MTYsImV4cCI6MjA5NDUzNzYxNn0.R3Vx3fA-iAc8LhNL3WPSa9-BxH_087c7VaIbrB3CBJM';
 
   // -------- CSS --------
   const css = `
@@ -26,8 +26,10 @@
   /* Fully opaque so each page's body background can't bleed through
      and tint the bar a different color. Matches the dashboard's base
      dark background so the bar feels continuous with the page chrome. */
-  background: #0a0a0b;
+  background: #050506;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
   font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
 }
 .topbar-pill {
@@ -45,11 +47,13 @@
 .topbar-pill:hover { background: rgba(255, 255, 255, 0.07); border-color: rgba(255, 255, 255, 0.10); }
 .topbar-pill-dot {
   width: 7px; height: 7px; border-radius: 50%;
-  background: #6ee7b7; flex-shrink: 0;
+  background: #6BE3A4; flex-shrink: 0;
+  box-shadow: 0 0 6px rgba(107, 227, 164, 0.45);
 }
-.topbar-pill.warn .topbar-pill-dot { background: #fbbf24; }
+.topbar-pill.warn .topbar-pill-dot { background: #F2C063; box-shadow: 0 0 6px rgba(242, 192, 99, 0.4); }
 .topbar-pill.miss .topbar-pill-dot {
-  background: #ff8a8a;
+  background: #FF6B6B;
+  box-shadow: none;
   animation: topbar-miss-pulse 1.6s ease-in-out infinite;
 }
 @keyframes topbar-miss-pulse {
@@ -59,7 +63,7 @@
 .topbar-pill-label {
   font-size: 10px; font-weight: 700;
   letter-spacing: 0.14em; text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.5);
+  color: #76746E;
   flex-shrink: 0;
 }
 .topbar-pill-count {
@@ -413,10 +417,44 @@ body.topbar-modal-open {
     // the page becomes visible (sync may have pulled in the background).
     window.addEventListener('storage', render);
     window.addEventListener('focus', render);
+    window.addEventListener('goals-changed', render);
+    window.addEventListener('dashboard-synced', render);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
 
     // Periodic refresh so counts stay current after midnight rollover etc.
     setInterval(render, 30 * 1000);
+
+    pullCloudState();
+  }
+
+  async function pullCloudState() {
+    if (!window.supabase || TOPBAR_SUPABASE_URL.indexOf('PASTE-') === 0) return;
+    try {
+      const supa = window.supabase.createClient(TOPBAR_SUPABASE_URL, TOPBAR_SUPABASE_KEY);
+      const [{ data: dash }, { data: health }] = await Promise.all([
+        supa.from('app_state').select('data').eq('key', 'dashboard').maybeSingle(),
+        supa.from('app_state').select('data').eq('key', 'health').maybeSingle(),
+      ]);
+      if (dash && dash.data && typeof dash.data === 'object') {
+        Object.keys(dash.data).forEach((k) => {
+          if (k.startsWith('goals:')) {
+            try { localStorage.setItem(k, JSON.stringify(dash.data[k])); } catch (e) {}
+          }
+        });
+      }
+      if (health && health.data && typeof health.data === 'object') {
+        const h = health.data;
+        if (h.po_water_v1 != null) {
+          try { localStorage.setItem('po_water_v1', JSON.stringify(h.po_water_v1)); } catch (e) {}
+        }
+        Object.keys(h).forEach((k) => {
+          if (k.startsWith('stack:')) {
+            try { localStorage.setItem(k, JSON.stringify(h[k])); } catch (e) {}
+          }
+        });
+      }
+      render();
+    } catch (e) { /* offline */ }
   }
 
   if (document.readyState === 'loading') {
