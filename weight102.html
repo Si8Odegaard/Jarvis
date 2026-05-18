@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#050506">
-  <title>Daily Weight</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <meta name="theme-color" content="#000000">
+  <title>Wisey · Weight</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -13,14 +12,14 @@
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
     :root {
-      --bg: #050506;
-      --card-bg: rgba(255, 255, 255, 0.04);
-      --card-border: rgba(107, 227, 164, 0.10);
-      --mint: #6BE3A4;
-      --mint-dim: rgba(107, 227, 164, 0.45);
-      --amber: #F2C063;
-      --red: #FF6B6B;
-      --text: #FAFAFA;
+      --bg: #000000;
+      --card-bg: #0a0a0f;
+      --card-border: rgba(110, 231, 183, 0.10);
+      --mint: #6ee7b7;
+      --mint-dim: rgba(110, 231, 183, 0.45);
+      --amber: #fbbf24;
+      --red: #f87171;
+      --text: #ffffff;
     }
 
     html, body {
@@ -36,10 +35,7 @@
     body {
       max-width: 480px;
       margin: 0 auto;
-      padding: 20px 20px 60px;
-    }
-    body.weight-embed {
-      padding: 20px 20px 24px;
+      padding: 60px 20px 60px;
     }
 
     .home-divider {
@@ -743,22 +739,22 @@
   <div class="weight-card">
     <div class="weight-label">WEIGHT</div>
     <div class="weight-row">
-      <span class="weight-num" id="weightNum">—</span>
+      <span class="weight-num">162.2</span>
       <span class="weight-unit">lbs</span>
     </div>
-    <div class="weight-delta" id="weightDelta">Loading...</div>
-    <div class="weight-streak" id="weightStreak">🔥<span>— day streak</span></div>
+    <div class="weight-delta">↑ +0.4 lbs · last 7d</div>
+    <div class="weight-streak">🔥<span>2 day streak</span></div>
 
     <div class="weight-chart-wrap">
-      <div class="weight-chart-yaxis" id="weightChartYAxis">
-        <span>—</span>
-        <span>—</span>
+      <div class="weight-chart-yaxis">
+        <span>163.4</span>
+        <span>159.0</span>
       </div>
-      <svg class="weight-chart" viewBox="0 0 320 130" preserveAspectRatio="none" id="weightChart">
+      <svg class="weight-chart" viewBox="0 0 320 130" preserveAspectRatio="none">
         <defs>
           <linearGradient id="weightFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#6BE3A4" stop-opacity="0.25"/>
-            <stop offset="100%" stop-color="#6BE3A4" stop-opacity="0"/>
+            <stop offset="0%" stop-color="#6ee7b7" stop-opacity="0.25"/>
+            <stop offset="100%" stop-color="#6ee7b7" stop-opacity="0"/>
           </linearGradient>
           <filter id="weightTodayGlow" x="-100%" y="-100%" width="300%" height="300%">
             <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
@@ -780,11 +776,35 @@
         <line class="weight-grid-line" x1="0" y1="65" x2="320" y2="65"></line>
         <line class="weight-grid-line" x1="0" y1="110" x2="320" y2="110"></line>
 
-        <path class="weight-avg-line" id="weightAvgLine" d=""></path>
-        <path class="weight-area" id="weightArea" d=""></path>
-        <path class="weight-line" filter="url(#weightLineGlow)" id="weightLine" d=""></path>
+        <path class="weight-avg-line" d="M 8 78 Q 32 76, 56 74 T 104 70 T 152 68 T 200 64 T 248 58 T 296 52 T 312 48"></path>
+
+        <path class="weight-area" d="M 8 60 Q 16 35, 24 28 T 40 95 T 56 100 T 72 70 T 88 78 T 104 60 T 120 65 T 136 50 T 152 70 T 168 60 T 184 55 T 200 60 T 216 50 T 232 55 T 248 48 T 264 52 T 280 48 T 296 50 L 312 45 L 312 130 L 8 130 Z"></path>
+
+        <path class="weight-line" filter="url(#weightLineGlow)" d="M 8 60 Q 16 35, 24 28 T 40 95 T 56 100 T 72 70 T 88 78 T 104 60 T 120 65 T 136 50 T 152 70 T 168 60 T 184 55 T 200 60 T 216 50 T 232 55 T 248 48 T 264 52 T 280 48 T 296 50 L 312 45"></path>
+
+        <circle class="weight-dot" cx="8" cy="60" r="3"/>
+        <circle class="weight-dot" cx="24" cy="28" r="3"/>
+        <circle class="weight-dot" cx="40" cy="95" r="3"/>
+        <circle class="weight-dot" cx="56" cy="100" r="3"/>
+        <circle class="weight-dot" cx="72" cy="70" r="3"/>
+        <circle class="weight-dot" cx="88" cy="78" r="3"/>
+        <circle class="weight-dot" cx="104" cy="60" r="3"/>
+        <circle class="weight-dot" cx="120" cy="65" r="3"/>
+        <circle class="weight-dot" cx="136" cy="50" r="3"/>
+        <circle class="weight-dot" cx="152" cy="70" r="3"/>
+        <circle class="weight-dot" cx="168" cy="60" r="3"/>
+        <circle class="weight-dot" cx="184" cy="55" r="3"/>
+        <circle class="weight-dot" cx="200" cy="60" r="3"/>
+        <circle class="weight-dot" cx="216" cy="50" r="3"/>
+        <circle class="weight-dot" cx="232" cy="55" r="3"/>
+        <circle class="weight-dot" cx="248" cy="48" r="3"/>
+        <circle class="weight-dot" cx="264" cy="52" r="3"/>
+        <circle class="weight-dot" cx="280" cy="48" r="3"/>
+        <circle class="weight-dot" cx="296" cy="50" r="3"/>
+
+        <circle class="weight-dot-today" cx="312" cy="45" r="5"/>
       </svg>
-      <div class="chart-meta" id="chartMeta">Loading...</div>
+      <div class="chart-meta">18 entries · last 30 days</div>
     </div>
 
     <div class="chart-legend">
@@ -792,31 +812,31 @@
       <span class="legend-item"><span class="legend-dot legend-dot-avg"></span>7-DAY AVG</span>
     </div>
 
-    <div class="weight-locked hidden" id="weightLocked">
+    <div class="weight-locked" id="weightLocked">
       <div class="weight-locked-info">
         <span class="weight-locked-check">✓</span>
         <div>
           <div class="weight-locked-label">LOGGED TODAY</div>
-          <div class="weight-locked-value" id="weightLockedValue">— lbs</div>
+          <div class="weight-locked-value">162.2 lbs</div>
         </div>
       </div>
       <button class="weight-edit-btn" id="weightEditBtn">Edit</button>
     </div>
 
-    <div class="weight-input-row" id="weightInputRow">
+    <div class="weight-input-row hidden" id="weightInputRow">
       <div class="weight-input-top">
-        <input type="number" step="0.1" class="weight-input" id="weightInput" placeholder="Enter weight" inputmode="decimal" aria-label="Today's weight in pounds"/>
+        <input type="number" step="0.1" class="weight-input" id="weightInput" value="162.2" inputmode="decimal" aria-label="Today's weight in pounds"/>
         <span class="weight-unit-static">lbs</span>
         <button class="weight-save-btn" id="weightSaveBtn">Save</button>
       </div>
-      <input type="text" class="weight-note-input" id="weightNoteInput" placeholder="Note (optional) — e.g. carb refeed, post-flu" maxlength="80"/>
+      <input type="text" class="weight-note-input" placeholder="Note (optional) — e.g. carb refeed, post-flu" maxlength="80"/>
     </div>
   </div>
 
   <button class="progress-link" id="progressLink" aria-label="Open progress photos">
     <div>
       <div class="progress-link-label">PROGRESS PHOTOS</div>
-      <div class="progress-link-count" id="progressLinkCount">0 photos</div>
+      <div class="progress-link-count" id="progressLinkCount">1 photo · latest May 8</div>
     </div>
     <span class="progress-link-arrow">→</span>
   </button>
@@ -852,13 +872,27 @@
       <input type="file" accept="image/*" capture="environment" id="cameraInput" style="display:none"/>
       <input type="file" accept="image/*" id="libraryInput" style="display:none"/>
 
-      <div class="progress-grid" id="progressGrid"></div>
+      <div class="progress-grid" id="progressGrid">
+        <button class="progress-photo-card" data-photo-id="seed" aria-label="Open photo">
+          <div class="progress-photo-placeholder">
+            <svg width="60%" height="60%" viewBox="0 0 100 100" fill="none" stroke="#6ee7b7" stroke-width="0.6">
+              <circle cx="50" cy="32" r="11"/>
+              <path d="M30 88 C 30 64, 40 50, 50 50 C 60 50, 70 64, 70 88"/>
+            </svg>
+          </div>
+          <div class="progress-photo-overlay"></div>
+          <div class="progress-photo-meta">
+            <span class="photo-date">May 8</span>
+            <span class="photo-weight">162.3 lbs</span>
+          </div>
+        </button>
+      </div>
     </div>
   </div>
 
   <!-- Photo viewer -->
   <div class="photo-viewer" id="photoViewer" aria-hidden="true">
-    <div class="photo-viewer-eyebrow">Weight · Progress</div>
+    <div class="photo-viewer-eyebrow">Wisey · Progress</div>
     <div class="photo-viewer-stage" id="photoViewerStage">
       <div class="photo-viewer-frame" id="photoViewerFrame">
         <div class="progress-photo-placeholder" id="photoViewerPlaceholder" style="opacity: 0.22;">
@@ -922,15 +956,11 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    // -------------------- Supabase Setup --------------------
-    const SUPABASE_URL = 'https://cskbbioyniryonkukamw.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNza2JiaW95bmlyeW9ua3VrYW13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NjE2MTYsImV4cCI6MjA5NDUzNzYxNn0.R3Vx3fA-iAc8LhNL3WPSa9-BxH_087c7VaIbrB3CBJM';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
     // -------------------- State --------------------
-    // Each photo: { id, date, dateUpper, weight, dataUrl (null for seed), storagePath }
-    let photos = [];
-    let weightLogs = [];
+    // Each photo: { id, date, dateUpper, weight, dataUrl (null for seed) }
+    const photos = [
+      { id: 'seed', date: 'May 8', dateUpper: 'MAY 8', weight: '162.3 lbs', dataUrl: null }
+    ];
     let nextId = 1;
     let currentPhotoId = null; // id currently in the viewer
 
@@ -940,11 +970,8 @@
     const lockedState = document.getElementById('weightLocked');
     const inputRow = document.getElementById('weightInputRow');
     const weightInput = document.getElementById('weightInput');
-    const weightNoteInput = document.getElementById('weightNoteInput');
-    const weightNumEl = document.getElementById('weightNum');
-    const weightLockedValueEl = document.getElementById('weightLockedValue');
-    const weightDeltaEl = document.getElementById('weightDelta');
-    const weightStreakEl = document.getElementById('weightStreak');
+    const weightNumEl = document.querySelector('.weight-num');
+    const weightLockedValueEl = document.querySelector('.weight-locked-value');
 
     const progressLink = document.getElementById('progressLink');
     const progressOverlay = document.getElementById('progressOverlay');
@@ -1003,341 +1030,6 @@
 
     function getPhoto(id) {
       return photos.find(p => String(p.id) === String(id));
-    }
-
-    // -------------------- Supabase Functions --------------------
-    async function loadWeightLogs() {
-      try {
-        const { data, error } = await supabase
-          .from('weight_logs')
-          .select('*')
-          .order('date', { ascending: false })
-          .limit(90);
-        
-        if (error) throw error;
-        weightLogs = data || [];
-        updateWeightDisplay();
-      } catch (e) {
-        console.error('Error loading weight logs:', e);
-        weightLogs = [];
-      }
-    }
-
-    async function saveWeightLog(weight, note = '') {
-      const today = new Date().toISOString().split('T')[0];
-      try {
-        const { error } = await supabase
-          .from('weight_logs')
-          .upsert({
-            date: today,
-            weight: weight,
-            note: note,
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'date' });
-        
-        if (error) throw error;
-        await loadWeightLogs();
-        notifyParent();
-      } catch (e) {
-        console.error('Error saving weight log:', e);
-        showToast('Failed to save weight');
-      }
-    }
-
-    async function loadPhotos() {
-      try {
-        const { data, error } = await supabase
-          .from('progress_photos')
-          .select('*')
-          .order('created_at', { ascending: true });
-        
-        if (error) throw error;
-        
-        photos = [];
-        for (const photo of (data || [])) {
-          const { data: imageData, error: imageError } = await supabase
-            .storage
-            .from('progress-photos')
-            .createSignedUrl(photo.storage_path, 3600);
-          
-          if (imageError) {
-            console.error('Error getting signed URL:', imageError);
-            continue;
-          }
-          
-          const d = new Date(photo.date);
-          const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-          const short = `${months[d.getMonth()]} ${d.getDate()}`;
-          const upper = `${months[d.getMonth()].toUpperCase()} ${d.getDate()}`;
-          
-          photos.push({
-            id: photo.id,
-            date: short,
-            dateUpper: upper,
-            weight: `${photo.weight} lbs`,
-            dataUrl: imageData.signedUrl,
-            storagePath: photo.storage_path
-          });
-        }
-        
-        renderPhotos();
-        updatePhotoCount();
-      } catch (e) {
-        console.error('Error loading photos:', e);
-        photos = [];
-      }
-    }
-
-    async function uploadPhoto(file, weight) {
-      try {
-        const today = new Date();
-        const fileName = `${today.toISOString().split('T')[0]}_${Date.now()}.jpg`;
-        const filePath = `${fileName}`;
-        
-        const { error: uploadError } = await supabase
-          .storage
-          .from('progress-photos')
-          .upload(filePath, file);
-        
-        if (uploadError) throw uploadError;
-        
-        const { data, error } = await supabase
-          .from('progress_photos')
-          .insert({
-            date: today.toISOString().split('T')[0],
-            weight: weight,
-            storage_path: filePath
-          })
-          .select()
-          .single();
-        
-        if (error) throw error;
-        
-        await loadPhotos();
-        showToast('Photo added');
-        notifyParent();
-      } catch (e) {
-        console.error('Error uploading photo:', e);
-        showToast('Failed to upload photo');
-      }
-    }
-
-    async function deletePhoto(photoId) {
-      try {
-        const photo = getPhoto(photoId);
-        if (!photo || !photo.storagePath) return;
-        
-        const { error: deleteError } = await supabase
-          .storage
-          .from('progress-photos')
-          .remove([photo.storagePath]);
-        
-        if (deleteError) throw deleteError;
-        
-        const { error: dbError } = await supabase
-          .from('progress_photos')
-          .delete()
-          .eq('id', photoId);
-        
-        if (dbError) throw dbError;
-        
-        await loadPhotos();
-        showToast('Photo deleted');
-        notifyParent();
-      } catch (e) {
-        console.error('Error deleting photo:', e);
-        showToast('Failed to delete photo');
-      }
-    }
-
-    function updateWeightDisplay() {
-      if (weightLogs.length === 0) {
-        weightNumEl.textContent = '—';
-        weightDeltaEl.textContent = 'No data yet';
-        weightStreakEl.querySelector('span').textContent = '0 day streak';
-        lockedState.classList.add('hidden');
-        inputRow.classList.remove('hidden');
-        return;
-      }
-      
-      const today = new Date().toISOString().split('T')[0];
-      const todayLog = weightLogs.find(log => log.date === today);
-      
-      if (todayLog) {
-        weightNumEl.textContent = parseFloat(todayLog.weight).toFixed(1);
-        weightLockedValueEl.textContent = parseFloat(todayLog.weight).toFixed(1) + ' lbs';
-        lockedState.classList.remove('hidden');
-        inputRow.classList.add('hidden');
-      } else {
-        weightNumEl.textContent = '—';
-        lockedState.classList.add('hidden');
-        inputRow.classList.remove('hidden');
-      }
-      
-      // Calculate streak
-      const streak = calculateStreak();
-      weightStreakEl.querySelector('span').textContent = `${streak} day streak`;
-      
-      // Calculate delta (change over last 7 days)
-      const delta = calculateDelta();
-      if (delta !== null) {
-        const sign = delta >= 0 ? '↑' : '↓';
-        weightDeltaEl.textContent = `${sign} ${Math.abs(delta).toFixed(1)} lbs · last 7d`;
-        weightDeltaEl.style.color = delta >= 0 ? 'var(--amber)' : 'var(--mint)';
-      } else {
-        weightDeltaEl.textContent = 'Need 7+ days of data';
-      }
-      
-      updateChart();
-    }
-    
-    function calculateStreak() {
-      if (weightLogs.length === 0) return 0;
-      
-      const today = new Date();
-      let streak = 0;
-      let checkDate = new Date(today);
-      
-      // Check if logged today
-      const todayStr = today.toISOString().split('T')[0];
-      const todayLog = weightLogs.find(log => log.date === todayStr);
-      
-      if (!todayLog) {
-        // If not logged today, check yesterday
-        checkDate.setDate(checkDate.getDate() - 1);
-      }
-      
-      while (true) {
-        const dateStr = checkDate.toISOString().split('T')[0];
-        const log = weightLogs.find(l => l.date === dateStr);
-        
-        if (log) {
-          streak++;
-          checkDate.setDate(checkDate.getDate() - 1);
-        } else {
-          break;
-        }
-      }
-      
-      return streak;
-    }
-    
-    function calculateDelta() {
-      if (weightLogs.length < 7) return null;
-      
-      const today = new Date().toISOString().split('T')[0];
-      const todayLog = weightLogs.find(log => log.date === today);
-      
-      if (!todayLog) return null;
-      
-      // Find log from 7 days ago
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
-      
-      const oldLog = weightLogs.find(log => log.date === sevenDaysAgoStr);
-      if (!oldLog) return null;
-      
-      return parseFloat(todayLog.weight) - parseFloat(oldLog.weight);
-    }
-
-    function updateChart() {
-      const chart = document.getElementById('weightChart');
-      const yAxis = document.getElementById('weightChartYAxis');
-      const linePath = document.getElementById('weightLine');
-      const areaPath = document.getElementById('weightArea');
-      const avgPath = document.getElementById('weightAvgLine');
-      const meta = document.getElementById('chartMeta');
-      
-      if (!chart || !yAxis) return;
-      
-      // Get last 30 days of data
-      const last30 = weightLogs.slice(0, 30).reverse();
-      if (last30.length < 2) {
-        linePath.setAttribute('d', '');
-        areaPath.setAttribute('d', '');
-        avgPath.setAttribute('d', '');
-        meta.textContent = last30.length === 1 ? '1 entry · log more to see chart' : 'No data yet';
-        yAxis.innerHTML = '<span>—</span><span>—</span>';
-        return;
-      }
-      
-      const weights = last30.map(log => parseFloat(log.weight));
-      const minWeight = Math.min(...weights);
-      const maxWeight = Math.max(...weights);
-      const range = maxWeight - minWeight || 1;
-      
-      const width = 320;
-      const height = 130;
-      const padding = 20;
-      
-      // Calculate points for daily weights
-      const points = last30.map((log, i) => {
-        const x = padding + (i / (last30.length - 1)) * (width - padding * 2);
-        const y = height - padding - ((log.weight - minWeight) / range) * (height - padding * 2);
-        return { x, y };
-      });
-      
-      // Update line
-      const lineD = points.map((p, i) => (i === 0 ? 'M' : 'L') + ` ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
-      linePath.setAttribute('d', lineD);
-      
-      // Update area
-      const areaD = lineD + ` L ${width - padding} ${height} L ${padding} ${height} Z`;
-      areaPath.setAttribute('d', areaD);
-      
-      // Calculate 7-day rolling average
-      const avgPoints = [];
-      for (let i = 0; i < last30.length; i++) {
-        const start = Math.max(0, i - 3);
-        const end = Math.min(last30.length, i + 4);
-        const window = last30.slice(start, end);
-        const avg = window.reduce((sum, log) => sum + parseFloat(log.weight), 0) / window.length;
-        const x = padding + (i / (last30.length - 1)) * (width - padding * 2);
-        const y = height - padding - ((avg - minWeight) / range) * (height - padding * 2);
-        avgPoints.push({ x, y });
-      }
-      
-      // Update average line
-      const avgD = avgPoints.map((p, i) => (i === 0 ? 'M' : 'L') + ` ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
-      avgPath.setAttribute('d', avgD);
-      
-      // Update dots
-      const existingDots = chart.querySelectorAll('.weight-dot, .weight-dot-today');
-      existingDots.forEach(dot => dot.remove());
-      
-      points.forEach((p, i) => {
-        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        circle.setAttribute('cx', p.x.toFixed(1));
-        circle.setAttribute('cy', p.y.toFixed(1));
-        circle.setAttribute('r', i === points.length - 1 ? 5 : 3);
-        circle.setAttribute('class', i === points.length - 1 ? 'weight-dot-today' : 'weight-dot');
-        chart.appendChild(circle);
-      });
-      
-      // Update y-axis labels
-      yAxis.innerHTML = `
-        <span>${maxWeight.toFixed(1)}</span>
-        <span>${minWeight.toFixed(1)}</span>
-      `;
-      
-      // Update meta
-      meta.textContent = `${last30.length} entries · last 30 days`;
-    }
-
-    function renderPhotos() {
-      progressGrid.innerHTML = '';
-      ensureEmptyStateIfNone();
-      
-      photos.forEach(photo => {
-        progressGrid.appendChild(buildPhotoCard(photo));
-      });
-    }
-
-    function notifyParent() {
-      if (window.parent) {
-        window.parent.postMessage({ type: 'weight-updated' }, '*');
-      }
     }
 
     function renderPhotoMedia(container, photo, withPlaceholder = true) {
@@ -1426,8 +1118,23 @@
 
     function addPhotoFromFile(file) {
       if (!file || !file.type.startsWith('image/')) return;
-      const currentWeight = parseFloat(weightNumEl.textContent);
-      uploadPhoto(file, currentWeight);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const { short, upper } = formatToday();
+        const newPhoto = {
+          id: nextId++,
+          date: short,
+          dateUpper: upper,
+          weight: getCurrentWeight(),
+          dataUrl: e.target.result
+        };
+        photos.push(newPhoto);
+        ensureEmptyStateIfNone();
+        progressGrid.appendChild(buildPhotoCard(newPhoto));
+        updatePhotoCount();
+        showToast('Photo added');
+      };
+      reader.readAsDataURL(file);
     }
 
     // -------------------- Weight edit/save --------------------
@@ -1441,12 +1148,8 @@
     saveBtn.addEventListener('click', () => {
       const newValue = parseFloat(weightInput.value);
       if (!isNaN(newValue) && newValue > 0) {
-        const noteInput = document.querySelector('.weight-note-input');
-        const note = noteInput ? noteInput.value : '';
-        saveWeightLog(newValue, note);
         weightNumEl.textContent = newValue.toFixed(1);
         weightLockedValueEl.textContent = newValue.toFixed(1) + ' lbs';
-        if (noteInput) noteInput.value = '';
       }
       inputRow.classList.add('hidden');
       lockedState.classList.remove('hidden');
@@ -1532,7 +1235,17 @@
         return;
       }
       const id = currentPhotoId;
-      deletePhoto(id);
+      const card = progressGrid.querySelector(`[data-photo-id="${id}"]`);
+      if (card) {
+        card.classList.add('is-removing');
+        setTimeout(() => {
+          card.remove();
+          const idx = photos.findIndex(p => String(p.id) === String(id));
+          if (idx > -1) photos.splice(idx, 1);
+          ensureEmptyStateIfNone();
+          updatePhotoCount();
+        }, 250);
+      }
       closeViewer();
     });
 
@@ -1632,30 +1345,8 @@
     pvCompare.addEventListener('click', openCompare);
     compareClose.addEventListener('click', closeCompare);
 
-    // -------------------- Initialization --------------------
-    async function init() {
-      // Handle embed mode
-      if (new URLSearchParams(window.location.search).has('embed')) {
-        document.body.classList.add('weight-embed');
-      }
-      
-      // Load data from Supabase
-      try {
-        await Promise.all([
-          loadWeightLogs(),
-          loadPhotos()
-        ]);
-      } catch (e) {
-        console.error('Error loading data:', e);
-        weightNumEl.textContent = '—';
-        weightDeltaEl.textContent = 'Error loading data';
-        weightStreakEl.querySelector('span').textContent = '0 day streak';
-        lockedState.classList.add('hidden');
-        inputRow.classList.remove('hidden');
-      }
-    }
-    
-    init();
+    // initialize count
+    updatePhotoCount();
   </script>
 
 </body>

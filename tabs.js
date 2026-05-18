@@ -16,10 +16,9 @@
 
   const TABS = [
     { id: 'home', label: 'Home', panelId: 'tab-panel-home' },
-    { id: 'stack', label: 'Stack', panelId: 'tab-panel-stack', iframeSrc: 'stack.html?embed=1' },
+    { id: 'stack', label: 'Health', panelId: 'tab-panel-stack', iframeSrc: 'stack.html?embed=1' },
     { id: 'gym', label: 'Gym', panelId: 'tab-panel-gym', iframeSrc: 'gym.html?embed=1' },
     { id: 'water', label: 'Water', panelId: 'tab-panel-water', iframeSrc: 'po-water.html?embed=1' },
-    { id: 'weight', label: 'Weight', panelId: 'tab-panel-weight', iframeSrc: 'weight102.html?embed=1' },
   ];
 
   let activeTab = 'home';
