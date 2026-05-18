@@ -183,6 +183,11 @@ body.topbar-modal-open {
     <span class="topbar-pill-label">STACK</span>
     <span class="topbar-pill-count" id="topbarStackCount">—/—</span>
   </a>
+  <a href="#weight" class="topbar-pill" id="topbarWeight">
+    <span class="topbar-pill-dot"></span>
+    <span class="topbar-pill-label">WEIGHT</span>
+    <span class="topbar-pill-count" id="topbarWeightCount">—</span>
+  </a>
   <div class="topbar-water-wrap">
     <a href="#water" class="topbar-water-pill" id="topbarWater">
       <span class="topbar-pill-dot"></span>
@@ -288,6 +293,7 @@ body.topbar-modal-open {
   function render() {
     const goalsEl = document.getElementById('topbarGoals');
     const stackEl = document.getElementById('topbarStack');
+    const weightEl = document.getElementById('topbarWeight');
     const waterEl = document.getElementById('topbarWater');
     if (!goalsEl) return; // not injected yet
 
@@ -408,6 +414,7 @@ body.topbar-modal-open {
     if (!window.DashTabs) return;
     const goalsEl = document.getElementById('topbarGoals');
     const stackEl = document.getElementById('topbarStack');
+    const weightEl = document.getElementById('topbarWeight');
     const waterEl = document.getElementById('topbarWater');
     if (goalsEl && document.getElementById('tab-panel-home')) {
       goalsEl.addEventListener('click', (e) => {
@@ -419,6 +426,12 @@ body.topbar-modal-open {
       stackEl.addEventListener('click', (e) => {
         e.preventDefault();
         window.DashTabs.show('stack');
+      });
+    }
+    if (weightEl && document.getElementById('tab-panel-weight')) {
+      weightEl.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.DashTabs.show('weight');
       });
     }
     if (waterEl && document.getElementById('tab-panel-water')) {

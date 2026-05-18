@@ -11,6 +11,7 @@
     stack: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>',
     gym: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 4v16M18 4v16M6 12h12M9 7h6M9 17h6"/></svg>',
     water: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2.5c3 4.5 7 7.2 7 11a7 7 0 1 1-14 0c0-3.8 4-6.5 7-11z"/></svg>',
+    weight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v18M8 8l4-4 4 4M8 16l4 4 4-4"/></svg>',
   };
 
   const TABS = [
@@ -18,6 +19,7 @@
     { id: 'stack', label: 'Stack', panelId: 'tab-panel-stack', iframeSrc: 'stack.html?embed=1' },
     { id: 'gym', label: 'Gym', panelId: 'tab-panel-gym', iframeSrc: 'gym.html?embed=1' },
     { id: 'water', label: 'Water', panelId: 'tab-panel-water', iframeSrc: 'po-water.html?embed=1' },
+    { id: 'weight', label: 'Weight', panelId: 'tab-panel-weight', iframeSrc: 'weight102.html?embed=1' },
   ];
 
   let activeTab = 'home';
