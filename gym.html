@@ -1663,7 +1663,6 @@ img, video, canvas, svg { max-width: 100%; }
     <div class="po-set-section">
       <h4>Units</h4>
       <div class="po-modal-seg" id="setUnitsSeg">
-        <button data-u="kg">kg</button>
         <button data-u="lb">lb</button>
       </div>
     </div>
@@ -1719,7 +1718,7 @@ img, video, canvas, svg { max-width: 100%; }
   }
   function normalize(s) {
     s = s || {};
-    s.units = s.units || CONFIG.units || 'kg';
+    s.units = 'lb'; // Force pounds
     s.gyms  = (Array.isArray(s.gyms)  && s.gyms.length)  ? s.gyms  : CONFIG.gyms.slice();
     s.days  = (Array.isArray(s.days)  && s.days.length)  ? s.days  : CONFIG.days.slice();
     s.exercises = Array.isArray(s.exercises) ? s.exercises : buildDefaultExercises();
@@ -2564,7 +2563,7 @@ img, video, canvas, svg { max-width: 100%; }
   });
   $('setUnitsSeg').querySelectorAll('button').forEach(b => {
     b.addEventListener('click', () => {
-      state.units = b.dataset.u; saveState();
+      state.units = 'lb'; saveState();
       $('setUnitsSeg').querySelectorAll('button').forEach(x => x.classList.remove('active'));
       b.classList.add('active');
       if (typeof wtRender === 'function') wtRender();

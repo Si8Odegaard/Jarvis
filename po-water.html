@@ -700,7 +700,7 @@ html, body {
     s.unit = s.unit || CONFIG.unit || 'bottle';
     s.bottleMl = s.bottleMl || CONFIG.bottleMl || 500;
     s.glassMl  = s.glassMl  || CONFIG.glassMl  || 250;
-    s.weightUnit = s.weightUnit || 'kg';
+    s.weightUnit = s.weightUnit || 'lb';
     s.profile = Object.assign({}, CONFIG.profile, s.profile || {});
     s.caffeineMgPerDay = (s.caffeineMgPerDay != null) ? s.caffeineMgPerDay : (CONFIG.caffeineMgPerDay || 200);
     s.substances = Array.isArray(s.substances) ? s.substances : (CONFIG.defaultSubstances || []);
@@ -936,7 +936,7 @@ html, body {
     $('setGlassMl').value = state.glassMl;
 
     setSegActive('setUnit', state.unit);
-    setSegActive('setWeightUnit', state.weightUnit);
+    setSegActive('setWeightUnit', 'lb'); // Force pounds
     setSegActive('setSex', state.profile.sex);
 
     renderSubsList();
@@ -958,7 +958,7 @@ html, body {
     });
   }
   bindSeg('setUnit', 'u', (v) => { state.unit = v; saveState(); renderWater(); });
-  bindSeg('setWeightUnit', 'u', (v) => { state.weightUnit = v; saveState(); renderWater(); });
+  bindSeg('setWeightUnit', 'u', (v) => { state.weightUnit = 'lb'; saveState(); renderWater(); });
   bindSeg('setSex', 's', (v) => { state.profile.sex = v; saveState(); renderWater(); });
 
   ['setWeight','setAge','setActivity','setCaffeine','setBottleMl','setGlassMl'].forEach(id => {
@@ -1258,6 +1258,17 @@ html, body {
     if (SUPABASE_URL.indexOf('PASTE-') === 0) return;
     pwSupa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     try {
+      // First, try to migrate old data from 'health' key to 'water' key
+      const { data: oldHealthData, error: oldError } = await pwSupa
+        .from('app_state').select('data').eq('key', 'health').maybeSingle();
+      if (!oldError && oldHealthData && oldHealthData.data && oldHealthData.data[LS_KEY]) {
+        // Migrate old health data to water key
+        await pwSupa.from('app_state').upsert(
+          { key: 'water', data: oldHealthData.data, updated_at: new Date().toISOString() },
+          { onConflict: 'key' }
+        );
+      }
+      
       const { data, error } = await pwSupa
         .from('app_state').select('data').eq('key', APP_KEY).maybeSingle();
       if (!error && data && data.data && Object.keys(data.data).length > 0) {
