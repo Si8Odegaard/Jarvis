@@ -466,10 +466,11 @@ body.topbar-modal-open {
     if (!window.supabase || TOPBAR_SUPABASE_URL.indexOf('PASTE-') === 0) return;
     try {
       const supa = window.supabase.createClient(TOPBAR_SUPABASE_URL, TOPBAR_SUPABASE_KEY);
-      const [{ data: dash }, { data: health }, { data: stack }] = await Promise.all([
+      const [{ data: dash }, { data: health }, { data: stack }, { data: water }] = await Promise.all([
         supa.from('app_state').select('data').eq('key', 'dashboard').maybeSingle(),
         supa.from('app_state').select('data').eq('key', 'health').maybeSingle(),
         supa.from('app_state').select('data').eq('key', 'stack').maybeSingle(),
+        supa.from('app_state').select('data').eq('key', 'water').maybeSingle(),
       ]);
       if (dash && dash.data && typeof dash.data === 'object') {
         Object.keys(dash.data).forEach((k) => {
@@ -482,6 +483,12 @@ body.topbar-modal-open {
         const h = health.data;
         if (h.po_water_v1 != null) {
           try { localStorage.setItem('po_water_v1', JSON.stringify(h.po_water_v1)); } catch (e) {}
+        }
+      }
+      if (water && water.data && typeof water.data === 'object') {
+        const w = water.data;
+        if (w.po_water_v1 != null) {
+          try { localStorage.setItem('po_water_v1', JSON.stringify(w.po_water_v1)); } catch (e) {}
         }
       }
       if (stack && stack.data && typeof stack.data === 'object') {
