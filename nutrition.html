@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050506">
+<meta name="color-scheme" content="dark">
+<title>Nutrition & Recovery</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg: #050506;
+  --text-primary: #FAFAFA;
+  --text-secondary: #B8B6B0;
+  --text-tertiary: #76746E;
+  --success: #6BE3A4;
+  --warning: #F2C063;
+  --danger: #FF8A8A;
+  --surface: rgba(255,255,255,0.03);
+  --surface-hover: rgba(255,255,255,0.06);
+  --border: rgba(255,255,255,0.08);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text-primary);
+  line-height: 1.5;
+  min-height: 100vh;
+  padding: 16px;
+}
+
+.nutrition-embed {
+  padding: 0;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+h1 {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.reminder-badge {
+  background: var(--warning);
+  color: #000;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+input[type="range"] {
+  width: 100%;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  background: var(--success);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+input[type="number"] {
+  width: 100%;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 16px;
+  outline: none;
+}
+
+input[type="number"]:focus {
+  border-color: var(--success);
+}
+
+.btn-group {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-group button {
+  flex: 1;
+  padding: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-group button:hover {
+  background: var(--surface-hover);
+}
+
+.btn-group button.active {
+  background: var(--success);
+  color: #000;
+  border-color: var(--success);
+}
+
+.star-rating {
+  display: flex;
+  gap: 8px;
+}
+
+.star-rating button {
+  background: none;
+  border: none;
+  font-size: 28px;
+  cursor: pointer;
+  color: var(--border);
+  transition: color 0.2s;
+}
+
+.star-rating button.active,
+.star-rating button:hover {
+  color: var(--warning);
+}
+
+.submit-btn {
+  width: 100%;
+  padding: 14px;
+  background: var(--success);
+  color: #000;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.submit-btn:hover {
+  transform: scale(1.02);
+}
+
+.submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.recovery-score {
+  font-size: 48px;
+  font-weight: 700;
+  text-align: center;
+  margin: 16px 0;
+}
+
+.recovery-score.good { color: var(--success); }
+.recovery-score.warn { color: var(--warning); }
+.recovery-score.bad { color: var(--danger); }
+
+.alert {
+  background: rgba(255,138,138,0.1);
+  border: 1px solid var(--danger);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.alert-title {
+  font-weight: 600;
+  color: var(--danger);
+  margin-bottom: 4px;
+}
+
+.diagnosis-card {
+  background: rgba(107,227,164,0.05);
+  border: 1px solid var(--success);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.diagnosis-conclusion {
+  font-weight: 600;
+  color: var(--success);
+  margin-bottom: 4px;
+}
+
+.diagnosis-recommendation {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.chart-placeholder {
+  height: 120px;
+  background: var(--surface);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+.settings-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 8px;
+}
+
+.settings-btn:hover {
+  color: var(--text-primary);
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.8);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal.show {
+  display: flex;
+}
+
+.modal-content {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  max-width: 400px;
+  width: 90%;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.protein-target {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--success);
+  text-align: center;
+  margin: 12px 0;
+}
+
+.protein-streak {
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.tdee-display {
+  text-align: center;
+  margin: 12px 0;
+}
+
+.tdee-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--success);
+}
+
+.tdee-range {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<script>if (/[?&]embed=1/.test(location.search)) document.body.classList.add('nutrition-embed');</script>
+
+<div class="container">
+  <div class="card-header">
+    <h1>Nutrition & Recovery</h1>
+    <button class="settings-btn" id="settingsBtn" aria-label="Settings">⚙️</button>
+  </div>
+
+  <!-- Reminder Badge -->
+  <div id="reminderBadge" class="reminder-badge hidden">⏰ Check in pending</div>
+
+  <!-- Daily Check-in -->
+  <div class="card" id="checkinCard">
+    <div class="card-header">
+      <h2>Daily Check-in</h2>
+      <span id="checkinStatus" style="font-size:13px;color:var(--text-secondary)"></span>
+    </div>
+
+    <!-- Sleep -->
+    <div class="form-group">
+      <label>Sleep Hours: <span id="sleepValue">7</span>h</label>
+      <input type="range" id="sleepHours" min="4" max="12" step="0.5" value="7">
+    </div>
+
+    <div class="form-group">
+      <label>Sleep Quality</label>
+      <div class="star-rating" id="sleepQuality">
+        <button data-rating="1">★</button>
+        <button data-rating="2">★</button>
+        <button data-rating="3">★</button>
+        <button data-rating="4">★</button>
+        <button data-rating="5">★</button>
+      </div>
+    </div>
+
+    <!-- Readiness -->
+    <div class="form-group">
+      <label>Energy Level: <span id="energyValue">7</span>/10</label>
+      <input type="range" id="energyScore" min="1" max="10" step="1" value="7">
+    </div>
+
+    <div class="form-group">
+      <label>Muscle Soreness</label>
+      <div class="btn-group" id="sorenessGroup">
+        <button data-value="none">None</button>
+        <button data-value="mild">Mild</button>
+        <button data-value="moderate">Moderate</button>
+        <button data-value="severe">Severe</button>
+      </div>
+    </div>
+
+    <!-- Nutrition -->
+    <div class="form-group">
+      <label>Protein (g) yesterday</label>
+      <input type="number" id="proteinGrams" placeholder="e.g., 150" inputmode="numeric">
+    </div>
+
+    <div class="form-group">
+      <label>Hydration</label>
+      <div class="btn-group" id="hydrationGroup">
+        <button data-value="good">Good</button>
+        <button data-value="okay">Okay</button>
+        <button data-value="poor">Poor</button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Hit Calorie Target?</label>
+      <div class="btn-group" id="calorieGroup">
+        <button data-value="yes">Yes</button>
+        <button data-value="roughly">Roughly</button>
+        <button data-value="no">No</button>
+      </div>
+    </div>
+
+    <button class="submit-btn" id="submitCheckin">Submit Check-in</button>
+  </div>
+
+  <!-- Recovery Score -->
+  <div class="card">
+    <h2>Recovery Score</h2>
+    <div class="recovery-score" id="recoveryScore">—</div>
+    <div style="text-align:center;font-size:13px;color:var(--text-secondary)">
+      7-day avg: <span id="recoveryAvg">—</span>
+    </div>
+    <div class="chart-placeholder" id="recoveryChart">30-day trend chart</div>
+  </div>
+
+  <!-- Protein Target -->
+  <div class="card">
+    <h2>Protein Target</h2>
+    <div class="protein-target" id="proteinTarget">—</div>
+    <div class="protein-streak">
+      <span id="proteinStreak">0</span> day streak · avg: <span id="proteinAvg">—</span>g
+    </div>
+    <div class="chart-placeholder" id="proteinChart">Weekly adherence chart</div>
+    <div id="proteinAlert" class="alert hidden">
+      <div class="alert-title">⚠️ Low Protein Alert</div>
+      <div>Under target for 3+ days. Muscle retention/growth compromised.</div>
+    </div>
+  </div>
+
+  <!-- TDEE -->
+  <div class="card">
+    <h2>Adaptive TDEE</h2>
+    <div class="tdee-display">
+      <div class="tdee-value" id="tdeeValue">—</div>
+      <div class="tdee-range" id="tdeeRange">Target: — —</div>
+    </div>
+    <div class="chart-placeholder" id="tdeeChart">4-week weight trend</div>
+  </div>
+
+  <!-- Diagnosis -->
+  <div class="card" id="diagnosisCard">
+    <h2>Nutrition Diagnosis</h2>
+    <div id="diagnosisContent">
+      <div style="color:var(--text-tertiary);font-size:13px;">Check in for 3+ days to see diagnosis</div>
+    </div>
+  </div>
+
+  <!-- Weekly Summary -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Weekly Summary</h2>
+      <button id="refreshSummary" style="background:none;border:none;color:var(--success);cursor:pointer;font-size:13px;">Refresh</button>
+    </div>
+    <div id="weeklySummary">
+      <div style="color:var(--text-tertiary);font-size:13px;">Check in for 7+ days to see summary</div>
+    </div>
+  </div>
+
+  <!-- Fatigue Warning -->
+  <div id="fatigueWarning" class="alert hidden">
+    <div class="alert-title">⚠️ Accumulated Fatigue Warning</div>
+    <div>7-day recovery avg below 55 for 5+ days. Deload recommended. Your body needs recovery to adapt and grow stronger.</div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal" id="settingsModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Profile Settings</h2>
+      <button class="modal-close" id="closeSettings">×</button>
+    </div>
+    <div class="form-group">
+      <label>Age</label>
+      <input type="number" id="profileAge" placeholder="e.g., 25">
+    </div>
+    <div class="form-group">
+      <label>Height (cm)</label>
+      <input type="number" id="profileHeight" placeholder="e.g., 180">
+    </div>
+    <div class="form-group">
+      <label>Training Frequency (days/week)</label>
+      <input type="number" id="profileFrequency" placeholder="e.g., 4" min="1" max="7">
+    </div>
+    <div class="form-group">
+      <label>Phase</label>
+      <div class="btn-group" id="phaseGroup">
+        <button data-value="bulk">Bulk</button>
+        <button data-value="cut">Cut</button>
+        <button data-value="maintenance">Maintenance</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Goal Weight (kg)</label>
+      <input type="number" id="profileGoalWeight" placeholder="e.g., 75">
+    </div>
+    <button class="submit-btn" id="saveSettings">Save Settings</button>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://cskbbioyniryonkukamw.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNza2JiaW95bmlyeW9ua3VrYW13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NjE2MTYsImV4cCI6MjA5NDUzNzYxNn0.R3Vx3fA-iAc8LhNL3WPSa9-BxH_087c7VaIbrB3CBJM';
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const LS_KEY = 'nutrition_v1';
+const APP_KEY = 'nutrition';
+
+let state = {
+  checkin: null,
+  profile: {
+    age: null,
+    heightCm: null,
+    trainingFrequency: 4,
+    phase: 'maintenance',
+    goalWeight: null
+  }
+};
+
+const $ = (id) => document.getElementById(id);
+
+// Date helpers
+function todayKey() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+// Load state
+async function loadState() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) state = JSON.parse(raw);
+  } catch (e) {}
+  
+  // Load profile from Supabase
+  try {
+    const { data } = await supabase.from('nutrition_profile').select('*').maybeSingle();
+    if (data) {
+      state.profile = data;
+    }
+  } catch (e) {}
+}
+
+// Save state
+function saveState() {
+  localStorage.setItem(LS_KEY, JSON.stringify(state));
+}
+
+// Recovery score calculation
+function calculateRecoveryScore(checkin) {
+  if (!checkin) return null;
+  
+  const sleepScore = (checkin.sleep_hours / 12) * 40; // 40% weight, max 12h
+  const qualityScore = (checkin.sleep_quality / 5) * 20; // 20% weight
+  const energyScore = (checkin.energy_score / 10) * 25; // 25% weight
+  
+  let sorenessScore = 15;
+  if (checkin.soreness === 'none') sorenessScore = 15;
+  else if (checkin.soreness === 'mild') sorenessScore = 12;
+  else if (checkin.soreness === 'moderate') sorenessScore = 8;
+  else sorenessScore = 3;
+  
+  return Math.round(sleepScore + qualityScore + energyScore + sorenessScore);
+}
+
+// Submit check-in
+async function submitCheckin() {
+  const checkin = {
+    date: todayKey(),
+    sleep_hours: parseFloat($('sleepHours').value),
+    sleep_quality: parseInt(document.querySelector('#sleepQuality .active')?.dataset.rating || 3),
+    energy_score: parseInt($('energyScore').value),
+    soreness: document.querySelector('#sorenessGroup .active')?.dataset.value || 'none',
+    protein_grams: parseInt($('proteinGrams').value) || 0,
+    hydration: document.querySelector('#hydrationGroup .active')?.dataset.value || 'okay',
+    calorie_hit: document.querySelector('#calorieGroup .active')?.dataset.value || 'roughly'
+  };
+  
+  // Save to Supabase
+  try {
+    await supabase.from('daily_checkins').upsert(checkin);
+    
+    // Calculate and save recovery score
+    const recoveryScore = calculateRecoveryScore(checkin);
+    const recoveryData = {
+      date: todayKey(),
+      score: recoveryScore,
+      sleep_component: (checkin.sleep_hours / 12) * 40,
+      quality_component: (checkin.sleep_quality / 5) * 20,
+      energy_component: (checkin.energy_score / 10) * 25,
+      soreness_component: checkin.soreness === 'none' ? 15 : checkin.soreness === 'mild' ? 12 : checkin.soreness === 'moderate' ? 8 : 3
+    };
+    await supabase.from('recovery_scores').upsert(recoveryData);
+    
+    // Write to app_state for gym tab
+    await supabase.from('app_state').upsert({
+      key: APP_KEY,
+      data: {
+        recovery_score_today: recoveryScore,
+        checkin_date: todayKey()
+      },
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'key' });
+    
+    state.checkin = checkin;
+    saveState();
+    
+    // Show completion animation
+    $('submitCheckin').textContent = '✓ Submitted!';
+    $('submitCheckin').disabled = true;
+    setTimeout(() => {
+      $('submitCheckin').textContent = 'Submit Check-in';
+      $('submitCheckin').disabled = false;
+      loadTodayCheckin();
+      updateUI();
+    }, 1500);
+    
+  } catch (e) {
+    console.error('Error submitting check-in:', e);
+    alert('Error submitting check-in. Please try again.');
+  }
+}
+
+// Load today's check-in
+async function loadTodayCheckin() {
+  try {
+    const { data } = await supabase.from('daily_checkins').select('*').eq('date', todayKey()).maybeSingle();
+    if (data) {
+      state.checkin = data;
+      $('checkinStatus').textContent = 'Completed today';
+      $('submitCheckin').textContent = 'Update Check-in';
+    } else {
+      state.checkin = null;
+      $('checkinStatus').textContent = 'Not completed today';
+      $('submitCheckin').textContent = 'Submit Check-in';
+    }
+  } catch (e) {}
+}
+
+// Update UI
+async function updateUI() {
+  // Check reminder badge
+  const hour = new Date().getHours();
+  if (hour >= 10 && !state.checkin) {
+    $('reminderBadge').classList.remove('hidden');
+  } else {
+    $('reminderBadge').classList.add('hidden');
+  }
+  
+  // Load recovery score
+  try {
+    const { data } = await supabase.from('recovery_scores').select('*').eq('date', todayKey()).maybeSingle();
+    if (data) {
+      $('recoveryScore').textContent = data.score;
+      $('recoveryScore').className = 'recovery-score ' + (data.score >= 70 ? 'good' : data.score >= 55 ? 'warn' : 'bad');
+    }
+  } catch (e) {}
+  
+  // Load protein target
+  await updateProteinTarget();
+  
+  // Load TDEE
+  await updateTDEE();
+}
+
+// Protein target engine
+async function updateProteinTarget() {
+  try {
+    // Get current weight from gym data
+    const { data: gymData } = await supabase.from('app_state').select('data').eq('key', 'po-coach').maybeSingle();
+    let weightKg = 75; // default
+    if (gymData && gymData.data && gymData.data.po_coach_weights) {
+      const weights = gymData.data.po_coach_weights;
+      if (weights.length > 0) {
+        weightKg = weights[weights.length - 1].weight;
+        // Convert to kg if in lb
+        if (gymData.data.units === 'lb') weightKg = weightKg / 2.20462;
+      }
+    }
+    
+    // Check if today is training day
+    const isTrainingDay = await isTodayTrainingDay();
+    const proteinPerKg = isTrainingDay ? 2.0 : 1.6;
+    const target = Math.round(weightKg * proteinPerKg);
+    
+    $('proteinTarget').textContent = target + 'g';
+    
+    // Calculate streak
+    const { data: checkins } = await supabase.from('daily_checkins').select('*').order('date', { ascending: false }).limit(7);
+    if (checkins) {
+      let streak = 0;
+      let total = 0;
+      checkins.forEach(c => {
+        if (c.protein_grams >= target) streak++;
+        total += c.protein_grams;
+      });
+      $('proteinStreak').textContent = streak;
+      $('proteinAvg').textContent = Math.round(total / checkins.length);
+      
+      // Alert if under target for 3+ days
+      if (streak === 0 && checkins.length >= 3) {
+        $('proteinAlert').classList.remove('hidden');
+      } else {
+        $('proteinAlert').classList.add('hidden');
+      }
+    }
+  } catch (e) {
+    console.error('Error updating protein target:', e);
+  }
+}
+
+// Check if today is training day
+async function isTodayTrainingDay() {
+  try {
+    const { data: gymData } = await supabase.from('app_state').select('data').eq('key', 'po-coach').maybeSingle();
+    if (gymData && gymData.data && gymData.data.splitRotation) {
+      // Simple check - if today is not a rest day
+      const today = new Date().getDay();
+      const rotation = gymData.data.splitRotation;
+      const anchor = gymData.data.splitAnchor;
+      // This is simplified - would need proper date calculation
+      return true; // Default to training day for now
+    }
+  } catch (e) {}
+  return true;
+}
+
+// TDEE calculator
+async function updateTDEE() {
+  try {
+    const { data: profile } = await supabase.from('nutrition_profile').select('*').maybeSingle();
+    if (!profile || !profile.age || !profile.heightCm) {
+      $('tdeeValue').textContent = 'Set profile';
+      return;
+    }
+    
+    // Get current weight
+    let weightKg = 75;
+    const { data: gymData } = await supabase.from('app_state').select('data').eq('key', 'po-coach').maybeSingle();
+    if (gymData && gymData.data && gymData.data.po_coach_weights) {
+      const weights = gymData.data.po_coach_weights;
+      if (weights.length > 0) {
+        weightKg = weights[weights.length - 1].weight;
+        if (gymData.data.units === 'lb') weightKg = weightKg / 2.20462;
+      }
+    }
+    
+    // Mifflin-St Jeor
+    const bmr = 10 * weightKg + 6.25 * profile.heightCm - 5 * profile.age + 5;
+    const tdee = Math.round(bmr * 1.55); // Moderate activity
+    
+    $('tdeeValue').textContent = tdee;
+    
+    // Adjust based on phase
+    let targetMin = tdee, targetMax = tdee;
+    if (profile.phase === 'bulk') {
+      targetMin = tdee + 300;
+      targetMax = tdee + 500;
+    } else if (profile.phase === 'cut') {
+      targetMin = tdee - 500;
+      targetMax = tdee - 300;
+    }
+    
+    $('tdeeRange').textContent = `Target: ${targetMin} - ${targetMax}`;
+  } catch (e) {
+    console.error('Error updating TDEE:', e);
+  }
+}
+
+// Event listeners
+$('sleepHours').addEventListener('input', (e) => $('sleepValue').textContent = e.target.value);
+$('energyScore').addEventListener('input', (e) => $('energyValue').textContent = e.target.value);
+
+document.querySelectorAll('#sleepQuality button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#sleepQuality button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+document.querySelectorAll('#sorenessGroup button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#sorenessGroup button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+document.querySelectorAll('#hydrationGroup button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#hydrationGroup button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+document.querySelectorAll('#calorieGroup button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#calorieGroup button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+// Settings
+$('settingsBtn').addEventListener('click', () => $('settingsModal').classList.add('show'));
+$('closeSettings').addEventListener('click', () => $('settingsModal').classList.remove('show'));
+
+document.querySelectorAll('#phaseGroup button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#phaseGroup button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+$('saveSettings').addEventListener('click', async () => {
+  state.profile = {
+    age: parseInt($('profileAge').value) || null,
+    heightCm: parseInt($('profileHeight').value) || null,
+    trainingFrequency: parseInt($('profileFrequency').value) || 4,
+    phase: document.querySelector('#phaseGroup .active')?.dataset.value || 'maintenance',
+    goalWeight: parseFloat($('profileGoalWeight').value) || null
+  };
+  
+  try {
+    await supabase.from('nutrition_profile').upsert(state.profile);
+    saveState();
+    $('settingsModal').classList.remove('show');
+    updateUI();
+  } catch (e) {
+    console.error('Error saving settings:', e);
+    alert('Error saving settings');
+  }
+});
+
+// Weekly summary
+$('refreshSummary').addEventListener('click', generateWeeklySummary);
+
+async function generateWeeklySummary() {
+  try {
+    const { data: checkins } = await supabase.from('daily_checkins').select('*').order('date', { ascending: false }).limit(7);
+    const { data: recoveryScores } = await supabase.from('recovery_scores').select('*').order('date', { ascending: false }).limit(7);
+    
+    if (!checkins || checkins.length < 7) {
+      $('weeklySummary').innerHTML = '<div style="color:var(--text-tertiary);font-size:13px;">Check in for 7+ days to see summary</div>';
+      return;
+    }
+    
+    const avgRecovery = recoveryScores.reduce((sum, r) => sum + r.score, 0) / recoveryScores.length;
+    const avgProtein = checkins.reduce((sum, c) => sum + c.protein_grams, 0) / checkins.length;
+    
+    let weightTrend = 'maintaining';
+    const { data: gymData } = await supabase.from('app_state').select('data').eq('key', 'po-coach').maybeSingle();
+    if (gymData && gymData.data && gymData.data.po_coach_weights) {
+      const weights = gymData.data.po_coach_weights;
+      if (weights.length >= 2) {
+        const firstWeight = weights[0].weight;
+        const lastWeight = weights[weights.length - 1].weight;
+        if (lastWeight > firstWeight + 1) weightTrend = 'gaining';
+        else if (lastWeight < firstWeight - 1) weightTrend = 'losing';
+      }
+    }
+    
+    let recommendation = '';
+    if (avgRecovery < 55) {
+      recommendation = 'Prioritize sleep and recovery this week - your recovery score is low.';
+    } else if (avgProtein < 150) {
+      recommendation = 'Increase protein intake to support muscle recovery and growth.';
+    } else if (weightTrend === 'gaining') {
+      recommendation = 'Continue current calorie approach if bulking, or reduce if cutting.';
+    } else if (weightTrend === 'losing') {
+      recommendation = 'Ensure adequate protein intake to preserve muscle during weight loss.';
+    } else {
+      recommendation = 'Maintain current approach - you\'re on track.';
+    }
+    
+    $('weeklySummary').innerHTML = `
+      <div style="margin-bottom:8px;">Avg Recovery: <strong>${Math.round(avgRecovery)}</strong>/100</div>
+      <div style="margin-bottom:8px;">Avg Protein: <strong>${Math.round(avgProtein)}g</strong></div>
+      <div style="margin-bottom:8px;">Weight Trend: <strong>${weightTrend}</strong></div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+        <div style="font-weight:600;color:var(--success);margin-bottom:4px;">This Week's Focus:</div>
+        <div style="font-size:13px;color:var(--text-secondary);">${recommendation}</div>
+      </div>
+    `;
+  } catch (e) {
+    console.error('Error generating weekly summary:', e);
+  }
+}
+
+// Nutrition-aware composition diagnosis
+async function generateDiagnosis() {
+  try {
+    const { data: checkins } = await supabase.from('daily_checkins').select('*').order('date', { ascending: false }).limit(7);
+    const { data: recoveryScores } = await supabase.from('recovery_scores').select('*').order('date', { ascending: false }).limit(7);
+    
+    if (!checkins || checkins.length < 3) {
+      return;
+    }
+    
+    const { data: gymData } = await supabase.from('app_state').select('data').eq('key', 'po-coach').maybeSingle();
+    let weightGaining = false;
+    
+    if (gymData && gymData.data && gymData.data.po_coach_weights) {
+      const weights = gymData.data.po_coach_weights;
+      if (weights.length >= 2) {
+        const firstWeight = weights[0].weight;
+        const lastWeight = weights[weights.length - 1].weight;
+        weightGaining = lastWeight > firstWeight + 1;
+      }
+    }
+    
+    const proteinUnderTarget = checkins.filter(c => c.protein_grams < 150).length >= 3;
+    const calorieHit = checkins.filter(c => c.calorie_hit === 'yes').length >= 4;
+    const avgRecovery = recoveryScores.reduce((sum, r) => sum + r.score, 0) / recoveryScores.length;
+    const recoveryLow = avgRecovery < 55;
+    
+    let conclusion = '';
+    let recommendation = '';
+    
+    if (weightGaining) {
+      if (proteinUnderTarget) {
+        conclusion = 'Gaining weight - likely fat gain due to low protein.';
+        recommendation = 'Increase protein to 2g/kg bodyweight to support muscle growth.';
+      } else if (calorieHit) {
+        conclusion = 'Gaining weight - surplus may be too high.';
+        recommendation = 'Reduce calorie surplus by 200-300 calories.';
+      } else if (recoveryLow) {
+        conclusion = 'Gaining weight - fatigue may be masking strength gains.';
+        recommendation = 'Prioritize recovery and consider a deload week.';
+      } else {
+        conclusion = 'Gaining weight - good progress if strength is up.';
+        recommendation = 'Continue current approach.';
+      }
+    } else {
+      conclusion = 'Weight stable - maintenance phase.';
+      recommendation = 'Adjust calories based on your goals.';
+    }
+    
+    if (conclusion) {
+      $('diagnosisContent').innerHTML = `
+        <div class="diagnosis-conclusion">${conclusion}</div>
+        <div class="diagnosis-recommendation">${recommendation}</div>
+      `;
+    }
+  } catch (e) {
+    console.error('Error generating diagnosis:', e);
+  }
+}
+
+// Initialize
+(async function init() {
+  if (new URLSearchParams(window.location.search).has('embed')) {
+    document.body.classList.add('nutrition-embed');
+  }
+  
+  await loadState();
+  await loadTodayCheckin();
+  updateUI();
+  generateWeeklySummary();
+  generateDiagnosis();
+  
+  // Set default values
+  if (state.profile) {
+    $('profileAge').value = state.profile.age || '';
+    $('profileHeight').value = state.profile.heightCm || '';
+    $('profileFrequency').value = state.profile.trainingFrequency || 4;
+    $('profileGoalWeight').value = state.profile.goalWeight || '';
+    document.querySelector(`#phaseGroup button[data-value="${state.profile.phase}"]`)?.classList.add('active');
+  }
+  
+  // Set default button states
+  document.querySelector('#sorenessGroup button[data-value="none"]')?.classList.add('active');
+  document.querySelector('#hydrationGroup button[data-value="okay"]')?.classList.add('active');
+  document.querySelector('#calorieGroup button[data-value="roughly"]')?.classList.add('active');
+  document.querySelector('#sleepQuality button[data-rating="3"]')?.classList.add('active');
+})();
+</script>
+</body>
+</html>

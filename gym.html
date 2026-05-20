@@ -2144,6 +2144,24 @@ img, video, canvas, svg { max-width: 100%; }
     const sum = summarizeDay(todaySets);
     const u = state.units;
 
+    // Check recovery score from nutrition tab via Supabase
+    let recoveryCoaching = '';
+    (async function checkRecovery() {
+      try {
+        if (window.supabase) {
+          const { data } = await window.supabase.from('app_state').select('data').eq('key', 'nutrition').maybeSingle();
+          if (data && data.data && data.data.recovery_score_today && data.data.recovery_score_today < 55) {
+            const container = $('poTwCoaching') || document.createElement('div');
+            container.id = 'poTwCoaching';
+            container.innerHTML = '<div style="margin-top:12px;padding:10px;background:rgba(255,138,138,0.1);border:1px solid var(--bad);border-radius:8px;font-size:12px;"><strong>⚠️ Low Recovery</strong><br>Aim for 85% of last session\'s weight and focus on quality rather than pushing progression.</div>';
+            if (!document.getElementById('poTwCoaching')) {
+              $('poTw').appendChild(container);
+            }
+          }
+        }
+      } catch (e) {}
+    })();
+
     const eyebrow = $('poTwDateLabel');
     const dows = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
     const mons = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
