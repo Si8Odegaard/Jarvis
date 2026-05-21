@@ -768,21 +768,35 @@ function loadCheckinForm() {
 }
 
 function attachEventListeners() {
-  $('sleepHours').addEventListener('input', (e) => {
-    state.form.sleep_hours = parseFloat(e.target.value);
-    $('sleepValue').textContent = e.target.value;
-  });
+  const sleepHours = document.getElementById('sleepHours');
+  if (sleepHours) {
+    sleepHours.addEventListener('input', (e) => {
+      state.form.sleep_hours = parseFloat(e.target.value);
+      const sleepValue = document.getElementById('sleepValue');
+      if (sleepValue) sleepValue.textContent = e.target.value;
+    });
+  }
 
-  $('energyScore').addEventListener('input', (e) => {
-    state.form.energy_score = parseInt(e.target.value);
-    $('energyValue').textContent = e.target.value;
-  });
+  const energyScore = document.getElementById('energyScore');
+  if (energyScore) {
+    energyScore.addEventListener('input', (e) => {
+      state.form.energy_score = parseInt(e.target.value);
+      const energyValue = document.getElementById('energyValue');
+      if (energyValue) energyValue.textContent = e.target.value;
+    });
+  }
 
-  $('proteinGrams').addEventListener('input', (e) => {
-    state.form.protein_grams = e.target.value;
-  });
+  const proteinGrams = document.getElementById('proteinGrams');
+  if (proteinGrams) {
+    proteinGrams.addEventListener('input', (e) => {
+      state.form.protein_grams = e.target.value;
+    });
+  }
 
-  $('submitCheckin').addEventListener('click', submitCheckin);
+  const submitCheckin = document.getElementById('submitCheckin');
+  if (submitCheckin) {
+    submitCheckin.addEventListener('click', submitCheckin);
+  }
 
   // Star rating
   document.querySelectorAll('#sleepQuality button').forEach(btn => {
@@ -792,6 +806,7 @@ function attachEventListeners() {
       document.querySelectorAll('#sleepQuality button').forEach(b => {
         const starRating = parseInt(b.dataset.rating);
         b.classList.toggle('active', starRating <= rating);
+        b.style.color = starRating <= rating ? 'var(--warning)' : 'var(--border)';
       });
     });
     btn.addEventListener('mouseenter', () => {
@@ -803,12 +818,15 @@ function attachEventListeners() {
     });
   });
 
-  document.getElementById('sleepQuality').addEventListener('mouseleave', () => {
-    document.querySelectorAll('#sleepQuality button').forEach(b => {
-      const rating = parseInt(b.dataset.rating);
-      b.style.color = rating <= state.form.sleep_quality ? 'var(--warning)' : 'var(--border)';
+  const sleepQuality = document.getElementById('sleepQuality');
+  if (sleepQuality) {
+    sleepQuality.addEventListener('mouseleave', () => {
+      document.querySelectorAll('#sleepQuality button').forEach(b => {
+        const rating = parseInt(b.dataset.rating);
+        b.style.color = rating <= state.form.sleep_quality ? 'var(--warning)' : 'var(--border)';
+      });
     });
-  });
+  }
 
   // Button groups
   document.querySelectorAll('#sorenessGroup button').forEach(btn => {
@@ -816,9 +834,9 @@ function attachEventListeners() {
       state.form.soreness = btn.dataset.value;
       document.querySelectorAll('#sorenessGroup button').forEach(b => {
         b.classList.remove('active');
-        b.style.background = 'var(--surface)';
-        b.style.color = 'var(--text-primary)';
-        b.style.borderColor = 'var(--border)';
+        b.style.background = '';
+        b.style.color = '';
+        b.style.borderColor = '';
       });
       btn.classList.add('active');
       btn.style.background = 'var(--success)';
@@ -832,9 +850,9 @@ function attachEventListeners() {
       state.form.hydration = btn.dataset.value;
       document.querySelectorAll('#hydrationGroup button').forEach(b => {
         b.classList.remove('active');
-        b.style.background = 'var(--surface)';
-        b.style.color = 'var(--text-primary)';
-        b.style.borderColor = 'var(--border)';
+        b.style.background = '';
+        b.style.color = '';
+        b.style.borderColor = '';
       });
       btn.classList.add('active');
       btn.style.background = 'var(--success)';
@@ -848,9 +866,9 @@ function attachEventListeners() {
       state.form.calorie_hit = btn.dataset.value;
       document.querySelectorAll('#calorieGroup button').forEach(b => {
         b.classList.remove('active');
-        b.style.background = 'var(--surface)';
-        b.style.color = 'var(--text-primary)';
-        b.style.borderColor = 'var(--border)';
+        b.style.background = '';
+        b.style.color = '';
+        b.style.borderColor = '';
       });
       btn.classList.add('active');
       btn.style.background = 'var(--success)';
@@ -893,6 +911,23 @@ function setButtonStates() {
     const rating = parseInt(b.dataset.rating);
     b.classList.toggle('active', rating <= state.form.sleep_quality);
     b.style.color = rating <= state.form.sleep_quality ? 'var(--warning)' : 'var(--border)';
+  });
+}
+
+// Settings modal
+const settingsBtn = document.getElementById('settingsBtn');
+if (settingsBtn) {
+  settingsBtn.addEventListener('click', () => {
+    const modal = document.getElementById('settingsModal');
+    if (modal) modal.classList.add('show');
+  });
+}
+
+const closeSettings = document.getElementById('closeSettings');
+if (closeSettings) {
+  closeSettings.addEventListener('click', () => {
+    const modal = document.getElementById('settingsModal');
+    if (modal) modal.classList.remove('show');
   });
 }
 
@@ -1204,7 +1239,7 @@ async function generateDiagnosis() {
 }
 
 // Initialize
-(async function init() {
+document.addEventListener('DOMContentLoaded', async function init() {
   if (new URLSearchParams(window.location.search).has('embed')) {
     document.body.classList.add('nutrition-embed');
   }
@@ -1212,8 +1247,8 @@ async function generateDiagnosis() {
   await loadState();
   await loadTodayCheckin();
   
-  // Only attach initial event listeners if form is visible (not showing summary)
-  if (!state.checkin) {
+  // Always attach initial event listeners for the form
+  if (document.getElementById('sleepHours')) {
     attachEventListeners();
     setButtonStates();
   }

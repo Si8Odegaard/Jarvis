@@ -701,7 +701,7 @@ html, body {
     s.bottleMl = s.bottleMl || CONFIG.bottleMl || 500;
     s.glassMl  = s.glassMl  || CONFIG.glassMl  || 250;
     s.weightUnit = s.weightUnit || 'lb';
-    s.profile = Object.assign({}, CONFIG.profile, s.profile || {});
+    s.profile = Object.assign({}, s.profile || {}, CONFIG.profile);
     s.caffeineMgPerDay = (s.caffeineMgPerDay != null) ? s.caffeineMgPerDay : (CONFIG.caffeineMgPerDay || 200);
     s.substances = Array.isArray(s.substances) ? s.substances : (CONFIG.defaultSubstances || []);
     s.logs = (s.logs && typeof s.logs === 'object') ? s.logs : {};  // {YYYY-MM-DD: number_of_servings}
