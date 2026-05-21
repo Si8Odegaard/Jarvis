@@ -367,33 +367,33 @@ input[type="number"]:focus {
     <!-- Sleep -->
     <div class="form-group">
       <label>Sleep Hours: <span id="sleepValue">7</span>h</label>
-      <input type="range" id="sleepHours" min="4" max="12" step="0.5" value="7">
+      <input type="range" id="sleepHours" min="4" max="12" step="0.5" value="7" oninput="document.getElementById('sleepValue').textContent = this.value">
     </div>
 
     <div class="form-group">
       <label>Sleep Quality</label>
       <div class="star-rating" id="sleepQuality">
-        <button data-rating="1">★</button>
-        <button data-rating="2">★</button>
-        <button data-rating="3">★</button>
-        <button data-rating="4">★</button>
-        <button data-rating="5">★</button>
+        <button data-rating="1" onclick="document.querySelectorAll('#sleepQuality button').forEach(function(b,i){b.style.color=i<0?'var(--warning)':'var(--border)'});this.style.color='var(--warning)'">★</button>
+        <button data-rating="2" onclick="document.querySelectorAll('#sleepQuality button').forEach(function(b,i){b.style.color=i<1?'var(--warning)':'var(--border)'});this.style.color='var(--warning)';document.querySelectorAll('#sleepQuality button')[0].style.color='var(--warning)'">★</button>
+        <button data-rating="3" onclick="document.querySelectorAll('#sleepQuality button').forEach(function(b,i){b.style.color=i<2?'var(--warning)':'var(--border)'});this.style.color='var(--warning)';document.querySelectorAll('#sleepQuality button')[0].style.color='var(--warning)';document.querySelectorAll('#sleepQuality button')[1].style.color='var(--warning)'">★</button>
+        <button data-rating="4" onclick="document.querySelectorAll('#sleepQuality button').forEach(function(b,i){b.style.color=i<3?'var(--warning)':'var(--border)'});this.style.color='var(--warning)';document.querySelectorAll('#sleepQuality button')[0].style.color='var(--warning)';document.querySelectorAll('#sleepQuality button')[1].style.color='var(--warning)';document.querySelectorAll('#sleepQuality button')[2].style.color='var(--warning)'">★</button>
+        <button data-rating="5" onclick="document.querySelectorAll('#sleepQuality button').forEach(function(b){b.style.color='var(--warning)'})">★</button>
       </div>
     </div>
 
     <!-- Readiness -->
     <div class="form-group">
       <label>Energy Level: <span id="energyValue">7</span>/10</label>
-      <input type="range" id="energyScore" min="1" max="10" step="1" value="7">
+      <input type="range" id="energyScore" min="1" max="10" step="1" value="7" oninput="document.getElementById('energyValue').textContent = this.value">
     </div>
 
     <div class="form-group">
       <label>Muscle Soreness</label>
       <div class="btn-group" id="sorenessGroup">
-        <button data-value="none">None</button>
-        <button data-value="mild">Mild</button>
-        <button data-value="moderate">Moderate</button>
-        <button data-value="severe">Severe</button>
+        <button data-value="none" onclick="document.querySelectorAll('#sorenessGroup button').forEach(function(b){b.style.background='';b.style.color='';b.style.borderColor=''});this.style.background='var(--success)';this.style.color='#000';this.style.borderColor='var(--success)'">None</button>
+        <button data-value="mild" onclick="document.querySelectorAll('#sorenessGroup button').forEach(function(b){b.style.background='';b.style.color='';b.style.borderColor=''});this.style.background='var(--success)';this.style.color='#000';this.style.borderColor='var(--success)'">Mild</button>
+        <button data-value="moderate" onclick="document.querySelectorAll('#sorenessGroup button').forEach(function(b){b.style.background='';b.style.color='';b.style.borderColor=''});this.style.background='var(--success)';this.style.color='#000';this.style.borderColor='var(--success)'">Moderate</button>
+        <button data-value="severe" onclick="document.querySelectorAll('#sorenessGroup button').forEach(function(b){b.style.background='';b.style.color='';b.style.borderColor=''});this.style.background='var(--success)';this.style.color='#000';this.style.borderColor='var(--success)'">Severe</button>
       </div>
     </div>
 
@@ -406,18 +406,18 @@ input[type="number"]:focus {
     <div class="form-group">
       <label>Hydration</label>
       <div class="btn-group" id="hydrationGroup">
-        <button data-value="good">Good</button>
-        <button data-value="okay">Okay</button>
-        <button data-value="poor">Poor</button>
+        <button data-value="good" onclick="document.querySelectorAll('#hydrationGroup button').forEach(function(b){b.style.background='';b.style.color='';b.style.borderColor=''});this.style.background='var(--success)';this.style.color='#000';this.style.borderColor='var(--success)'">Good</button>
+        <button data-value="okay" onclick="document.querySelectorAll('#hydrationGroup button').forEach(function(b){b.style.background='';b.style.color='';b.style.borderColor=''});this.style.background='var(--success)';this.style.color='#000';this.style.borderColor='var(--success)'">Okay</button>
+        <button data-value="poor" onclick="document.querySelectorAll('#hydrationGroup button').forEach(function(b){b.style.background='';b.style.color='';b.style.borderColor=''});this.style.background='var(--success)';this.style.color='#000';this.style.borderColor='var(--success)'">Poor</button>
       </div>
     </div>
 
     <div class="form-group">
       <label>Hit Calorie Target?</label>
       <div class="btn-group" id="calorieGroup">
-        <button data-value="yes">Yes</button>
-        <button data-value="roughly">Roughly</button>
-        <button data-value="no">No</button>
+        <button data-value="yes" onclick="document.querySelectorAll('#calorieGroup button').forEach(function(b){b.style.background='';b.style.color='';b.style.borderColor=''});this.style.background='var(--success)';this.style.color='#000';this.style.borderColor='var(--success)'">Yes</button>
+        <button data-value="roughly" onclick="document.querySelectorAll('#calorieGroup button').forEach(function(b){b.style.background='';b.style.color='';b.style.borderColor=''});this.style.background='var(--success)';this.style.color='#000';this.style.borderColor='var(--success)'">Roughly</button>
+        <button data-value="no" onclick="document.querySelectorAll('#calorieGroup button').forEach(function(b){b.style.background='';b.style.color='';b.style.borderColor=''});this.style.background='var(--success)';this.style.color='#000';this.style.borderColor='var(--success)'">No</button>
       </div>
     </div>
 
@@ -536,19 +536,115 @@ let state = {
     trainingFrequency: 4,
     phase: 'maintenance',
     goalWeight: null
-  },
-  form: {
-    sleep_hours: 7,
-    sleep_quality: 3,
-    energy_score: 7,
-    soreness: 'none',
-    protein_grams: '',
-    hydration: 'okay',
-    calorie_hit: 'roughly'
   }
 };
 
 const $ = (id) => document.getElementById(id);
+
+// Global state for inline event handlers
+window.nutritionState = {
+  sleep_hours: 7,
+  sleep_quality: 3,
+  energy_score: 7,
+  soreness: 'none',
+  protein_grams: '',
+  hydration: 'okay',
+  calorie_hit: 'roughly'
+};
+
+// Inline event handler functions
+window.setStarRating = function(rating) {
+  window.nutritionState.sleep_quality = rating;
+  document.querySelectorAll('#sleepQuality button').forEach(b => {
+    const starRating = parseInt(b.dataset.rating);
+    b.classList.toggle('active', starRating <= rating);
+    b.style.color = starRating <= rating ? 'var(--warning)' : 'var(--border)';
+  });
+};
+
+window.selectButton = function(group, value) {
+  const groupMap = {
+    'soreness': 'soreness',
+    'hydration': 'hydration',
+    'calorie': 'calorie_hit'
+  };
+  window.nutritionState[groupMap[group]] = value;
+  
+  const groupElement = document.getElementById(group + 'Group');
+  if (groupElement) {
+    groupElement.querySelectorAll('button').forEach(b => {
+      b.classList.remove('active');
+      b.style.background = '';
+      b.style.color = '';
+      b.style.borderColor = '';
+    });
+    const selectedBtn = groupElement.querySelector(`button[data-value="${value}"]`);
+    if (selectedBtn) {
+      selectedBtn.classList.add('active');
+      selectedBtn.style.background = 'var(--success)';
+      selectedBtn.style.color = '#000';
+      selectedBtn.style.borderColor = 'var(--success)';
+    }
+  }
+};
+
+window.submitCheckin = async function() {
+  const missing = [];
+  if (!window.nutritionState.protein_grams) missing.push('Protein grams');
+  
+  if (missing.length > 0) {
+    alert('Please complete: ' + missing.join(', '));
+    return;
+  }
+  
+  const checkin = {
+    date: todayKey(),
+    sleep_hours: window.nutritionState.sleep_hours,
+    sleep_quality: window.nutritionState.sleep_quality,
+    energy_score: window.nutritionState.energy_score,
+    soreness: window.nutritionState.soreness,
+    protein_grams: parseInt(window.nutritionState.protein_grams) || 0,
+    hydration: window.nutritionState.hydration,
+    calorie_hit: window.nutritionState.calorie_hit
+  };
+  
+  try {
+    await supabase.from('daily_checkins').upsert(checkin);
+    
+    const recoveryScore = calculateRecoveryScore(checkin);
+    const recoveryData = {
+      date: todayKey(),
+      score: recoveryScore,
+      sleep_component: (checkin.sleep_hours / 12) * 40,
+      quality_component: (checkin.sleep_quality / 5) * 20,
+      energy_component: (checkin.energy_score / 10) * 25,
+      soreness_component: checkin.soreness === 'none' ? 100 : checkin.soreness === 'mild' ? 75 : checkin.soreness === 'moderate' ? 40 : 10
+    };
+    await supabase.from('recovery_scores').upsert(recoveryData);
+    
+    const { data: last7Days } = await supabase.from('recovery_scores').select('score').order('date', { ascending: false }).limit(7);
+    const avg7Day = last7Days ? Math.round(last7Days.reduce((sum, r) => sum + r.score, 0) / last7Days.length) : recoveryScore;
+    
+    await supabase.from('app_state').upsert({
+      key: APP_KEY,
+      data: {
+        recovery_score_today: recoveryScore,
+        recovery_score_7day_avg: avg7Day,
+        checkin_date: todayKey()
+      },
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'key' });
+    
+    state.checkin = checkin;
+    saveState();
+    
+    showCheckinSummary(checkin, recoveryScore);
+    
+  } catch (e) {
+    console.error('Error submitting check-in:', e);
+    alert('Error submitting check-in. Please try again.');
+  }
+};
 
 // Date helpers
 function todayKey() {
@@ -768,10 +864,11 @@ function loadCheckinForm() {
 }
 
 function attachEventListeners() {
+  // Sliders
   const sleepHours = document.getElementById('sleepHours');
   if (sleepHours) {
-    sleepHours.addEventListener('input', (e) => {
-      state.form.sleep_hours = parseFloat(e.target.value);
+    sleepHours.addEventListener('input', function(e) {
+      window.nutritionState.sleep_hours = parseFloat(e.target.value);
       const sleepValue = document.getElementById('sleepValue');
       if (sleepValue) sleepValue.textContent = e.target.value;
     });
@@ -779,8 +876,8 @@ function attachEventListeners() {
 
   const energyScore = document.getElementById('energyScore');
   if (energyScore) {
-    energyScore.addEventListener('input', (e) => {
-      state.form.energy_score = parseInt(e.target.value);
+    energyScore.addEventListener('input', function(e) {
+      window.nutritionState.energy_score = parseInt(e.target.value);
       const energyValue = document.getElementById('energyValue');
       if (energyValue) energyValue.textContent = e.target.value;
     });
@@ -788,51 +885,37 @@ function attachEventListeners() {
 
   const proteinGrams = document.getElementById('proteinGrams');
   if (proteinGrams) {
-    proteinGrams.addEventListener('input', (e) => {
-      state.form.protein_grams = e.target.value;
+    proteinGrams.addEventListener('input', function(e) {
+      window.nutritionState.protein_grams = e.target.value;
     });
   }
 
+  // Submit button
   const submitCheckin = document.getElementById('submitCheckin');
   if (submitCheckin) {
-    submitCheckin.addEventListener('click', submitCheckin);
+    submitCheckin.addEventListener('click', window.submitCheckin);
   }
 
   // Star rating
-  document.querySelectorAll('#sleepQuality button').forEach(btn => {
-    btn.addEventListener('click', () => {
+  const starButtons = document.querySelectorAll('#sleepQuality button');
+  starButtons.forEach(function(btn) {
+    btn.addEventListener('click', function() {
       const rating = parseInt(btn.dataset.rating);
-      state.form.sleep_quality = rating;
-      document.querySelectorAll('#sleepQuality button').forEach(b => {
+      window.nutritionState.sleep_quality = rating;
+      starButtons.forEach(function(b) {
         const starRating = parseInt(b.dataset.rating);
         b.classList.toggle('active', starRating <= rating);
         b.style.color = starRating <= rating ? 'var(--warning)' : 'var(--border)';
       });
     });
-    btn.addEventListener('mouseenter', () => {
-      const rating = parseInt(btn.dataset.rating);
-      document.querySelectorAll('#sleepQuality button').forEach(b => {
-        const starRating = parseInt(b.dataset.rating);
-        b.style.color = starRating <= rating ? 'var(--warning)' : 'var(--border)';
-      });
-    });
   });
-
-  const sleepQuality = document.getElementById('sleepQuality');
-  if (sleepQuality) {
-    sleepQuality.addEventListener('mouseleave', () => {
-      document.querySelectorAll('#sleepQuality button').forEach(b => {
-        const rating = parseInt(b.dataset.rating);
-        b.style.color = rating <= state.form.sleep_quality ? 'var(--warning)' : 'var(--border)';
-      });
-    });
-  }
 
   // Button groups
-  document.querySelectorAll('#sorenessGroup button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      state.form.soreness = btn.dataset.value;
-      document.querySelectorAll('#sorenessGroup button').forEach(b => {
+  const sorenessButtons = document.querySelectorAll('#sorenessGroup button');
+  sorenessButtons.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      window.nutritionState.soreness = btn.dataset.value;
+      sorenessButtons.forEach(function(b) {
         b.classList.remove('active');
         b.style.background = '';
         b.style.color = '';
@@ -845,10 +928,11 @@ function attachEventListeners() {
     });
   });
 
-  document.querySelectorAll('#hydrationGroup button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      state.form.hydration = btn.dataset.value;
-      document.querySelectorAll('#hydrationGroup button').forEach(b => {
+  const hydrationButtons = document.querySelectorAll('#hydrationGroup button');
+  hydrationButtons.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      window.nutritionState.hydration = btn.dataset.value;
+      hydrationButtons.forEach(function(b) {
         b.classList.remove('active');
         b.style.background = '';
         b.style.color = '';
@@ -861,10 +945,11 @@ function attachEventListeners() {
     });
   });
 
-  document.querySelectorAll('#calorieGroup button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      state.form.calorie_hit = btn.dataset.value;
-      document.querySelectorAll('#calorieGroup button').forEach(b => {
+  const calorieButtons = document.querySelectorAll('#calorieGroup button');
+  calorieButtons.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      window.nutritionState.calorie_hit = btn.dataset.value;
+      calorieButtons.forEach(function(b) {
         b.classList.remove('active');
         b.style.background = '';
         b.style.color = '';
@@ -880,7 +965,7 @@ function attachEventListeners() {
 
 function setButtonStates() {
   // Set soreness button
-  const sorenessBtn = document.querySelector(`#sorenessGroup button[data-value="${state.form.soreness}"]`);
+  const sorenessBtn = document.querySelector(`#sorenessGroup button[data-value="${window.nutritionState.soreness}"]`);
   if (sorenessBtn) {
     sorenessBtn.classList.add('active');
     sorenessBtn.style.background = 'var(--success)';
@@ -889,7 +974,7 @@ function setButtonStates() {
   }
 
   // Set hydration button
-  const hydrationBtn = document.querySelector(`#hydrationGroup button[data-value="${state.form.hydration}"]`);
+  const hydrationBtn = document.querySelector(`#hydrationGroup button[data-value="${window.nutritionState.hydration}"]`);
   if (hydrationBtn) {
     hydrationBtn.classList.add('active');
     hydrationBtn.style.background = 'var(--success)';
@@ -898,7 +983,7 @@ function setButtonStates() {
   }
 
   // Set calorie button
-  const calorieBtn = document.querySelector(`#calorieGroup button[data-value="${state.form.calorie_hit}"]`);
+  const calorieBtn = document.querySelector(`#calorieGroup button[data-value="${window.nutritionState.calorie_hit}"]`);
   if (calorieBtn) {
     calorieBtn.classList.add('active');
     calorieBtn.style.background = 'var(--success)';
@@ -909,8 +994,8 @@ function setButtonStates() {
   // Set star rating
   document.querySelectorAll('#sleepQuality button').forEach(b => {
     const rating = parseInt(b.dataset.rating);
-    b.classList.toggle('active', rating <= state.form.sleep_quality);
-    b.style.color = rating <= state.form.sleep_quality ? 'var(--warning)' : 'var(--border)';
+    b.classList.toggle('active', rating <= window.nutritionState.sleep_quality);
+    b.style.color = rating <= window.nutritionState.sleep_quality ? 'var(--warning)' : 'var(--border)';
   });
 }
 
@@ -1239,19 +1324,18 @@ async function generateDiagnosis() {
 }
 
 // Initialize
-document.addEventListener('DOMContentLoaded', async function init() {
+(async function init() {
   if (new URLSearchParams(window.location.search).has('embed')) {
     document.body.classList.add('nutrition-embed');
   }
   
   await loadState();
-  await loadTodayCheckin();
   
-  // Always attach initial event listeners for the form
-  if (document.getElementById('sleepHours')) {
-    attachEventListeners();
-    setButtonStates();
-  }
+  // Attach event listeners
+  attachEventListeners();
+  
+  // Set initial button states
+  setButtonStates();
   
   updateUI();
   generateWeeklySummary();
@@ -1265,12 +1349,6 @@ document.addEventListener('DOMContentLoaded', async function init() {
     $('profileGoalWeight').value = state.profile.goalWeight || '';
     document.querySelector(`#phaseGroup button[data-value="${state.profile.phase}"]`)?.classList.add('active');
   }
-  
-  // Set default button states
-  document.querySelector('#sorenessGroup button[data-value="none"]')?.classList.add('active');
-  document.querySelector('#hydrationGroup button[data-value="okay"]')?.classList.add('active');
-  document.querySelector('#calorieGroup button[data-value="roughly"]')?.classList.add('active');
-  document.querySelector('#sleepQuality button[data-rating="3"]')?.classList.add('active');
 })();
 </script>
 </body>
