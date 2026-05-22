@@ -1089,6 +1089,14 @@ html, body {
     if (!confirm('Wipe ALL water logs and settings? This cannot be undone.')) return;
     localStorage.removeItem(LS_KEY);
     state = loadState();
+    // Also clear remote copy in Supabase so reset isn't immediately reverted
+    try {
+      if (pwSupa) {
+        pwSupa.from('app_state').upsert({ key: APP_KEY, data: {} }, { onConflict: 'key' });
+        pwHealthCache = {};
+        pwLastSyncedJson = null;
+      }
+    } catch (e) {}
     $('setModalBg').classList.remove('show');
     renderAll();
   });

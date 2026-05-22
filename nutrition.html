@@ -468,8 +468,8 @@ input[type="number"].error { border-color: var(--danger); }
       <input type="number" id="profileAge" placeholder="e.g., 25">
     </div>
     <div class="form-group">
-      <label>Height (cm)</label>
-      <input type="number" id="profileHeight" placeholder="e.g., 180">
+      <label>Height (in)</label>
+      <input type="number" id="profileHeight" placeholder="e.g., 71">
     </div>
     <div class="form-group">
       <label>Training Frequency (days/week)</label>
@@ -484,8 +484,8 @@ input[type="number"].error { border-color: var(--danger); }
       </div>
     </div>
     <div class="form-group">
-      <label>Goal Weight (kg)</label>
-      <input type="number" id="profileGoalWeight" placeholder="e.g., 75">
+      <label>Goal Weight (lb)</label>
+      <input type="number" id="profileGoalWeight" placeholder="e.g., 170">
     </div>
     <button class="submit-btn" id="saveSettings">Save Settings</button>
   </div>
@@ -525,6 +525,22 @@ let profileState = {
 //  HELPERS
 // ════════════════════════════════════════════════════════════
 const $ = id => document.getElementById(id);
+
+function weightKgFromProfile(profile, fallbackKg = 75) {
+  if (!profile) return fallbackKg;
+  // support multiple stored shapes: goalWeightLb, goalWeight, weightKg
+  if (profile.goalWeightLb != null) return parseFloat(profile.goalWeightLb) / 2.20462;
+  if (profile.goalWeight != null) return parseFloat(profile.goalWeight); // assume kg
+  if (profile.weightKg != null) return parseFloat(profile.weightKg);
+  return fallbackKg;
+}
+
+function heightCmFromProfile(profile) {
+  if (!profile) return null;
+  if (profile.heightIn != null) return parseFloat(profile.heightIn) * 2.54;
+  if (profile.heightCm != null) return parseFloat(profile.heightCm);
+  return null;
+}
 
 function todayKey() {
   const d = new Date();
@@ -968,12 +984,18 @@ async function loadRecoveryScore() {
 // ════════════════════════════════════════════════════════════
 async function updateProteinTarget() {
   try {
+    // Prefer explicit nutrition profile weight (supports lb/in), fall back to po-coach app_state
     let weightKg = 75;
-    const { data: gymData } = await sb.from('app_state')
-      .select('data').eq('key', 'po-coach').maybeSingle();
-    if (gymData?.data?.po_coach_weights?.length) {
-      const w = gymData.data.po_coach_weights.slice(-1)[0].weight;
-      weightKg = gymData.data.units === 'lb' ? w / 2.20462 : w;
+    const { data: profile } = await sb.from('nutrition_profile').select('*').maybeSingle();
+    if (profile) {
+      weightKg = weightKgFromProfile(profile, weightKg);
+    } else {
+      const { data: gymData } = await sb.from('app_state')
+        .select('data').eq('key', 'po-coach').maybeSingle();
+      if (gymData?.data?.po_coach_weights?.length) {
+        const w = gymData.data.po_coach_weights.slice(-1)[0].weight;
+        weightKg = gymData.data.units === 'lb' ? w / 2.20462 : w;
+      }
     }
 
     const target = Math.round(weightKg * 2.0);
@@ -997,18 +1019,15 @@ async function updateProteinTarget() {
 async function updateTDEE() {
   try {
     const { data: profile } = await sb.from('nutrition_profile').select('*').maybeSingle();
-    if (!profile?.age || !profile?.heightCm) {
+    if (!profile?.age) {
       $('tdeeValue').textContent = 'Set profile';
       return;
     }
-    let weightKg = 75;
-    const { data: gymData } = await sb.from('app_state')
-      .select('data').eq('key', 'po-coach').maybeSingle();
-    if (gymData?.data?.po_coach_weights?.length) {
-      const w = gymData.data.po_coach_weights.slice(-1)[0].weight;
-      weightKg = gymData.data.units === 'lb' ? w / 2.20462 : w;
-    }
-    const bmr  = 10 * weightKg + 6.25 * profile.heightCm - 5 * profile.age + 5;
+    // Resolve height (support in) and weight (support lb)
+    const heightCm = heightCmFromProfile(profile);
+    if (!heightCm) { $('tdeeValue').textContent = 'Set profile'; return; }
+    let weightKg = weightKgFromProfile(profile, 75);
+    const bmr  = 10 * weightKg + 6.25 * heightCm - 5 * profile.age + 5;
     const tdee = Math.round(bmr * 1.55);
     $('tdeeValue').textContent = tdee;
     let min = tdee, max = tdee;
@@ -1061,12 +1080,16 @@ function initSettingsModal() {
   });
 
   $('saveSettings').addEventListener('click', async () => {
+    const heightIn = parseFloat($('profileHeight').value) || null;
+    const goalWeightLb = parseFloat($('profileGoalWeight').value) || null;
     const profile = {
       age:               parseInt($('profileAge').value) || null,
-      heightCm:          parseInt($('profileHeight').value) || null,
+      heightIn:          heightIn,
+      heightCm:          heightIn ? Math.round(heightIn * 2.54) : null,
       trainingFrequency: parseInt($('profileFrequency').value) || 4,
       phase:             document.querySelector('#phaseGroup .active')?.dataset.value || 'maintenance',
-      goalWeight:        parseFloat($('profileGoalWeight').value) || null
+      goalWeightLb:      goalWeightLb,
+      goalWeight:        goalWeightLb ? Math.round((goalWeightLb / 2.20462) * 10) / 10 : null
     };
     try {
       await sb.from('nutrition_profile').upsert(profile);
@@ -1083,9 +1106,12 @@ async function prefillSettingsModal() {
     const { data } = await sb.from('nutrition_profile').select('*').maybeSingle();
     if (!data) return;
     $('profileAge').value       = data.age || '';
-    $('profileHeight').value    = data.heightCm || '';
+    // prefer explicit inches, fall back to cm -> in
+    if (data.heightIn != null) $('profileHeight').value = data.heightIn;
+    else if (data.heightCm != null) $('profileHeight').value = Math.round((data.heightCm / 2.54) * 10) / 10;
     $('profileFrequency').value = data.trainingFrequency || 4;
-    $('profileGoalWeight').value= data.goalWeight || '';
+    if (data.goalWeightLb != null) $('profileGoalWeight').value = data.goalWeightLb;
+    else if (data.goalWeight != null) $('profileGoalWeight').value = Math.round((data.goalWeight * 2.20462) * 10) / 10;
     const phaseBtn = document.querySelector(`#phaseGroup button[data-value="${data.phase}"]`);
     if (phaseBtn) phaseBtn.classList.add('active');
   } catch (e) {}
