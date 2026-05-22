@@ -462,6 +462,8 @@ html, body {
 <body>
 <script>if (/[?&]embed=1/.test(location.search)) document.body.classList.add('water-embed');</script>
 
+<div id="loadingOverlay" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:1000;background:#050506;font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',Roboto,sans-serif;color:rgba(255,255,255,0.45);font-size:14px;font-weight:500;letter-spacing:0.04em;">Loading...</div>
+
 <div class="shell">
 
   <button class="day-pill" id="dayPill" type="button">
@@ -718,8 +720,7 @@ html, body {
       }
     } catch (e) {}
   }
-  let state = loadState();
-  $('appTitle').textContent = CONFIG.appTitle || 'Water Coach';
+  let state;  // populated after cloud fetch in initApp()
 
   // Helpers
   function dateKey(d) {
@@ -1102,7 +1103,6 @@ html, body {
 
   // ============================================================
   // CLOUD SYNC via Supabase (same project as index.html / topbar)
-  // Row key: health — merges po_water_v1 with stack & other tabs
   // ============================================================
   const SUPABASE_URL = 'https://cskbbioyniryonkukamw.supabase.co';
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNza2JiaW95bmlyeW9ua3VrYW13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NjE2MTYsImV4cCI6MjA5NDUzNzYxNn0.R3Vx3fA-iAc8LhNL3WPSa9-BxH_087c7VaIbrB3CBJM';
@@ -1256,34 +1256,45 @@ html, body {
     } catch (e) {}
   }
 
-  (async function pwInitCloudSync() {
-    if (!window.supabase || !SUPABASE_URL || !SUPABASE_KEY) return;
-    if (SUPABASE_URL.indexOf('PASTE-') === 0) return;
-    pwSupa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  // ============================================================
+  // FETCH remote before rendering (fix: prevents factory-reset flash)
+  // ============================================================
+  async function pwFetchAndApplyRemote() {
+    if (!pwSupa) return false;
     try {
-      // First, try to migrate old data from 'health' key to 'water' key
+      // Try migration from old 'health' key first
       const { data: oldHealthData, error: oldError } = await pwSupa
         .from('app_state').select('data').eq('key', 'health').maybeSingle();
       if (!oldError && oldHealthData && oldHealthData.data && oldHealthData.data[LS_KEY]) {
-        // Migrate old health data to water key
         await pwSupa.from('app_state').upsert(
           { key: 'water', data: oldHealthData.data, updated_at: new Date().toISOString() },
           { onConflict: 'key' }
         );
       }
-      
+
+      // Fetch current water state
       const { data, error } = await pwSupa
         .from('app_state').select('data').eq('key', APP_KEY).maybeSingle();
-      if (!error && data && data.data && Object.keys(data.data).length > 0) {
-        pwHealthCache = data.data;
-        if (data.data[LS_KEY] != null) {
-          pwLastSyncedJson = JSON.stringify(data.data[LS_KEY]);
+      if (!error && data && data.data && data.data[LS_KEY] != null) {
+        const incoming = JSON.stringify(data.data[LS_KEY]);
+        pwSuppressSync = true;
+        try {
+          _pwOrigSet(LS_KEY, incoming);
+        } finally {
+          pwSuppressSync = false;
         }
-        pwMaybeApplyRemote(data.data);
-      } else if (Object.keys(pwCollectState()).length > 0) {
-        pwSchedulePush();
+        pwLastSyncedJson = incoming;
+        pwHealthCache = data.data || {};
+        return true;
       }
-    } catch (e) {}
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function pwSetupRealtime() {
+    if (!pwSupa) return;
     pwSupa.channel('app_state_' + APP_KEY)
       .on('postgres_changes', {
         event: '*',
@@ -1300,7 +1311,51 @@ html, body {
         pwMaybeApplyRemote(remote);
       })
       .subscribe();
-  })();
+  }
+
+  // ============================================================
+  // BOOT — await remote fetch before first render
+  // ============================================================
+  async function initApp() {
+    // Init Supabase client if available
+    if (window.supabase && SUPABASE_URL && SUPABASE_KEY && SUPABASE_URL.indexOf('PASTE-') === -1) {
+      pwSupa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+      // Fetch remote with 3-second timeout — render NOTHING until resolved/timeout
+      try {
+        await Promise.race([
+          pwFetchAndApplyRemote(),
+          new Promise(function(_, reject) { setTimeout(function() { reject(new Error('timeout')); }, 3000); })
+        ]);
+      } catch (e) {
+        // Timeout or error — fall through to load from localStorage
+      }
+    }
+
+    // Now load state from localStorage (may have been populated by remote fetch above)
+    try {
+      state = loadState();
+    } catch (e) {
+      state = normalize({});
+    }
+
+    // Hide loading overlay
+    var overlay = document.getElementById('loadingOverlay');
+    if (overlay) overlay.style.display = 'none';
+
+    $('appTitle').textContent = CONFIG.appTitle || 'Water Coach';
+    renderAll();
+
+    // Set up realtime subscription (non-blocking)
+    pwSetupRealtime();
+
+    // If we have local data but no remote was found, push it
+    if (Object.keys(pwCollectState()).length > 0 && !pwLastSyncedJson) {
+      pwSchedulePush();
+    }
+  }
+
+  initApp();
 
   document.addEventListener('focusout', () => {
     setTimeout(pwApplyPendingIfReady, 0);
@@ -1310,9 +1365,6 @@ html, body {
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) pwFlushPushOnUnload();
   });
-
-  // BOOT
-  renderAll();
 })();
 </script>
 <style>

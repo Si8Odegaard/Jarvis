@@ -645,19 +645,61 @@ function initSettingsModal() {
     btn.addEventListener('click', () => { phaseBtns.forEach(b=>b.classList.remove('active')); btn.classList.add('active'); });
   });
   $('saveSettings').addEventListener('click', async () => {
-    const profile = {
-      weight_lbs:        parseFloat($('profileWeightLbs').value) || null,
-      age:               parseInt($('profileAge').value) || null,
-      height_in:         parseFloat($('profileHeightIn').value) || null,
-      trainingFrequency: parseInt($('profileFrequency').value) || 4,
-      phase:             document.querySelector('#phaseGroup .active')?.dataset.value || 'maintenance',
-      goal_weight_lbs:   parseFloat($('profileGoalWeight').value) || null
-    };
+    const btn = $('saveSettings');
+    const origText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    // Clear any previous error message
+    let errEl = document.getElementById('settingsError');
+    if (errEl) errEl.style.display = 'none';
+
     try {
-      await sb.from('nutrition_profile').upsert(profile);
-      $('settingsModal').classList.remove('show');
-      await Promise.all([updateProteinTarget(), updateTDEE()]);
-    } catch(e) { alert('Error saving: ' + e.message); }
+      // Fetch existing profile id so upsert updates rather than inserts a new row
+      const { data: existing } = await sb.from('nutrition_profile').select('id').maybeSingle();
+
+      const profile = {
+        weight_lbs:         parseFloat($('profileWeightLbs').value) || null,
+        age:                parseInt($('profileAge').value) || null,
+        height_in:          parseFloat($('profileHeightIn').value) || null,
+        training_frequency: parseInt($('profileFrequency').value) || 4,
+        phase:              document.querySelector('#phaseGroup .active')?.dataset.value || 'maintenance',
+        goal_weight_lbs:    parseFloat($('profileGoalWeight').value) || null
+      };
+
+      if (existing && existing.id) profile.id = existing.id;
+
+      const result = await sb.from('nutrition_profile').upsert(profile);
+      if (result.error) throw result.error;
+
+      // Show success message
+      btn.textContent = '✓ Saved!';
+      btn.style.background = 'var(--success)';
+      btn.style.color = '#000';
+
+      setTimeout(() => {
+        $('settingsModal').classList.remove('show');
+        Promise.all([updateProteinTarget(), updateTDEE()]).finally(() => {
+          btn.textContent = origText;
+          btn.style.background = '';
+          btn.style.color = '';
+          btn.disabled = false;
+        });
+      }, 800);
+    } catch(e) {
+      btn.textContent = origText;
+      btn.disabled = false;
+
+      // Show error inside the modal (not alert)
+      if (!errEl) {
+        errEl = document.createElement('div');
+        errEl.id = 'settingsError';
+        errEl.style.cssText = 'color:var(--danger);font-size:13px;margin-bottom:12px;padding:10px;background:rgba(255,138,138,.1);border:1px solid var(--danger);border-radius:8px;';
+        btn.parentNode.insertBefore(errEl, btn);
+      }
+      errEl.textContent = '❌ Error saving: ' + (e.message || 'Unknown error');
+      errEl.style.display = 'block';
+    }
   });
 }
 
@@ -668,7 +710,7 @@ async function prefillSettingsModal() {
     if (data.weight_lbs)    $('profileWeightLbs').value = data.weight_lbs;
     if (data.age)           $('profileAge').value       = data.age;
     if (data.height_in)     $('profileHeightIn').value  = data.height_in;
-    if (data.trainingFrequency) $('profileFrequency').value = data.trainingFrequency;
+    if (data.training_frequency) $('profileFrequency').value = data.training_frequency;
     if (data.goal_weight_lbs)   $('profileGoalWeight').value = data.goal_weight_lbs;
     const phaseBtn = document.querySelector(`#phaseGroup button[data-value="${data.phase}"]`);
     if (phaseBtn) phaseBtn.classList.add('active');
