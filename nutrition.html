@@ -663,7 +663,8 @@ function initSettingsModal() {
         age:                parseInt($('profileAge').value) || null,
         height_in:          parseFloat($('profileHeightIn').value) || null,
         training_frequency: parseInt($('profileFrequency').value) || 4,
-        phase:              document.querySelector('#phaseGroup .active')?.dataset.value || 'maintenance'
+        phase:              document.querySelector('#phaseGroup .active')?.dataset.value || 'maintenance',
+        goal_weight_lbs:    parseFloat($('profileGoalWeight').value) || null
       };
 
       if (existing && existing.id) profile.id = existing.id;
@@ -710,6 +711,7 @@ async function prefillSettingsModal() {
     if (data.age)           $('profileAge').value       = data.age;
     if (data.height_in)     $('profileHeightIn').value  = data.height_in;
     if (data.training_frequency) $('profileFrequency').value = data.training_frequency;
+    if (data.goal_weight_lbs)   $('profileGoalWeight').value = data.goal_weight_lbs;
     const phaseBtn = document.querySelector(`#phaseGroup button[data-value="${data.phase}"]`);
     if (phaseBtn) phaseBtn.classList.add('active');
     profileState = data;
