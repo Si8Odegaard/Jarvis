@@ -632,9 +632,24 @@ function countStall(logs, exercise){
 
 // Coaching brief — real-coach voice
 function buildCoachingBrief(exercise, logs, recoveryScore){
-  if(!logs || !logs.length){
-    return `First session with <strong>${esc(exercise.name)}</strong> — start at ${exercise.working_weight} lbs and focus on technique over weight.`;
+  // Recovery note always prepped first
+  let recoveryNote = '';
+  if(recoveryScore !== null){
+    if(recoveryScore >= 70) recoveryNote = ` Recovery score ${recoveryScore} — you're fresh, push hard.`;
+    else if(recoveryScore >= 55) recoveryNote = ` Recovery score ${recoveryScore} — moderate fatigue, execute clean.`;
+    else recoveryNote = ` Recovery score ${recoveryScore} — high fatigue.`;
   }
+
+  if(!logs || !logs.length){
+    return `First session with <strong>${esc(exercise.name)}</strong> — start at ${exercise.working_weight} lbs and focus on technique over weight.` + recoveryNote;
+  }
+
+  // Low recovery overrides normal progression — athlete safety first
+  if(recoveryScore !== null && recoveryScore < 55){
+    const reducedW = Math.round(exercise.working_weight * 0.85 / exercise.increment) * exercise.increment || Math.round(exercise.working_weight * 0.85);
+    return `<strong>Recovery ${recoveryScore} — use ${reducedW} lbs today</strong> (85% of normal). Quality reps only. Your body adapts during recovery, not during training.` + recoveryNote + `<div class="coaching-next">When recovery is back above 55, return to ${exercise.working_weight} lbs for normal progression.</div>`;
+  }
+
   const last = logs[logs.length-1];
   const avgReps = last.sets.reduce((s,r)=>s+r.reps,0)/last.sets.length;
   const hitTop  = exercise.type === 'compound'
@@ -649,13 +664,6 @@ function buildCoachingBrief(exercise, logs, recoveryScore){
     action = `Last session: ${last.weight} lbs × ~${avgReps.toFixed(0)} reps. <strong>Hold at ${exercise.working_weight} lbs</strong> and push for ${exercise.rep_max} on every set.`;
   }
 
-  let recoveryNote = '';
-  if(recoveryScore !== null){
-    if(recoveryScore >= 70) recoveryNote = ` Recovery score ${recoveryScore} — you're fresh, push hard.`;
-    else if(recoveryScore >= 55) recoveryNote = ` Recovery score ${recoveryScore} — moderate fatigue, execute clean.`;
-    else recoveryNote = ` Recovery score ${recoveryScore} — high fatigue, aim for 85% effort today.`;
-  }
-
   const nextW = exercise.working_weight + exercise.increment;
   const forwardLook = hitTop
     ? ` If you hit ${exercise.rep_max} reps on all sets today, next session moves to ${nextW + exercise.increment} lbs.`
@@ -666,6 +674,8 @@ function buildCoachingBrief(exercise, logs, recoveryScore){
 
 // Progression check — should weight go up after this session?
 function checkProgression(exercise, newSets){
+  // Don't auto-progress when recovery is compromised
+  if(recoveryScore !== null && recoveryScore < 55) return false;
   const hitTop = exercise.type === 'compound'
     ? newSets.every(s => s.reps >= exercise.rep_max)
     : newSets.filter(s => s.reps >= exercise.rep_max).length >= 2;

@@ -621,6 +621,7 @@ async function updateProteinTarget() {
 //  TDEE — all-American units
 //  Height in inches, weight in lbs, age in years
 //  Mifflin-St Jeor (metric internally, display in kcal)
+//  ADAPTIVE: self-corrects from 4-week weight trend
 // ═══════════════════════════════════════════════
 async function updateTDEE() {
   try {
@@ -633,12 +634,49 @@ async function updateTDEE() {
     const weightKg = lbsToKg(parseFloat(profile.weight_lbs));
     const heightCm = parseFloat(profile.height_in) * 2.54;
     const bmr = 10 * weightKg + 6.25 * heightCm - 5 * parseFloat(profile.age) + 5;
-    const tdee = Math.round(bmr * 1.55);
+    let tdee = Math.round(bmr * 1.55);
+
+    // ── Adaptive correction from 4-week weight trend ──
+    const { data: weights } = await sb.from('weight_logs').select('weight,date').order('date',{ascending:false}).limit(28);
+    let adjustment = 0, reason = '';
+    if (weights && weights.length >= 6) {
+      const wVals = weights.map(w => parseFloat(w.weight)).reverse();
+      const weeks = Math.max(1, (wVals.length - 1) / 7);
+      const weeklyDelta = (wVals[wVals.length-1] - wVals[0]) / weeks;
+      const phase = profile.phase || 'maintenance';
+
+      if (phase === 'bulk') {
+        if (weeklyDelta < 0.2)      { adjustment = +250; reason = `Weight flat/losing during bulk — TDEE bumped +${adjustment} kcal to force surplus`; }
+        else if (weeklyDelta > 2.0) { adjustment = -200; reason = `Gaining too fast (>2 lbs/week) — TDEE reduced ${adjustment} kcal to steady gains`; }
+        else if (weeklyDelta >= 0.5) { reason = `Gaining ${weeklyDelta.toFixed(1)} lbs/week — on track for bulk`; }
+      } else if (phase === 'cut') {
+        if (weeklyDelta > -0.2)     { adjustment = -250; reason = `Weight flat/rising during cut — TDEE cut ${Math.abs(adjustment)} kcal to force deficit`; }
+        else if (weeklyDelta < -2.0) { adjustment = +200; reason = `Losing too fast (>2 lbs/week) — TDEE added +${adjustment} kcal to protect muscle`; }
+        else                        { reason = `Losing ${Math.abs(weeklyDelta).toFixed(1)} lbs/week — cut progressing well`; }
+      } else {
+        if (Math.abs(weeklyDelta) > 1.0) {
+          adjustment = weeklyDelta > 0 ? -200 : +200;
+          reason = `Weight drifting — TDEE ${adjustment>0?'+'+adjustment:adjustment} kcal toward maintenance`;
+        } else { reason = `Weight stable (±1 lb/week) — TDEE estimate holding`; }
+      }
+      tdee += adjustment;
+    }
+
     $('tdeeValue').textContent = tdee + ' kcal';
+    if (adjustment !== 0) $('tdeeValue').style.color = 'var(--warning)';
+    else $('tdeeValue').style.color = 'var(--success)';
+
     let min = tdee, max = tdee;
     if (profile.phase === 'bulk') { min = tdee + 300; max = tdee + 500; }
     if (profile.phase === 'cut')  { min = tdee - 500; max = tdee - 300; }
     $('tdeeRange').textContent = `Target: ${min} – ${max} kcal`;
+
+    const adjEl = $('tdeeAdjustment');
+    if (adjEl && reason) {
+      adjEl.textContent = reason;
+      adjEl.style.color = adjustment !== 0 ? 'var(--warning)' : 'var(--text-secondary)';
+    }
+
     profileState = profile;
   } catch(e) { console.error(e); }
 }
@@ -686,6 +724,7 @@ async function loadRecoveryChart(){
 
 // ═══════════════════════════════════════════════
 //  4-WEEK WEIGHT TREND SPARKLINE
+//  (TDEE adaptation text handled by updateTDEE)
 // ═══════════════════════════════════════════════
 async function loadWeightTrend(){
   try {
@@ -694,12 +733,6 @@ async function loadWeightTrend(){
       const weights = data.reverse().map(r=>parseFloat(r.weight));
       const svg = document.getElementById('weightTrendChartSvg');
       if(svg) drawSparkline(svg, weights, '#F2C063');
-      const first = weights[0], last = weights[weights.length-1];
-      const weeks = Math.max(1, (data.length - 1) / 7);
-      const weeklyDelta = (last - first) / weeks;
-      const dir = weeklyDelta > 0.5 ? '↗ gaining' : weeklyDelta < -0.5 ? '↘ losing' : '→ stable';
-      const adjEl = document.getElementById('tdeeAdjustment');
-      if(adjEl) adjEl.textContent = `Weight trend: ${dir} (${weeklyDelta>0?'+':''}${weeklyDelta.toFixed(1)} lbs/week)`;
     }
   } catch(e){}
 }
