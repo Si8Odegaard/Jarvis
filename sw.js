@@ -1,7 +1,7 @@
-const CACHE = 'dashboard-pwa-v1';
+const CACHE = 'dashboard-pwa-v2';
 const ASSETS = [
   './', './index.html', './manifest.json', './icon.svg',
-  './topbar.js', './tabs.js', './gym.html', './stack.html', './po-water.html',
+  './topbar.js', './tabs.js', './gym.html', './stack.html', './po-water.html', './nutrition.html',
 ];
 
 self.addEventListener('install', (event) => {
