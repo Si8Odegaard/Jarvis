@@ -677,6 +677,19 @@ async function updateTDEE() {
       adjEl.style.color = adjustment !== 0 ? 'var(--warning)' : 'var(--text-secondary)';
     }
 
+    // Store TDEE estimate in Supabase for historical tracking
+    sb.from('tdee_estimates').upsert({
+      date: todayKey(),
+      bmr: Math.round(bmr),
+      tdee: tdee,
+      weight_lbs: parseFloat(profile.weight_lbs),
+      target_min: min,
+      target_max: max,
+      adjustment_reason: reason || null
+    }, { onConflict: 'date' }).then(({ error }) => {
+      if (error) console.warn('TDEE save error:', error);
+    });
+
     profileState = profile;
   } catch(e) { console.error(e); }
 }
