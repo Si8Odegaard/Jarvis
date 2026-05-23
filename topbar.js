@@ -118,7 +118,8 @@
   .topbar-pill, .topbar-water-pill { padding: 7px 9px; gap: 5px; }
   .topbar-pill-label { font-size: 9px; letter-spacing: 0.10em; }
   .topbar-pill-count { font-size: 11px; }
-  .topbar-water-add { width: 32px; font-size: 16px; }
+  .topbar-water-wrap { flex: 1.2 1 0; }
+  .topbar-water-add { width: 28px; font-size: 15px; }
 }
 @media (max-width: 380px) {
   .topbar-pill-label { display: none; }
