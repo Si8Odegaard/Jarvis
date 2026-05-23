@@ -119,14 +119,20 @@
       box-shadow: 0 12px 40px rgba(0,0,0,0.45);
       backdrop-filter: blur(24px) saturate(1.2);
       -webkit-backdrop-filter: blur(24px) saturate(1.2);
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
     }
+    .tabbar-inner::-webkit-scrollbar { display: none; }
     .tabbar .tab {
-      flex: 1 1 0;
+      flex: 0 0 auto;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      padding: 12px 10px;
+      gap: 7px;
+      padding: 11px 14px;
       border-radius: 13px;
       font-size: 13px;
       font-weight: 600;
@@ -137,6 +143,7 @@
       border: 1px solid transparent;
       cursor: pointer;
       font-family: inherit;
+      white-space: nowrap;
       transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
       -webkit-tap-highlight-color: transparent;
     }
@@ -155,9 +162,10 @@
     }
     .tabbar .tab-icon svg { width: 100%; height: 100%; display: block; }
 
-    @media (max-width: 380px) {
+    /* On very small screens, show icons only — horizontal scroll still works */
+    @media (max-width: 360px) {
       .tabbar .tab span:not(.tab-icon) { display: none; }
-      .tabbar .tab { padding: 12px; }
+      .tabbar .tab { padding: 13px 10px; }
     }
 
     body::before {

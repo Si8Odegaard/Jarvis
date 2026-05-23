@@ -1,4 +1,4 @@
-const CACHE = 'dashboard-pwa-v2';
+const CACHE = 'dashboard-pwa-v3';
 const ASSETS = [
   './', './index.html', './manifest.json', './icon.svg',
   './topbar.js', './tabs.js', './gym.html', './stack.html', './po-water.html', './nutrition.html',
