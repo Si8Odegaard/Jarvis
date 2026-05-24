@@ -1,0 +1,1785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050506">
+<title>Soccer Training</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg: #050506;
+  --text-1: #FAFAFA;
+  --text-2: #B8B6B0;
+  --text-3: #76746E;
+  --border: rgba(255,255,255,0.07);
+  --good: #6BE3A4;
+  --warn: #F2C063;
+  --bad: #FF6B6B;
+  --font: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --radius: 12px;
+  --surface: rgba(255,255,255,0.03);
+  --surface-hover: rgba(255,255,255,0.06);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{
+  background:#050506; color:var(--text-1);
+  font-family:var(--font);
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh; overflow-x:hidden;
+}
+.shell{ max-width:720px; margin:0 auto; padding:16px 16px 120px; }
+
+/* ── header ── */
+.page-header{ margin-bottom:16px; }
+.page-title{ font-size:22px; font-weight:700; letter-spacing:-0.02em; }
+.page-sub{ font-size:12px; color:var(--text-3); margin-top:4px; }
+
+/* ── cards ── */
+.card{
+  background:rgba(255,255,255,0.04);
+  border:1px solid var(--border);
+  border-radius:var(--radius); padding:16px; margin-bottom:12px;
+  position:relative; overflow:hidden;
+}
+.card::before{
+  content:''; position:absolute;
+  top:0; left:14px; right:14px; height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.10),transparent);
+  pointer-events:none;
+}
+
+/* ── typography ── */
+.eyebrow{
+  font-size:10px; font-weight:700; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--text-3);
+  margin-bottom:8px; font-family:var(--mono);
+}
+.section-title{
+  font-size:11px; font-weight:700; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--text-3);
+  display:flex; align-items:center; gap:10px; margin-bottom:14px;
+}
+.section-title::after{ content:''; flex:1; height:1px; background:var(--border); }
+
+/* ── pills ── */
+.pill{
+  display:inline-flex; align-items:center; gap:5px;
+  padding:3px 10px; border-radius:999px;
+  font-size:11px; font-weight:700; letter-spacing:.04em;
+  font-family:var(--mono);
+}
+.pill-good{background:rgba(107,227,164,.12);color:var(--good);}
+.pill-warn{background:rgba(242,192,99,.12);color:var(--warn);}
+.pill-bad {background:rgba(255,107,107,.12);color:var(--bad);}
+.pill-dim {background:rgba(255,255,255,.05);color:var(--text-3);}
+
+/* ── buttons ── */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  padding:10px 18px; border-radius:9px;
+  border:1px solid var(--border);
+  font-family:var(--font); font-size:13px; font-weight:600;
+  cursor:pointer; transition:all .15s;
+  -webkit-tap-highlight-color:transparent;
+}
+.btn-primary{
+  background:linear-gradient(180deg,#6EE7B7,#4ED4A0);
+  color:#04201A; border-color:transparent;
+  box-shadow:0 4px 14px rgba(110,231,183,.22);
+}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(110,231,183,.36);}
+.btn-primary:active{transform:scale(.97);}
+.btn-ghost{background:rgba(255,255,255,.05);color:var(--text-2);}
+.btn-ghost:hover{background:rgba(255,255,255,.09);color:var(--text-1);}
+.btn-sm{padding:6px 12px; font-size:12px; border-radius:7px;}
+.btn-full{width:100%;}
+.btn-big{
+  width:100%; padding:16px; border-radius:var(--radius);
+  background:linear-gradient(135deg, rgba(110,231,183,.12), rgba(78,212,160,.06));
+  border:1px solid rgba(110,231,183,.25);
+  color:var(--good); font-size:16px; font-weight:700;
+  cursor:pointer; transition:all .15s;
+  font-family:var(--font);
+}
+.btn-big:hover{background:linear-gradient(135deg, rgba(110,231,183,.20), rgba(78,212,160,.10));}
+
+/* ── segment control ── */
+.seg{display:flex; gap:4px;}
+.seg-btn{
+  flex:1; padding:8px; border:1px solid var(--border);
+  background:rgba(0,0,0,.20); color:var(--text-3);
+  border-radius:7px; font-family:var(--font); font-size:12px;
+  font-weight:600; cursor:pointer; transition:all .15s; text-align:center;
+}
+.seg-btn.active{
+  background:rgba(107,227,164,.12); color:var(--good);
+  border-color:rgba(107,227,164,.30);
+}
+
+/* ── inputs ── */
+input,select,textarea{
+  background:rgba(0,0,0,.30); border:1px solid var(--border);
+  color:var(--text-1); font-family:var(--font); font-size:14px;
+  border-radius:8px; padding:10px 12px; outline:none; width:100%;
+  transition:border-color .15s;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--good);}
+input::placeholder{color:var(--text-3);}
+label.field-label{
+  display:block; font-size:11px; font-weight:700;
+  letter-spacing:.08em; text-transform:uppercase;
+  color:var(--text-3); margin-bottom:6px;
+}
+.field{margin-bottom:12px;}
+.row-2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+
+/* ── tabs (internal soccer nav) ── */
+.soccer-tabs{
+  display:flex; gap:6px; margin-bottom:16px;
+  padding:4px; background:rgba(0,0,0,.25); border-radius:10px;
+  overflow-x:auto; -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+}
+.soccer-tabs::-webkit-scrollbar{display:none;}
+.soccer-tab{
+  flex:0 0 auto; padding:8px 14px; border-radius:7px; border:none;
+  background:transparent; color:var(--text-3);
+  font-family:var(--font); font-size:12px; font-weight:600;
+  letter-spacing:.04em; cursor:pointer; transition:all .15s;
+  white-space:nowrap;
+}
+.soccer-tab.active{
+  background:rgba(255,255,255,.07); color:var(--text-1);
+}
+
+/* ── test result display ── */
+.test-row{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:10px 0; border-bottom:1px solid var(--border); font-size:14px;
+}
+.test-row:last-child{border-bottom:none;}
+.test-label{color:var(--text-2); font-size:13px;}
+.test-value{font-weight:700; font-family:var(--mono);}
+.test-delta{font-size:11px; margin-left:6px;}
+.test-delta.good{color:var(--good);}
+.test-delta.bad{color:var(--bad);}
+.test-delta.neutral{color:var(--text-3);}
+
+/* ── radar chart ── */
+.radar-wrap{
+  display:flex; align-items:center; justify-content:center;
+  padding:10px;
+}
+.radar-svg{ width:100%; max-width:300px; height:auto; }
+
+/* ── session card ── */
+.sesh-card{
+  background:rgba(255,255,255,.025); border:1px solid var(--border);
+  border-radius:10px; padding:12px 14px; margin-bottom:8px;
+  display:flex; align-items:center; gap:12px;
+}
+.sesh-icon{ font-size:22px; flex-shrink:0; }
+.sesh-info{ flex:1; min-width:0; }
+.sesh-type{ font-size:14px; font-weight:600; }
+.sesh-meta{ font-size:11px; color:var(--text-3); margin-top:2px; }
+.sesh-rating{ font-size:11px; color:var(--good); }
+
+/* ── weekly summary ── */
+.weekly-grid{
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); gap:8px;
+  margin-top:10px;
+}
+.weekly-stat{
+  background:rgba(0,0,0,.20); border-radius:8px; padding:10px;
+  text-align:center;
+}
+.weekly-stat-num{ font-size:20px; font-weight:700; font-family:var(--mono); color:var(--good); }
+.weekly-stat-label{ font-size:10px; color:var(--text-3); margin-top:2px; letter-spacing:.04em; font-family:var(--mono); }
+
+/* ── plan phase display ── */
+.phase-card{
+  border:1px solid rgba(107,227,164,.20);
+  background:rgba(107,227,164,.04);
+  border-radius:var(--radius); padding:16px; margin-bottom:12px;
+}
+.phase-name{ font-size:16px; font-weight:700; color:var(--good); margin-bottom:4px; }
+.phase-dates{ font-size:12px; color:var(--text-3); margin-bottom:10px; }
+.phase-bar{
+  height:6px; border-radius:3px; background:var(--border);
+  overflow:hidden; margin-bottom:6px;
+}
+.phase-bar-fill{
+  height:100%; border-radius:3px;
+  background:linear-gradient(90deg,var(--good),#4ED4A0);
+  transition:width .4s ease;
+}
+.phase-meta{ font-size:11px; color:var(--text-3); font-family:var(--mono); }
+
+/* ── daily recommendation ── */
+.daily-rec{
+  background:rgba(110,231,183,.05); border:1px solid rgba(110,231,183,.18);
+  border-radius:var(--radius); padding:14px 16px; margin-bottom:12px;
+}
+.daily-rec-title{ font-size:13px; font-weight:700; color:var(--good); margin-bottom:8px; }
+.daily-rec-body{ font-size:13px; color:var(--text-2); line-height:1.6; }
+.daily-rec-why{ font-size:11px; color:var(--text-3); margin-top:8px; font-style:italic; }
+
+/* ── alert cards ── */
+.alert-card{
+  padding:12px 14px; border-radius:10px; margin-bottom:10px;
+  font-size:12px; line-height:1.5;
+}
+.alert-card.info{ border:1px solid rgba(107,227,164,.20); background:rgba(107,227,164,.04); color:var(--text-2); }
+.alert-card.warn{ border:1px solid rgba(242,192,99,.25); background:rgba(242,192,99,.05); color:var(--warn); }
+.alert-card.danger{ border:1px solid rgba(255,107,107,.25); background:rgba(255,107,107,.05); color:var(--bad); }
+.alert-card-title{ font-weight:700; margin-bottom:4px; }
+
+/* ── test reminder banner ── */
+.reminder-banner{
+  display:none; padding:12px 16px; border-radius:10px;
+  background:rgba(242,192,99,.06); border:1px solid rgba(242,192,99,.20);
+  color:var(--warn); font-size:13px; margin-bottom:12px;
+  align-items:center; gap:10px;
+}
+.reminder-banner.show{display:flex;}
+
+/* ── library drill cards ── */
+.drill-card{
+  background:rgba(255,255,255,.025); border:1px solid var(--border);
+  border-radius:10px; padding:12px 14px; margin-bottom:8px;
+}
+.drill-name{ font-size:14px; font-weight:600; margin-bottom:4px; }
+.drill-meta{ font-size:11px; color:var(--text-3); margin-bottom:6px; display:flex; flex-wrap:wrap; gap:8px; }
+.drill-setup{ font-size:12px; color:var(--text-2); line-height:1.5; margin-bottom:6px; }
+.drill-why{ font-size:11px; color:var(--text-3); font-style:italic; }
+
+/* ── modal ── */
+.modal-bg{
+  display:none; position:fixed; inset:0; z-index:200;
+  background:rgba(0,0,0,.75); backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  align-items:flex-end; justify-content:center;
+}
+.modal-bg.show{display:flex;}
+.modal{
+  background:#0e0e10; border:1px solid var(--border);
+  border-radius:16px 16px 0 0;
+  padding:20px 20px calc(20px + env(safe-area-inset-bottom));
+  width:100%; max-width:640px;
+  max-height:88vh; overflow-y:auto;
+}
+.modal-header{
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:16px;
+}
+.modal-title{font-size:17px; font-weight:700;}
+.modal-close{
+  background:rgba(255,255,255,.07); border:none; color:var(--text-2);
+  font-size:18px; border-radius:50%; width:30px; height:30px;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer;
+}
+
+/* ── focus area toggles ── */
+.focus-grid{
+  display:grid; grid-template-columns:1fr 1fr; gap:6px;
+}
+.focus-btn{
+  padding:8px; border:1px solid var(--border);
+  background:rgba(0,0,0,.20); color:var(--text-3);
+  border-radius:7px; font-family:var(--font); font-size:11px;
+  font-weight:500; cursor:pointer; transition:all .15s; text-align:center;
+}
+.focus-btn.selected{
+  background:rgba(107,227,164,.12); color:var(--good);
+  border-color:rgba(107,227,164,.30);
+}
+
+/* ── tooltip ── */
+.tooltip-trigger{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:18px; height:18px; border-radius:50%;
+  background:rgba(255,255,255,.08); color:var(--text-3);
+  font-size:11px; cursor:help; border:none;
+  font-family:var(--font); vertical-align:middle; margin-left:4px;
+}
+.tooltip-content{
+  display:none; position:absolute; z-index:210;
+  background:#1a1a20; border:1px solid var(--border);
+  border-radius:8px; padding:10px 12px; font-size:11px;
+  color:var(--text-2); max-width:260px; line-height:1.5;
+  box-shadow:0 8px 24px rgba(0,0,0,.5);
+}
+
+/* ── chart ── */
+.chart-wrap{ margin-top:10px; padding:10px; background:rgba(0,0,0,.20); border-radius:8px; }
+.chart-svg{ display:block; width:100%; height:80px; overflow:visible; }
+
+.hidden{display:none!important;}
+.mt8{margin-top:8px;}
+.mt12{margin-top:12px;}
+.mt16{margin-top:16px;}
+
+/* ── device helpers ── */
+@media (max-width: 480px) {
+  .page-title{ font-size:19px; }
+  .focus-grid{ grid-template-columns:1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ── HEADER ── -->
+  <div class="page-header">
+    <div class="page-title">⚽ Soccer Training</div>
+    <div class="page-sub">Box-to-box midfielder · 135 lbs · Off-season</div>
+  </div>
+
+  <!-- ── INTERNAL TABS ── -->
+  <div class="soccer-tabs" id="soccerTabs">
+    <button class="soccer-tab active" data-stab="testing">📊 Testing</button>
+    <button class="soccer-tab" data-stab="sessions">📋 Sessions</button>
+    <button class="soccer-tab" data-stab="plan">📅 Plan</button>
+    <button class="soccer-tab" data-stab="library">📚 Library</button>
+    <button class="soccer-tab" data-stab="insights">🧠 Insights</button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       TAB: TESTING
+  ═══════════════════════════════════════════════ -->
+  <div id="stab-testing">
+    <div class="reminder-banner" id="testReminder">
+      <span>⏰</span><span>Monthly testing window is open — your last test was <span id="testReminderDays">—</span> days ago.</span>
+    </div>
+
+    <div class="card" id="testResultsCard">
+      <div class="flex-between" style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">
+        <div class="eyebrow" style="margin:0">LATEST RESULTS</div>
+        <button class="btn btn-primary btn-sm" id="openTestModal">+ Log Tests</button>
+      </div>
+
+      <!-- Speed -->
+      <div class="section-title" style="margin-top:12px;">Speed & Acceleration</div>
+      <div id="testSpeed"></div>
+
+      <!-- Agility -->
+      <div class="section-title" style="margin-top:12px;">Agility</div>
+      <div id="testAgility"></div>
+
+      <!-- Power -->
+      <div class="section-title" style="margin-top:12px;">Power</div>
+      <div id="testPower"></div>
+
+      <!-- Endurance -->
+      <div class="section-title" style="margin-top:12px;">Endurance</div>
+      <div id="testEndurance"></div>
+
+      <!-- Repeated Sprint -->
+      <div class="section-title" style="margin-top:12px;">Repeated Sprint Ability</div>
+      <div id="testRSA"></div>
+
+      <!-- Radar Chart -->
+      <div class="section-title" style="margin-top:16px;">Athletic Profile</div>
+      <div class="radar-wrap">
+        <svg class="radar-svg" id="radarChart" viewBox="0 0 300 300"></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       TAB: SESSIONS
+  ═══════════════════════════════════════════════ -->
+  <div id="stab-sessions" class="hidden">
+    <button class="btn-big" id="openSessionModal">+ Log a Session</button>
+
+    <div class="card mt12">
+      <div class="eyebrow">THIS WEEK</div>
+      <div class="weekly-grid" id="weeklySummary"></div>
+    </div>
+
+    <div class="section-title mt12">Today's Sessions</div>
+    <div id="todaySessions"><div style="text-align:center;padding:24px;color:var(--text-3);font-size:13px">No sessions logged today</div></div>
+
+    <div class="section-title mt12">Recent Sessions</div>
+    <div id="recentSessions"><div style="text-align:center;padding:24px;color:var(--text-3);font-size:13px">Loading…</div></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       TAB: PLAN
+  ═══════════════════════════════════════════════ -->
+  <div id="stab-plan" class="hidden">
+    <div class="phase-card" id="phaseCard">
+      <div class="phase-name" id="phaseName">Foundation Block</div>
+      <div class="phase-dates" id="phaseDates">June 1 – June 14</div>
+      <div class="phase-bar"><div class="phase-bar-fill" id="phaseBarFill" style="width:0%"></div></div>
+      <div class="phase-meta"><span id="phaseMeta">Week 1 of 2</span> · <span id="phaseDaysLeft">14 days remaining</span></div>
+      <div style="margin-top:12px;font-size:13px;color:var(--text-2);line-height:1.6;" id="phaseGoal"></div>
+      <button class="btn btn-ghost btn-sm mt8" id="switchToPreseason">Switch to Pre-Season Mode</button>
+    </div>
+
+    <!-- Daily Recommendation -->
+    <div class="daily-rec" id="dailyRec">
+      <div class="daily-rec-title">📋 Today's Recommendation</div>
+      <div class="daily-rec-body" id="dailyRecBody">Loading…</div>
+      <div class="daily-rec-why" id="dailyRecWhy"></div>
+    </div>
+
+    <!-- Week Template -->
+    <div class="card">
+      <div class="eyebrow">WEEKLY TEMPLATE</div>
+      <div id="weeklyTemplate" style="font-size:12px;color:var(--text-2);line-height:1.8;"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       TAB: LIBRARY
+  ═══════════════════════════════════════════════ -->
+  <div id="stab-library" class="hidden">
+    <div class="seg" id="libraryFilter" style="margin-bottom:12px;">
+      <button class="seg-btn active" data-cat="all">All</button>
+      <button class="seg-btn" data-cat="acceleration">Acceleration</button>
+      <button class="seg-btn" data-cat="agility">Agility</button>
+      <button class="seg-btn" data-cat="technical">Technical</button>
+      <button class="seg-btn" data-cat="pressing">Pressing</button>
+    </div>
+    <div id="libraryList"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       TAB: INSIGHTS
+  ═══════════════════════════════════════════════ -->
+  <div id="stab-insights" class="hidden">
+    <div class="section-title">Cross-Tab Intelligence</div>
+    <div id="insightCards">
+      <div style="text-align:center;padding:24px;color:var(--text-3);font-size:13px">Log more data across tabs to unlock insights</div>
+    </div>
+  </div>
+
+</div><!-- /shell -->
+
+<!-- ═══════════════════════════════════════════════
+     MODAL: LOG TEST RESULTS
+═══════════════════════════════════════════ -->
+<div class="modal-bg" id="testModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Monthly Athletic Testing</div>
+      <button class="modal-close" id="testModalClose">×</button>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Test Date</label>
+      <input type="date" id="testDate">
+    </div>
+
+    <div class="section-title">Speed & Acceleration</div>
+    <div class="row-2">
+      <div class="field">
+        <label class="field-label">10m Sprint (s) <button class="tooltip-trigger" data-tip="Primary acceleration test. Solo: place phone on ground filming, sprint from standing start, review footage for time.">?</button></label>
+        <input type="number" id="test10m" step="0.01" placeholder="e.g. 1.85" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label class="field-label">30m Sprint (s)</label>
+        <input type="number" id="test30m" step="0.01" placeholder="e.g. 4.30" inputmode="decimal">
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label">40 Yard Dash (s) <button class="tooltip-trigger" data-tip="Standard American combine metric. Use same method as 10m sprint but mark 40 yards.">?</button></label>
+      <input type="number" id="test40yd" step="0.01" placeholder="e.g. 5.20" inputmode="decimal">
+    </div>
+
+    <div class="section-title">Agility</div>
+    <div class="row-2">
+      <div class="field">
+        <label class="field-label">5-10-5 Shuttle (s) <button class="tooltip-trigger" data-tip="Set 3 cones 5 yards apart in a line. Start at middle cone, sprint 5yd right, 10yd left, 5yd back to middle.">?</button></label>
+        <input type="number" id="test505" step="0.01" placeholder="e.g. 4.60" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label class="field-label">T-Test (s) <button class="tooltip-trigger" data-tip="Set 4 cones in a T shape: 10yd forward, 5yd left, 10yd right, 5yd back to start. Sprint forward, shuffle left, shuffle right, backpedal.">?</button></label>
+        <input type="number" id="testT" step="0.01" placeholder="e.g. 10.50" inputmode="decimal">
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label">Agility Ladder 10yd (s) <button class="tooltip-trigger" data-tip="2 feet in each box, time to complete 10 yards of ladder.">?</button></label>
+      <input type="number" id="testLadder" step="0.01" placeholder="e.g. 4.20" inputmode="decimal">
+    </div>
+
+    <div class="section-title">Power</div>
+    <div class="row-2">
+      <div class="field">
+        <label class="field-label">Vertical Jump (in) <button class="tooltip-trigger" data-tip="Stand next to wall, mark highest standing reach. Jump and mark highest point. Measure the difference.">?</button></label>
+        <input type="number" id="testVert" step="0.5" placeholder="e.g. 24" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label class="field-label">Broad Jump (in)</label>
+        <input type="number" id="testBroad" step="0.5" placeholder="e.g. 96" inputmode="decimal">
+      </div>
+    </div>
+
+    <div class="section-title">Endurance</div>
+    <div class="field">
+      <label class="field-label">Yo-Yo IRT Level 1 <button class="tooltip-trigger" data-tip="Standard pro trial fitness test. Audio file free on YouTube — search 'Yo-Yo IRT Level 1 beep test'. Log the level you reached and total distance.">?</button></label>
+      <input type="number" id="testYoyoLevel" step="0.1" placeholder="Level (e.g. 16.5)" inputmode="decimal">
+    </div>
+    <div class="field">
+      <label class="field-label">Yo-Yo Distance (m)</label>
+      <input type="number" id="testYoyoDist" placeholder="e.g. 1800" inputmode="numeric">
+    </div>
+
+    <div class="section-title">Repeated Sprint Test</div>
+    <div style="font-size:12px;color:var(--text-3);margin-bottom:10px;">6 × 30m sprints with 25s rest between each. <button class="tooltip-trigger" data-tip="For a box-to-box midfielder, repeated sprint ability is as important as top speed — you sprint 40-60 times per match.">?</button></div>
+    <div class="row-2">
+      <div class="field"><label class="field-label">Split 1 (s)</label><input type="number" id="rsa1" step="0.01" placeholder="e.g. 4.30" inputmode="decimal"></div>
+      <div class="field"><label class="field-label">Split 2 (s)</label><input type="number" id="rsa2" step="0.01" placeholder="e.g. 4.35" inputmode="decimal"></div>
+    </div>
+    <div class="row-2">
+      <div class="field"><label class="field-label">Split 3 (s)</label><input type="number" id="rsa3" step="0.01" placeholder="e.g. 4.40" inputmode="decimal"></div>
+      <div class="field"><label class="field-label">Split 4 (s)</label><input type="number" id="rsa4" step="0.01" placeholder="e.g. 4.45" inputmode="decimal"></div>
+    </div>
+    <div class="row-2">
+      <div class="field"><label class="field-label">Split 5 (s)</label><input type="number" id="rsa5" step="0.01" placeholder="e.g. 4.50" inputmode="decimal"></div>
+      <div class="field"><label class="field-label">Split 6 (s)</label><input type="number" id="rsa6" step="0.01" placeholder="e.g. 4.55" inputmode="decimal"></div>
+    </div>
+
+    <button class="btn btn-primary btn-full mt16" id="saveTestBtn">Save Test Results</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     MODAL: LOG SESSION
+═══════════════════════════════════════════ -->
+<div class="modal-bg" id="sessionModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Log Session</div>
+      <button class="modal-close" id="sessionModalClose">×</button>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Session Type</label>
+      <div class="seg" id="sessionType">
+        <button class="seg-btn active" data-value="ball">⚽ Ball Work</button>
+        <button class="seg-btn" data-value="speed">🏃 Speed/Agility</button>
+        <button class="seg-btn" data-value="gym">🏋️ Gym</button>
+        <button class="seg-btn" data-value="match">🏟️ Match</button>
+        <button class="seg-btn" data-value="group">👥 Group</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Duration (minutes)</label>
+      <input type="number" id="sessionDuration" placeholder="e.g. 45" inputmode="numeric" min="5" max="180">
+    </div>
+
+    <!-- Ball work sub-type -->
+    <div class="field" id="ballSubField">
+      <label class="field-label">Focus</label>
+      <div class="seg" id="ballSubType">
+        <button class="seg-btn active" data-value="Technical">Technical</button>
+        <button class="seg-btn" data-value="Tactical">Tactical</button>
+        <button class="seg-btn" data-value="Conditioning">Conditioning</button>
+        <button class="seg-btn" data-value="Match Prep">Match Prep</button>
+      </div>
+    </div>
+
+    <!-- Speed sub-type -->
+    <div class="field hidden" id="speedSubField">
+      <label class="field-label">Focus (multi-select)</label>
+      <div class="focus-grid" id="speedSubType">
+        <button class="focus-btn" data-value="Acceleration Mechanics">Acceleration Mechanics</button>
+        <button class="focus-btn" data-value="Reactive Agility">Reactive Agility</button>
+        <button class="focus-btn" data-value="Planned Agility">Planned Agility</button>
+        <button class="focus-btn" data-value="Ladder Footwork">Agility Ladder</button>
+        <button class="focus-btn" data-value="Plyometrics">Plyometrics</button>
+        <button class="focus-btn" data-value="Hill Sprints">Hill Sprints</button>
+        <button class="focus-btn" data-value="Repeated Sprint Protocol">Repeated Sprints</button>
+      </div>
+    </div>
+
+    <!-- Gym sub-type -->
+    <div class="field hidden" id="gymSubField">
+      <label class="field-label">Gym Type</label>
+      <div class="seg" id="gymSubType">
+        <button class="seg-btn active" data-value="Upper Push">Upper Push</button>
+        <button class="seg-btn" data-value="Upper Pull">Upper Pull</button>
+        <button class="seg-btn" data-value="Lower Body">Lower Body</button>
+        <button class="seg-btn" data-value="Full Body">Full Body</button>
+      </div>
+    </div>
+
+    <!-- Match fields -->
+    <div class="field hidden" id="matchField">
+      <label class="field-label">Minutes Played</label>
+      <input type="number" id="matchMinutes" placeholder="e.g. 70" inputmode="numeric" min="1" max="120">
+    </div>
+    <div class="field hidden" id="matchRatingField">
+      <label class="field-label">Self-Rating (1–10)</label>
+      <input type="number" id="matchRating" placeholder="e.g. 7" inputmode="numeric" min="1" max="10">
+    </div>
+
+    <!-- Group sub-type -->
+    <div class="field hidden" id="groupSubField">
+      <label class="field-label">Group Session Type</label>
+      <div class="seg" id="groupSubType">
+        <button class="seg-btn active" data-value="Rondo">Rondo & Possession</button>
+        <button class="seg-btn" data-value="Small Sided">Small Sided Games</button>
+        <button class="seg-btn" data-value="Full Training">Full Training</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Intensity</label>
+      <div class="seg" id="sessionIntensity">
+        <button class="seg-btn" data-value="Light">Light</button>
+        <button class="seg-btn active" data-value="Medium">Medium</button>
+        <button class="seg-btn" data-value="Hard">Hard</button>
+      </div>
+    </div>
+
+    <!-- Ball work focus areas -->
+    <div class="field" id="ballFocusField">
+      <label class="field-label">Focus Areas (multi-select)</label>
+      <div class="focus-grid" id="ballFocusAreas">
+        <button class="focus-btn" data-value="Wall Passing">Wall Passing & Receiving</button>
+        <button class="focus-btn" data-value="Turning">Turning & Carrying</button>
+        <button class="focus-btn" data-value="Finishing">Finishing</button>
+        <button class="focus-btn" data-value="Cone Dribbling">Cone Dribbling</button>
+        <button class="focus-btn" data-value="Long Passing">Long Passing & Switching</button>
+        <button class="focus-btn" data-value="Pressing Patterns">Pressing Patterns</button>
+        <button class="focus-btn" data-value="Ladder Technical">Ladder + Ball</button>
+        <button class="focus-btn" data-value="Crossing">Crossing & Delivery</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Note (optional)</label>
+      <input type="text" id="sessionNote" placeholder="One-line note…">
+    </div>
+
+    <button class="btn btn-primary btn-full mt8" id="saveSessionBtn">Save Session</button>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  SUPABASE
+// ════════════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://cskbbioyniryonkukamw.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNza2JiaW95bmlyeW9ua3VrYW13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NjE2MTYsImV4cCI6MjA5NDUzNzYxNn0.R3Vx3fA-iAc8LhNL3WPSa9-BxH_087c7VaIbrB3CBJM';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const APP_KEY = 'soccer';
+
+// ════════════════════════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+function esc(s){ const str=String(s||''); return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function today(){ return new Date().toISOString().slice(0,10); }
+
+// ==================================================
+//  ATHLETE CONTEXT (baked into all coaching logic)
+// ==================================================
+const ATHLETE = {
+  weight_lbs: 135,
+  position: 'Box-to-box / defensive midfielder',
+  weaknesses: ['acceleration', 'first-step quickness', 'agility'],
+  strengths: ['endurance', 'engine'],
+  equipment: ['balls', 'goal', 'wall', 'cones', 'agility ladder', 'full field'],
+  gym: 'Planet Fitness — dumbbells, cables, Smith machine, leg press, pull-up bar, bands, treadmill',
+  noEquipment: ['sled'],
+  phase: 'offseason-individual',  // June 1 – mid-July solo, then JUCO pre-season
+  goal: 'gain functional mass + improve athleticism'
+};
+
+// ==================================================
+//  OFF-SEASON PLAN CONFIG
+// ==================================================
+const OFFSEASON_PLAN = {
+  startDate: '2026-06-01',
+  blocks: [
+    { name: 'Foundation Block', weeks: 2, goal: 'Build muscle base & establish movement quality. Higher gym volume. Acceleration mechanics focus (short 10m drills, perfect form). Technical ball work: wall passing, receiving & turning, finishing.' },
+    { name: 'Strength-Speed Block', weeks: 2, goal: 'Convert muscle to power. Gym shifts heavier lower rep. Add plyometrics. Begin reactive agility. Broad jump series, single leg bounding, depth drop to broad jump.' },
+    { name: 'Power-Speed Block', weeks: 2, goal: 'Express power & speed. Gym volume drops, intensity stays. Max velocity sprints. Full agility protocols. Repeated sprint training. Ball work becomes high-intensity & game-realistic.' },
+    { name: 'Taper Week', weeks: 1, goal: 'Drop total volume 35%. Maintain all intensities. Technical ball work only. Sleep & recovery prioritized. Arrive fresh, sharp, and confident for pre-season.' }
+  ]
+};
+const PRESEASON_START = '2026-07-20'; // After taper week (July 13-19)
+
+// ==================================================
+//  STATE
+// ==================================================
+let athleticTests = [];
+let rsaSessions = [];
+let soccerSessions = [];
+let planConfig = null;
+let recoveryScore = null;
+let recoveryScore7DayAvg = null;
+let latestWeight = null;
+
+// ==================================================
+//  DATA LOADING
+// ==================================================
+async function loadAll(){
+  await Promise.all([loadTests(), loadRSASessions(), loadSessions(), loadPlan(), loadRecovery(), loadLatestWeight()]);
+}
+
+async function loadTests(){
+  const { data } = await sb.from('athletic_tests').select('*').order('date',{ascending:false}).limit(200);
+  athleticTests = data || [];
+}
+async function loadRSASessions(){
+  const { data } = await sb.from('sprint_decay_sessions').select('*').order('date',{ascending:false}).limit(20);
+  rsaSessions = data || [];
+}
+async function loadSessions(){
+  const { data } = await sb.from('soccer_sessions').select('*').order('date',{ascending:false}).limit(100);
+  soccerSessions = data || [];
+}
+async function loadPlan(){
+  const { data } = await sb.from('offseason_plan').select('*').order('last_updated',{ascending:false}).limit(1).maybeSingle();
+  if(data) planConfig = data;
+}
+async function loadRecovery(){
+  try {
+    const { data } = await sb.from('app_state').select('data').eq('key','nutrition').maybeSingle();
+    if(data?.data?.recovery_score_today) recoveryScore = data.data.recovery_score_today;
+    if(data?.data?.recovery_score_7day_avg) recoveryScore7DayAvg = data.data.recovery_score_7day_avg;
+  } catch(e){}
+}
+async function loadLatestWeight(){
+  try {
+    const { data } = await sb.from('weight_logs').select('weight').order('date',{ascending:false}).limit(1).maybeSingle();
+    if(data?.weight) latestWeight = parseFloat(data.weight);
+  } catch(e){}
+}
+
+// ==================================================
+//  INTERNAL TAB SWITCHING
+// ==================================================
+document.querySelectorAll('.soccer-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.soccer-tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.stab;
+    ['testing','sessions','plan','library','insights'].forEach(t => {
+      const el = $('#stab-'+t); if(el) el.classList.toggle('hidden', t!==tab);
+    });
+    if(tab==='testing') renderTesting();
+    if(tab==='sessions') renderSessions();
+    if(tab==='plan') renderPlan();
+    if(tab==='library') renderLibrary();
+    if(tab==='insights') renderInsights();
+  });
+});
+
+// ==================================================
+//  SECTION 1: TESTING
+// ==================================================
+function getLatestTest(type){
+  return athleticTests.find(t=>t.test_type===type) || null;
+}
+function getTestHistory(type, limit=4){
+  return athleticTests.filter(t=>t.test_type===type).slice(0,limit).reverse();
+}
+
+function formatTestRow(type, label, unit, lowerIsBetter=true){
+  const latest = getLatestTest(type);
+  const history = getTestHistory(type);
+  if(!latest) return `<div class="test-row"><span class="test-label">${label}</span><span style="color:var(--text-3);font-size:13px">No data</span></div>`;
+
+  let deltaHtml = '';
+  if(history.length >= 2){
+    const prev = history[history.length-2];
+    const diff = latest.value - prev.value;
+    const pct = ((diff / prev.value) * 100).toFixed(1);
+    const improved = lowerIsBetter ? diff < 0 : diff > 0;
+    const cls = Math.abs(diff) < 0.01 ? 'neutral' : improved ? 'good' : 'bad';
+    const arrow = diff < 0 ? '↓' : diff > 0 ? '↑' : '→';
+    deltaHtml = `<span class="test-delta ${cls}">${arrow} ${Math.abs(pct)}%</span>`;
+  }
+
+  // Trend sparkline (mini SVG chart from last 4 tests)
+  let sparklineHtml = '';
+  if(history.length >= 2){
+    const vals = history.map(h=>h.value);
+    const min = Math.min(...vals), max = Math.max(...vals);
+    const range = max - min || 1;
+    const w = 56, h = 20, padX = 1, padY = 3;
+    const points = vals.map((v,i)=>{
+      const x = padX + (i/(vals.length-1)) * (w - 2*padX);
+      const y = padY + (1 - (v-min)/range) * (h - 2*padY);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    // Determine trend color: green=improving, red=declining, grey=flat
+    const firstV = vals[0], lastV = vals[vals.length-1];
+    const trend = lowerIsBetter ? firstV - lastV : lastV - firstV;
+    const absTrend = Math.abs(trend) / Math.max(Math.abs(firstV), 0.001);
+    const trendColor = absTrend < 0.005 ? 'var(--text-3)' : trend > 0 ? 'var(--good)' : 'var(--bad)';
+    sparklineHtml = `<svg class="test-sparkline" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" style="flex-shrink:0;vertical-align:middle"><polyline points="${points}" fill="none" stroke="${trendColor}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  }
+
+  let pb = '';
+  const allTests = athleticTests.filter(t=>t.test_type===type);
+  const allVals = allTests.map(t=>t.value);
+  if(allVals.length){
+    const best = lowerIsBetter ? Math.min(...allVals) : Math.max(...allVals);
+    if(best === latest.value){
+      const bestTest = allTests.find(t=>t.value===best);
+      const pbDate = bestTest ? new Date(bestTest.date+'T00:00:00') : null;
+      const mons = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const dateStr = pbDate ? mons[pbDate.getMonth()]+' '+pbDate.getDate() : '';
+      pb = ` <span style="color:var(--good);font-size:11px">🏆 PB ${dateStr}</span>`;
+    }
+  }
+
+  return `<div class="test-row">
+    <span class="test-label">${label}</span>
+    <span style="display:flex;align-items:center;gap:4px"><span class="test-value">${latest.value} ${unit}</span>${deltaHtml}${pb}${sparklineHtml}</span>
+  </div>`;
+}
+
+function renderTesting(){
+  // Speed
+  $('#testSpeed').innerHTML = [
+    formatTestRow('10m_sprint','10m Sprint','s'),
+    formatTestRow('30m_sprint','30m Sprint','s'),
+    formatTestRow('40yd_dash','40 Yard Dash','s')
+  ].join('');
+
+  // Agility
+  $('#testAgility').innerHTML = [
+    formatTestRow('505_shuttle','5-10-5 Shuttle','s'),
+    formatTestRow('t_test','T-Test','s'),
+    formatTestRow('ladder_10yd','Ladder 10yd','s')
+  ].join('');
+
+  // Power
+  $('#testPower').innerHTML = [
+    formatTestRow('vertical_jump','Vertical Jump','in', false),
+    formatTestRow('broad_jump','Broad Jump','in', false)
+  ].join('');
+
+  // Endurance
+  const yoyoLevel = getLatestTest('yoyo_level');
+  const yoyoDist = getLatestTest('yoyo_distance');
+  $('#testEndurance').innerHTML = [
+    yoyoLevel ? `<div class="test-row"><span class="test-label">Yo-Yo IRT Level</span><span class="test-value">Level ${yoyoLevel.value}</span></div>` : `<div class="test-row"><span class="test-label">Yo-Yo IRT</span><span style="color:var(--text-3);font-size:13px">No data</span></div>`,
+    yoyoDist ? `<div class="test-row"><span class="test-label">Yo-Yo Distance</span><span class="test-value">${yoyoDist.value} m</span></div>` : ''
+  ].join('');
+
+  // RSA
+  renderRSA();
+
+  // Radar chart
+  renderRadarChart();
+
+  // Test reminder
+  renderTestReminder();
+}
+
+function renderRSA(){
+  if(!rsaSessions.length){
+    $('#testRSA').innerHTML = '<div style="color:var(--text-3);font-size:13px;padding:8px 0">No repeated sprint data yet</div>';
+    return;
+  }
+  const latest = rsaSessions[0];
+  const splits = [latest.split_1, latest.split_2, latest.split_3, latest.split_4, latest.split_5, latest.split_6].filter(Boolean);
+  if(!splits.length){
+    $('#testRSA').innerHTML = '<div style="color:var(--text-3);font-size:13px;padding:8px 0">No repeated sprint data yet</div>';
+    return;
+  }
+
+  let decayFlag = '';
+  if(latest.decay_pct > 8) decayFlag = '<span class="pill pill-bad" style="margin-left:6px">>8% decay</span>';
+  else if(latest.decay_pct > 5) decayFlag = '<span class="pill pill-warn" style="margin-left:6px">>5% decay</span>';
+  else decayFlag = '<span class="pill pill-good" style="margin-left:6px">Excellent</span>';
+
+  // Small sparkline for splits
+  let chartHtml = '';
+  if(splits.length >= 2){
+    const W=260, H=50, pad=6;
+    const min=Math.min(...splits), max=Math.max(...splits);
+    const range = (max-min)||1;
+    const pts = splits.map((v,i)=>({
+      x: pad + (i/(splits.length-1))*(W-pad*2),
+      y: H - pad - ((v-min)/range)*(H-pad*2)
+    }));
+    const line = pts.map((p,i)=>(i?'L':'M')+p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
+    const color = latest.decay_pct > 8 ? '#FF6B6B' : latest.decay_pct > 5 ? '#F2C063' : '#6BE3A4';
+    chartHtml = `<svg class="chart-svg" viewBox="0 0 ${W} ${H}" style="height:${H}px; width:100%"><path d="${line}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round"/>${pts.map((p,i)=>`<circle cx="${p.x}" cy="${p.y}" r="2.5" fill="${color}"/>`).join('')}</svg>`;
+  }
+
+  $('#testRSA').innerHTML = `
+    <div class="test-row">
+      <span class="test-label">Best Split</span><span class="test-value">${latest.best}s</span>
+    </div>
+    <div class="test-row">
+      <span class="test-label">Worst Split</span><span class="test-value">${latest.worst}s</span>
+    </div>
+    <div class="test-row">
+      <span class="test-label">Average</span><span class="test-value">${latest.average}s</span>
+    </div>
+    <div class="test-row">
+      <span class="test-label">Decay</span>
+      <span><span class="test-value">${latest.decay_pct}%</span>${decayFlag}</span>
+    </div>
+    <div class="chart-wrap" style="margin-top:8px">${chartHtml}</div>
+    <div style="font-size:10px;color:var(--text-3);text-align:center;margin-top:4px">${latest.decay_pct > 8 ? '⚠️ Fatigue accumulating — flat line = excellent RSA' : 'Splits 1–6: lower decay = better repeated sprint ability'}</div>
+  `;
+}
+
+function renderRadarChart(){
+  // Calculate 6 attributes from test data
+  const latest10m = getLatestTest('10m_sprint');
+  const latest30m = getLatestTest('30m_sprint');
+  const latestVert = getLatestTest('vertical_jump');
+  const latestBroad = getLatestTest('broad_jump');
+  const latest505 = getLatestTest('505_shuttle');
+  const latestT = getLatestTest('t_test');
+  const latestYoyo = getLatestTest('yoyo_level');
+  const latestRSA = rsaSessions.length ? rsaSessions[0] : null;
+
+  // Normalize each attribute to 0-100 scale
+  function normSpeed(v10, v30){
+    if(!v10 || !v30) return 0;
+    const s = (2.0 - v10.value) / 0.5 * 40 + (5.0 - v30.value) / 1.0 * 60;
+    return Math.max(0, Math.min(100, Math.round(s)));
+  }
+  function normPower(vVert, vBroad){
+    if(!vVert || !vBroad) return 0;
+    const p = (vVert.value / 30) * 50 + (vBroad.value / 110) * 50;
+    return Math.max(0, Math.min(100, Math.round(p)));
+  }
+  function normAgility(v505, vT){
+    if(!v505 || !vT) return 0;
+    const a = (5.5 - v505.value) / 1.5 * 50 + (12.0 - vT.value) / 3.0 * 50;
+    return Math.max(0, Math.min(100, Math.round(a)));
+  }
+  function normEndurance(yoyo){
+    if(!yoyo) return 0;
+    return Math.max(0, Math.min(100, Math.round((yoyo.value / 20) * 100)));
+  }
+  function normRSA(rsa){
+    if(!rsa) return 0;
+    return Math.max(0, Math.min(100, Math.round(100 - rsa.decay_pct * 10)));
+  }
+
+  const speed = normSpeed(latest10m, latest30m);
+  const power = normPower(latestVert, latestBroad);
+  const agility = normAgility(latest505, latestT);
+  const endurance = normEndurance(latestYoyo);
+  const rsa = normRSA(latestRSA);
+  const recovery = recoveryScore7DayAvg || recoveryScore || 50;
+
+  const attrs = [
+    { label:'Speed', value:speed },
+    { label:'Power', value:power },
+    { label:'Agility', value:agility },
+    { label:'Endurance', value:endurance },
+    { label:'RSA', value:rsa },
+    { label:'Recovery', value:recovery }
+  ];
+
+  // Draw SVG radar
+  const cx=150, cy=150, r=110;
+  const angles = attrs.map((_,i) => (Math.PI*2/6)*i - Math.PI/2);
+  const points = attrs.map((a,i) => {
+    const val = a.value / 100;
+    return { x: cx + Math.cos(angles[i])*r*val, y: cy + Math.sin(angles[i])*r*val };
+  });
+
+  // Grid
+  let gridHtml = '';
+  for(let level=1; level<=4; level++){
+    const lr = r * (level/4);
+    const gp = angles.map(a => ({
+      x: cx + Math.cos(a)*lr, y: cy + Math.sin(a)*lr
+    }));
+    gridHtml += `<polygon points="${gp.map(p=>p.x+','+p.y).join(' ')}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>`;
+  }
+  // Axes
+  let axesHtml = angles.map(a => {
+    const ex = cx + Math.cos(a)*r, ey = cy + Math.sin(a)*r;
+    return `<line x1="${cx}" y1="${cy}" x2="${ex}" y2="${ey}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>`;
+  }).join('');
+
+  // Data polygon
+  const dataPoly = `<polygon points="${points.map(p=>p.x+','+p.y).join(' ')}" fill="rgba(107,227,164,0.20)" stroke="#6BE3A4" stroke-width="2" stroke-linejoin="round"/>`;
+
+  // Labels
+  let labelsHtml = attrs.map((a,i) => {
+    const lx = cx + Math.cos(angles[i])*(r+18), ly = cy + Math.sin(angles[i])*(r+18);
+    const align = lx < cx-10 ? 'end' : lx > cx+10 ? 'start' : 'middle';
+    return `<text x="${lx}" y="${ly}" text-anchor="${align}" dominant-baseline="middle" fill="#76746E" font-size="10" font-family="ui-monospace,SF Mono,Menlo,monospace" font-weight="700">${a.label}</text>`;
+  }).join('');
+
+  // Value dots
+  let dotsHtml = attrs.map((a,i) => {
+    return `<text x="${points[i].x}" y="${points[i].y-8}" text-anchor="middle" fill="#6BE3A4" font-size="9" font-family="ui-monospace,SF Mono,Menlo,monospace" font-weight="600">${a.value}</text><circle cx="${points[i].x}" cy="${points[i].y}" r="3" fill="#6BE3A4"/>`;
+  }).join('');
+
+  $('#radarChart').innerHTML = gridHtml + axesHtml + dataPoly + labelsHtml + dotsHtml;
+}
+
+function renderTestReminder(){
+  const lastTest = athleticTests.length ? athleticTests.reduce((a,b) => a.date > b.date ? a : b) : null;
+  if(!lastTest){
+    $('#testReminder').classList.add('show');
+    $('#testReminderDays').textContent = '—';
+    return;
+  }
+  const daysSince = Math.floor((new Date(today()+'T00:00:00') - new Date(lastTest.date+'T00:00:00')) / 86400000);
+  if(daysSince >= 28){
+    $('#testReminder').classList.add('show');
+    $('#testReminderDays').textContent = daysSince;
+  } else {
+    $('#testReminder').classList.remove('show');
+  }
+}
+
+// ==================================================
+//  TEST MODAL
+// ==================================================
+$('openTestModal').addEventListener('click', () => {
+  $('#testDate').value = today();
+  $('#testModal').classList.add('show');
+});
+$('testModalClose').addEventListener('click', () => $('#testModal').classList.remove('show'));
+
+$('saveTestBtn').addEventListener('click', async () => {
+  const date = $('#testDate').value || today();
+  const tests = [];
+  function addTest(type, elId, unit){
+    const v = parseFloat($(elId).value);
+    if(!isNaN(v)) tests.push({ date, test_type:type, value:v, unit });
+  }
+  addTest('10m_sprint','test10m','s');
+  addTest('30m_sprint','test30m','s');
+  addTest('40yd_dash','test40yd','s');
+  addTest('505_shuttle','test505','s');
+  addTest('t_test','testT','s');
+  addTest('ladder_10yd','testLadder','s');
+  addTest('vertical_jump','testVert','in');
+  addTest('broad_jump','testBroad','in');
+  addTest('yoyo_level','testYoyoLevel','level');
+  addTest('yoyo_distance','testYoyoDist','m');
+
+  // RSA
+  const rsaSplits = [];
+  for(let i=1; i<=6; i++){
+    const v = parseFloat($('#rsa'+i).value);
+    if(!isNaN(v)) rsaSplits.push(v);
+  }
+
+  if(!tests.length && !rsaSplits.length){ alert('Enter at least one test result.'); return; }
+  if(rsaSplits.length > 0 && rsaSplits.length < 6){ alert('All 6 sprint splits are required for the repeated sprint test. Fill all 6 or leave them all blank.'); return; }
+
+  $('#saveTestBtn').disabled=true; $('#saveTestBtn').textContent='Saving…';
+  try {
+    if(tests.length){
+      // Check personal bests
+      for(const t of tests){
+        const history = getTestHistory(t.test_type);
+        const allVals = [...history.map(h=>h.value), t.value];
+        const isLowerBetter = ['10m_sprint','30m_sprint','40yd_dash','505_shuttle','t_test','ladder_10yd'].includes(t.test_type);
+        const best = isLowerBetter ? Math.min(...allVals) : Math.max(...allVals);
+        t.personal_best = t.value === best;
+      }
+      await sb.from('athletic_tests').insert(tests);
+    }
+    if(rsaSplits.length === 6){
+      const best = Math.min(...rsaSplits);
+      const worst = Math.max(...rsaSplits);
+      const avg = Math.round(rsaSplits.reduce((s,v)=>s+v,0)/6 * 100) / 100;
+      const decay = Math.round((worst-best)/best * 100 * 100) / 100;
+      await sb.from('sprint_decay_sessions').insert({
+        date, split_1:rsaSplits[0], split_2:rsaSplits[1], split_3:rsaSplits[2],
+        split_4:rsaSplits[3], split_5:rsaSplits[4], split_6:rsaSplits[5],
+        best, worst, average:avg, decay_pct:decay
+      });
+    }
+    await loadAll(); renderTesting();
+    $('#testModal').classList.remove('show');
+    // Clear form
+    ['test10m','test30m','test40yd','test505','testT','testLadder','testVert','testBroad','testYoyoLevel','testYoyoDist','rsa1','rsa2','rsa3','rsa4','rsa5','rsa6'].forEach(id=>{ $(id).value=''; });
+  } catch(e){ alert('Save failed: '+(e.message||e)); }
+  finally { $('#saveTestBtn').disabled=false; $('#saveTestBtn').textContent='Save Test Results'; }
+});
+
+// ==================================================
+//  SECTION 2: SESSIONS
+// ==================================================
+function getSessionIcon(type){
+  const icons = { ball:'⚽', speed:'🏃', gym:'🏋️', match:'🏟️', group:'👥' };
+  return icons[type] || '📋';
+}
+function getSessionLabel(sesh){
+  if(sesh.session_type==='ball') return 'Ball Work — '+(sesh.sub_type||'Technical');
+  if(sesh.session_type==='speed') return 'Speed/Agility — '+(Array.isArray(sesh.focus_areas)?sesh.focus_areas.join(', '):sesh.sub_type||'');
+  if(sesh.session_type==='gym') return 'Gym — '+(sesh.sub_type||'Full Body');
+  if(sesh.session_type==='match') return 'Match — '+sesh.duration_minutes+' min';
+  if(sesh.session_type==='group') return 'Group — '+(sesh.sub_type||'Training');
+  return sesh.session_type;
+}
+
+function renderSessions(){
+  // Weekly summary
+  const weekAgo = new Date(today()+'T00:00:00'); weekAgo.setDate(weekAgo.getDate()-6);
+  const weekStart = weekAgo.toISOString().slice(0,10);
+  const weekSessions = soccerSessions.filter(s => s.date >= weekStart && s.date <= today());
+
+  const ballMin = weekSessions.filter(s=>s.session_type==='ball').reduce((s,ss)=>s+(ss.duration_minutes||0),0);
+  const speedSeshes = weekSessions.filter(s=>s.session_type==='speed').length;
+  const gymSeshes = weekSessions.filter(s=>s.session_type==='gym').length;
+  const matches = weekSessions.filter(s=>s.session_type==='match').length;
+  const groupSeshes = weekSessions.filter(s=>s.session_type==='group').length;
+
+  $('#weeklySummary').innerHTML = `
+    <div class="weekly-stat"><div class="weekly-stat-num">${ballMin}</div><div class="weekly-stat-label">Ball min</div></div>
+    <div class="weekly-stat"><div class="weekly-stat-num">${speedSeshes}</div><div class="weekly-stat-label">Speed sess.</div></div>
+    <div class="weekly-stat"><div class="weekly-stat-num">${gymSeshes}</div><div class="weekly-stat-label">Gym sess.</div></div>
+    <div class="weekly-stat"><div class="weekly-stat-num">${matches}</div><div class="weekly-stat-label">Matches</div></div>
+    <div class="weekly-stat"><div class="weekly-stat-num">${groupSeshes}</div><div class="weekly-stat-label">Group sess.</div></div>
+  `;
+
+  // Today's sessions
+  const todaySessions = soccerSessions.filter(s => s.date === today());
+  if(todaySessions.length){
+    $('#todaySessions').innerHTML = todaySessions.map(s => `
+      <div class="sesh-card">
+        <div class="sesh-icon">${getSessionIcon(s.session_type)}</div>
+        <div class="sesh-info">
+          <div class="sesh-type">${getSessionLabel(s)}</div>
+          <div class="sesh-meta">${s.duration_minutes} min · ${s.intensity||'—'} ${s.self_rating ? '· Rating: '+s.self_rating+'/10' : ''}</div>
+        </div>
+      </div>
+    `).join('');
+  } else {
+    $('#todaySessions').innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-3);font-size:13px">No sessions logged today</div>';
+  }
+
+  // Recent sessions (exclude today to avoid duplication)
+  const recent = soccerSessions.filter(s => s.date !== today()).slice(0, 10);
+  if(recent.length){
+    $('#recentSessions').innerHTML = recent.map(s => {
+      const d = new Date(s.date+'T00:00:00');
+      const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      const mons = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const dateLabel = s.date === today() ? 'Today' : s.date === new Date(Date.now()-86400000).toISOString().slice(0,10) ? 'Yesterday' : days[d.getDay()]+' '+mons[d.getMonth()]+' '+d.getDate();
+      return `<div class="sesh-card">
+        <div class="sesh-icon">${getSessionIcon(s.session_type)}</div>
+        <div class="sesh-info">
+          <div class="sesh-type">${getSessionLabel(s)}</div>
+          <div class="sesh-meta">${dateLabel} · ${s.duration_minutes} min · ${s.intensity||'—'} ${s.note? '· '+esc(s.note) : ''}</div>
+        </div>
+        ${s.self_rating ? `<div class="sesh-rating">${s.self_rating}/10</div>` : ''}
+      </div>`;
+    }).join('');
+  } else {
+    $('#recentSessions').innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-3);font-size:13px">No sessions logged yet</div>';
+  }
+}
+
+// ==================================================
+//  SESSION MODAL
+// ==================================================
+let sessionFormState = { type:'ball', focusAreas:[], speedFocus:[], gymType:'Upper Push', ballSub:'Technical', groupSub:'Rondo' };
+
+$('openSessionModal').addEventListener('click', () => {
+  $('#sessionModal').classList.add('show');
+  updateSessionForm();
+});
+$('sessionModalClose').addEventListener('click', () => $('#sessionModal').classList.remove('show'));
+
+// Session type selector
+document.querySelectorAll('#sessionType .seg-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#sessionType .seg-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    sessionFormState.type = btn.dataset.value;
+    updateSessionForm();
+  });
+});
+
+function updateSessionForm(){
+  const t = sessionFormState.type;
+  $('#ballSubField').classList.toggle('hidden', t!=='ball');
+  $('#ballFocusField').classList.toggle('hidden', t!=='ball');
+  $('#speedSubField').classList.toggle('hidden', t!=='speed');
+  $('#gymSubField').classList.toggle('hidden', t!=='gym');
+  $('#matchField').classList.toggle('hidden', t!=='match');
+  $('#matchRatingField').classList.toggle('hidden', t!=='match');
+  $('#groupSubField').classList.toggle('hidden', t!=='group');    // Swap intensity labels for match vs other session types
+    const intensityBtns = document.querySelectorAll('#sessionIntensity .seg-btn');
+    const matchLabels = ['Cruised','Competed','Maxed Out'];
+    const defaultLabels = ['Light','Medium','Hard'];
+    const labels = t==='match' ? matchLabels : defaultLabels;
+    intensityBtns.forEach((btn,i) => { if(labels[i]) btn.textContent = labels[i]; });
+    // Always default to middle option active
+    intensityBtns.forEach(b=>b.classList.remove('active'));
+    intensityBtns[1].classList.add('active');
+    // Swap note placeholder for match sessions
+    $('#sessionNote').placeholder = t==='match' ? 'One word description (optional)' : 'One-line note…';
+}
+
+// Focus area toggles
+document.querySelectorAll('.focus-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    btn.classList.toggle('selected');
+  });
+});
+
+// Sub-type selectors
+['ballSubType','gymSubType','groupSubType','sessionIntensity'].forEach(groupId => {
+  const el = document.getElementById(groupId);
+  if(!el) return;
+  el.querySelectorAll('.seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      el.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+});
+
+$('saveSessionBtn').addEventListener('click', async () => {
+  const type = sessionFormState.type;
+  const duration = parseInt($('sessionDuration').value) || 0;
+  if(!duration){ alert('Enter duration.'); return; }
+
+  const intensity = document.querySelector('#sessionIntensity .seg-btn.active')?.dataset.value || 'Medium';
+  const note = $('#sessionNote').value.trim() || null;
+
+  let subType = null, focusAreas = [], selfRating = null;
+
+  if(type==='ball'){
+    subType = document.querySelector('#ballSubType .seg-btn.active')?.dataset.value || 'Technical';
+    focusAreas = Array.from(document.querySelectorAll('#ballFocusAreas .focus-btn.selected')).map(b=>b.dataset.value);
+  } else if(type==='speed'){
+    focusAreas = Array.from(document.querySelectorAll('#speedSubType .focus-btn.selected')).map(b=>b.dataset.value);
+  } else if(type==='gym'){
+    subType = document.querySelector('#gymSubType .seg-btn.active')?.dataset.value || 'Full Body';
+  } else if(type==='match'){
+    const min = parseInt($('matchMinutes').value) || duration;
+    selfRating = parseInt($('matchRating').value) || null;
+    subType = `Match ${min}min`;
+    if(selfRating) focusAreas = ['self_rating_'+selfRating];
+  } else if(type==='group'){
+    subType = document.querySelector('#groupSubType .seg-btn.active')?.dataset.value || 'Rondo';
+  }
+
+  $('#saveSessionBtn').disabled=true; $('#saveSessionBtn').textContent='Saving…';
+  try {
+    await sb.from('soccer_sessions').insert({
+      date: today(),
+      session_type: type,
+      sub_type: subType,
+      duration_minutes: duration,
+      intensity,
+      focus_areas: focusAreas.length ? focusAreas : null,
+      note,
+      self_rating: selfRating
+    });
+    await loadSessions();
+    renderSessions();
+    // Update app_state for cross-tab
+    await updateAppState();
+    $('#sessionModal').classList.remove('show');
+    // Reset form
+    $('#sessionDuration').value=''; $('#sessionNote').value=''; $('#matchMinutes').value=''; $('#matchRating').value='';
+    document.querySelectorAll('.focus-btn.selected').forEach(b=>b.classList.remove('selected'));
+  } catch(e){ alert('Save failed: '+(e.message||e)); }
+  finally { $('#saveSessionBtn').disabled=false; $('#saveSessionBtn').textContent='Save Session'; }
+});
+
+// ==================================================
+//  SECTION 3: PLAN
+// ==================================================
+function getCurrentPhase(){
+  // Respect manual pre-season switch set by user
+  if(planConfig?.mode === 'preseason'){
+    return { mode:'preseason', name:'Pre-Season', goal:'Gym 3 days/week max. Individual technical only when recovery > 65. No speed on consecutive days. Recovery < 60 = rest day.', week:1, totalWeeks:1, daysLeft:0, progress:100 };
+  }
+
+  const now = new Date(today()+'T00:00:00');
+  const start = new Date(OFFSEASON_PLAN.startDate+'T00:00:00');
+  const preseason = new Date(PRESEASON_START+'T00:00:00');
+
+  if(now >= preseason){
+    return { mode:'preseason', name:'Pre-Season', goal:'Gym 3 days/week max. Individual technical only when recovery > 65. No speed on consecutive days. Recovery < 60 = rest day.', week:1, totalWeeks:1, daysLeft:0, progress:100 };
+  }
+
+  let dayOffset = Math.floor((now - start) / 86400000);
+  if(dayOffset < 0) dayOffset = 0;
+
+  let weekAccum = 0;
+  for(const block of OFFSEASON_PLAN.blocks){
+    const blockDays = block.weeks * 7;
+    if(dayOffset < weekAccum * 7 + blockDays){
+      const weekInBlock = Math.floor((dayOffset - weekAccum * 7) / 7) + 1;
+      const daysLeft = blockDays - (dayOffset - weekAccum * 7);
+      const totalDays = OFFSEASON_PLAN.blocks.reduce((s,b)=>s+b.weeks*7,0);
+      const progress = Math.min(100, Math.round((dayOffset / totalDays) * 100));
+      return {
+        mode:'offseason', name:block.name, goal:block.goal,
+        week:weekInBlock, totalWeeks:block.weeks,
+        daysLeft:Math.max(0,daysLeft), progress
+      };
+    }
+    weekAccum += block.weeks;
+  }
+
+  // Past all blocks = taper complete, pre-season mode
+  return { mode:'preseason', name:'Pre-Season', goal:'Gym 3 days/week max. Individual technical only when recovery > 65.', week:1, totalWeeks:1, daysLeft:0, progress:100 };
+}
+
+function getWeeklyTemplate(phase){
+  const templates = {
+    'Foundation Block': `Mon: Gym Upper Push<br>Tue: Ball Work Technical + Ladder<br>Wed: Gym Lower Body<br>Thu: Acceleration Mechanics + Plyometrics<br>Fri: Gym Upper Pull<br>Sat: Ball Work Finishing + Turning<br>Sun: Rest`,
+    'Strength-Speed Block': `Mon: Gym Upper Strength<br>Tue: Speed Session + Reactive Agility + Plyometrics<br>Wed: Gym Lower Strength (heavy)<br>Thu: Ball Work Tactical + Pressing Patterns<br>Fri: Gym Upper Pull Strength<br>Sat: Speed Session + Planned Agility + 20m Sprints<br>Sun: Rest`,
+    'Power-Speed Block': `Mon: Gym Maintenance Upper<br>Tue: Full Speed Session + Max Velocity + Reactive Agility<br>Wed: Gym Maintenance Lower<br>Thu: High Intensity Ball Work — SSG simulation<br>Fri: Optional Gym or Rest<br>Sat: Repeated Sprint Protocol + Ball Work<br>Sun: Rest`,
+    'Taper Week': `Mon: Light Gym<br>Tue: Technical Ball Work<br>Wed: Speed Strides (short, sharp, not maximal)<br>Thu: Light Gym<br>Fri: Technical Ball Work<br>Sat: Rest<br>Sun: Rest`
+  };
+  return templates[phase] || 'Follow your training plan.';
+}
+
+function getDailyRecommendation(phase){
+  const dow = new Date().getDay(); // 0=Sun
+  const yesterday = new Date(today()+'T00:00:00'); yesterday.setDate(yesterday.getDate()-1);
+  const yestStr = yesterday.toISOString().slice(0,10);
+  const yestSessions = soccerSessions.filter(s => s.date === yestStr);
+  const hadSpeedYesterday = yestSessions.some(s => s.session_type==='speed');
+
+  // Recovery check
+  if(recoveryScore !== null && recoveryScore < 55){
+    return {
+      type:'Active Recovery Only',
+      focus:'Light walk or foam rolling',
+      duration:'20–30 min',
+      equipment:'None',
+      why:'Recovery score is '+recoveryScore+' — below 55. Your body needs rest more than training right now.'
+    };
+  }
+
+  // Yesterday match?
+  const hadMatch = yestSessions.some(s => s.session_type==='match');
+  if(hadMatch){
+    return {
+      type:'Technical Ball Work',
+      focus:'Light wall passing & first touch',
+      duration:'30 min',
+      equipment:'Ball, wall',
+      why:'Match yesterday — focus on technical work only. No high intensity running today.'
+    };
+  }
+
+  // Pre-season mode
+  if(phase.mode==='preseason'){
+    if(dow===0 || dow===6) return { type:'Rest Day', focus:'Recovery', duration:'—', equipment:'—', why:'Pre-season: rest days are as important as training days.' };
+    // No consecutive speed days in pre-season
+    if(hadSpeedYesterday) return { type:'Technical Ball Work', focus:'Wall passing, receiving & turning — speed yesterday, so technical only today', duration:'30–45 min', equipment:'Ball, wall, cones', why:'Pre-season rule: no speed work on consecutive days. You had a speed session yesterday.' };
+    if(dow===1 || dow===4) return { type:'Gym Maintenance', focus:'Upper body focus at Planet Fitness', duration:'45 min', equipment:'Dumbbells, cables, Smith machine', why:'Pre-season gym cap: 3 days/week max, moderate volume only.' };
+    if(dow===2 || dow===5) return { type:'Technical Ball Work', focus:'Wall passing, receiving & turning', duration:'30–45 min', equipment:'Ball, wall, cones', why:'Pre-season: individual technical only when recovery > 65.' };
+    return { type:'Speed Strides', focus:'Short sharp sprints, not maximal', duration:'20 min', equipment:'Field, cones', why:'Pre-season speed day — keep strides short and sharp, not maximal.' };
+  }
+
+  // Foundation Block
+  if(phase.name==='Foundation Block'){
+    if(dow===1) return {type:'Gym Upper Push',focus:'Planet Fitness — dumbbell press, shoulder press, tricep pushdowns',duration:'50 min',equipment:'Dumbbells, cables',why:'Foundation: build upper body muscle base with higher volume.'};
+    if(dow===2) return {type:'Ball Work + Ladder',focus:'Wall passing, cone dribbling, agility ladder footwork',duration:'45 min',equipment:'Ball, wall, cones, agility ladder',why:'Technical quality and foot coordination are the foundation of everything.'};
+    if(dow===3) return {type:'Gym Lower Body',focus:'Planet Fitness — leg press, leg curl, leg extension, Smith machine squat',duration:'50 min',equipment:'Leg press, Smith machine, cables',why:'Foundation: build the muscle base that will convert to power later.'};
+    if(dow===4) return {type:'Acceleration Mechanics + Plyometrics',focus:'10m drive phase drills, broad jumps, A-skips, B-skips',duration:'40 min',equipment:'Cones, field',why:'Your identified weakness is acceleration — this session builds the mechanics first.'};
+    if(dow===5) return {type:'Gym Upper Pull',focus:'Planet Fitness — lat pulldown, cable row, bicep curls, rear delts',duration:'50 min',equipment:'Cables, dumbbells',why:'Foundation: balanced upper body development for posture and injury prevention.'};
+    if(dow===6) return {type:'Ball Work: Finishing + Turning',focus:'Shooting at goal, receiving & turning with cone gates',duration:'60 min',equipment:'Ball, goal, cones, wall',why:'Weekend session — longer ball work to build technical volume.'};
+    return {type:'Rest Day',focus:'Recovery walk or light stretch',duration:'—',equipment:'—',why:'Your body adapts during rest, not during training.'};
+  }
+
+  // Strength-Speed Block
+  if(phase.name==='Strength-Speed Block'){
+    if(dow===1) return {type:'Gym Upper Strength',focus:'Planet Fitness — heavier dumbbell press, cable flyes, lateral raises',duration:'45 min',equipment:'Dumbbells, cables',why:'Strength-Speed: gym shifts heavier, lower rep. Converting muscle to power.'};
+    if(dow===2) return {type:'Speed: Reactive Agility + Plyometrics',focus:'Broad jump series, single leg bounding, reactive sprint starts',duration:'45 min',equipment:'Cones, field, phone timer',why:'Plyometrics bridge the gap between gym strength and field speed.'};
+    if(dow===3) return {type:'Gym Lower Strength (Heavy)',focus:'Planet Fitness — heavy leg press, Smith machine squat, leg curl, calf raises',duration:'50 min',equipment:'Leg press, Smith machine',why:'Lower body strength is the engine for speed — push heavy this session.'};
+    if(dow===4) return {type:'Ball Work: Tactical + Pressing',focus:'Pressing patterns with cones as opponents, tactical shadow play',duration:'45 min',equipment:'Ball, cones, full field',why:'Tactical work keeps your soccer brain sharp while your body gets stronger.'};
+    if(dow===5) return {type:'Gym Upper Pull Strength',focus:'Planet Fitness — heavy lat pulldown, cable row, face pulls',duration:'45 min',equipment:'Cables, pull-up bar',why:'Upper pull strength for shielding, holding off opponents, and aerial duels.'};
+    if(dow===6) return {type:'Speed: Planned Agility + 20m Sprints',focus:'T-test reps, 5-10-5 reps, 20m sprint repeats',duration:'50 min',equipment:'Cones, field, phone timer',why:'Now that mechanics are built, begin pushing speed with planned agility and 20m sprints.'};
+    return {type:'Rest Day',focus:'Recovery',duration:'—',equipment:'—',why:'Rest is when the adaptation happens.'};
+  }
+
+  // Power-Speed Block
+  if(phase.name==='Power-Speed Block'){
+    if(dow===1) return {type:'Gym Maintenance Upper',focus:'Planet Fitness — moderate dumbbell work, cables',duration:'35 min',equipment:'Dumbbells, cables',why:'Power-Speed: gym volume drops, intensity stays. Maintenance mode.'};
+    if(dow===2) return {type:'Full Speed: Max Velocity + Reactive Agility',focus:'40yd max sprints, reactive agility with visual cues',duration:'50 min',equipment:'Field, cones, phone timer',why:'This is the peak speed block — every sprint should be at max intent.'};
+    if(dow===3) return {type:'Gym Maintenance Lower',focus:'Planet Fitness — leg press, leg extension, light plyometrics',duration:'35 min',equipment:'Leg press, cables',why:'Maintain lower body strength while the real work happens on the field.'};
+    if(dow===4) return {type:'High Intensity Ball Work',focus:'SSG simulation — cones as opponents, game-realistic intensity',duration:'55 min',equipment:'Ball, cones, goal, full field',why:'Ball work now at game intensity — technical quality under fatigue.'};
+    if(dow===5) return {type:'Optional Gym or Rest',focus:'Active recovery or light upper body',duration:'25–35 min',equipment:'Optional',why:'Listen to your body. Recovery score below 60 = rest.'};
+    if(dow===6) return {type:'Repeated Sprint + Ball Work',focus:'6×30m RSA protocol, then 20 min technical ball work',duration:'55 min',equipment:'Field, cones, ball, phone timer',why:'Repeated sprint ability matters as much as top speed for a box-to-box midfielder.'};
+    return {type:'Rest Day',focus:'Recovery',duration:'—',equipment:'—',why:'Rest.'};
+  }
+
+  // Taper
+  if(phase.name==='Taper Week'){
+    if(dow===1||dow===4) return {type:'Light Gym',focus:'Planet Fitness — light full body, moderate volume',duration:'30 min',equipment:'Dumbbells, cables',why:'Taper: maintain movement patterns, don\'t chase fatigue.'};
+    if(dow===2||dow===5) return {type:'Technical Ball Work',focus:'Wall passing, first touch, light finishing',duration:'30 min',equipment:'Ball, wall, goal',why:'Taper: technical work only — no conditioning ball sessions.'};
+    if(dow===3) return {type:'Speed Strides',focus:'Short sharp strides — not maximal sprints',duration:'15 min',equipment:'Field',why:'Keep the nervous system primed without accumulating fatigue.'};
+    return {type:'Rest Day',focus:'Full rest — sleep & recovery prioritized',duration:'—',equipment:'—',why:'Arrive at pre-season fresh, sharp, and confident.'};
+  }
+
+  return {type:'Rest Day',focus:'Recovery',duration:'—',equipment:'—',why:'Follow your plan.'};
+}
+
+function renderPlan(){
+  const phase = getCurrentPhase();
+  $('#phaseName').textContent = phase.name;
+  $('#phaseGoal').textContent = phase.goal;
+  $('#phaseBarFill').style.width = phase.progress + '%';
+  $('#phaseMeta').textContent = `Week ${phase.week} of ${phase.totalWeeks}`;
+  $('#phaseDaysLeft').textContent = phase.daysLeft + ' days remaining';
+
+  if(phase.mode==='preseason'){
+    $('#phaseDates').textContent = 'Pre-Season Mode (July 13+)';
+    $('#switchToPreseason').classList.add('hidden');
+  } else {
+    const start = new Date(OFFSEASON_PLAN.startDate+'T00:00:00');
+    // Calculate cumulative weeks of prior blocks to get the correct block start
+    let cumWeeks = 0;
+    for(const block of OFFSEASON_PLAN.blocks){
+      if(block.name === phase.name) break;
+      cumWeeks += block.weeks;
+    }
+    const blockStart = new Date(start); blockStart.setDate(blockStart.getDate() + cumWeeks*7 + (phase.week-1)*7);
+    const blockEnd = new Date(blockStart); blockEnd.setDate(blockEnd.getDate() + phase.totalWeeks*7 - 1);
+    const mons = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    $('#phaseDates').textContent = mons[blockStart.getMonth()]+' '+blockStart.getDate()+' – '+mons[blockEnd.getMonth()]+' '+blockEnd.getDate();
+    $('#switchToPreseason').classList.remove('hidden');
+  }
+
+  // Daily recommendation
+  const rec = getDailyRecommendation(phase);
+  $('#dailyRecBody').innerHTML = `<strong>${rec.type}</strong> — ${rec.focus}<br><span style="color:var(--text-3);font-size:12px">Duration: ${rec.duration} · Equipment: ${rec.equipment}</span>`;
+  $('#dailyRecWhy').textContent = rec.why;
+
+  // Weekly template
+  $('#weeklyTemplate').innerHTML = getWeeklyTemplate(phase.name);
+}
+
+$('switchToPreseason').addEventListener('click', async () => {
+  if(!confirm('Switch to pre-season mode? This changes the daily recommendations.')) return;
+  const upsertData = {
+    start_date: PRESEASON_START,
+    end_date: null,
+    current_phase: 'preseason',
+    phase_week: 1,
+    mode: 'preseason',
+    last_updated: new Date().toISOString()
+  };
+  if(planConfig?.id) upsertData.id = planConfig.id;
+  const { data: updated } = await sb.from('offseason_plan').upsert(upsertData, { onConflict: 'id' }).select().single();
+  if(updated) planConfig = updated;
+  else planConfig = { ...planConfig, mode:'preseason' };
+  renderPlan();
+});
+
+// ==================================================
+//  SECTION 4: TRAINING LIBRARY
+// ==================================================
+const DRILLS = [
+  // Acceleration
+  { cat:'acceleration', name:'Wall Drive March', equipment:'Wall', setup:'Stand facing a wall at 45° angle. Drive one knee up while keeping opposite foot planted. March in place focusing on knee drive height and arm swing.', duration:'3×30s each leg', why:'Teaches the drive phase mechanics — high knee, powerful arm swing.' },
+  { cat:'acceleration', name:'Falling Start Acceleration', equipment:'None', setup:'Stand tall, lean forward until you must sprint. First 3 steps are short and powerful — focus on driving the ground back. Sprint 10m.', duration:'6×10m, 90s rest', why:'Trains the forward lean and first-step explosion that creates separation.' },
+  { cat:'acceleration', name:'A-Skip & B-Skip Mechanics', equipment:'Cones', setup:'A-skips: high knees with quick ground contact. B-skips: extend leg forward before pulling down. Use cones to mark a 20m lane.', duration:'4×20m each', why:'Builds sprint-specific coordination and ground force production.' },
+  { cat:'acceleration', name:'10m Acceleration Repeats', equipment:'Full field', setup:'Mark 10m from standing start. Sprint at 100% effort, focusing on first 3 steps driving down and back. Full recovery between reps.', duration:'8×10m, 90s rest', why:'Pure acceleration work — your #1 development priority right now.' },
+  { cat:'acceleration', name:'Reactive Acceleration — Drop Ball', equipment:'Ball', setup:'Hold ball at shoulder height. Drop it and sprint to catch it before the second bounce. The ball creates a genuine reactive stimulus.', duration:'6× sprint, 60s rest', why:'Trains reactive acceleration — the first step when reading a play, not just planned sprints.' },
+
+  // Agility
+  { cat:'agility', name:'5-10-5 Shuttle Repeats', equipment:'3 cones', setup:'Place cones 5 yards apart. Start at middle cone, sprint right 5yd, touch, sprint left 10yd, touch, sprint 5yd back to middle.', duration:'5× reps, 60s rest', why:'Standard pro agility test — moving it from testing to training.' },
+  { cat:'agility', name:'T-Test Repeats', equipment:'4 cones', setup:'Set 4 cones in a T: 10yd forward from start, 5yd left and right. Sprint forward, shuffle left, shuffle right, backpedal to start.', duration:'4× reps, 60s rest', why:'Multi-directional agility — forward, lateral, backward movement all in one drill.' },
+  { cat:'agility', name:'Ladder Two Feet Every Box', equipment:'Agility ladder', setup:'Run through ladder placing both feet in each box as fast as possible. Time 10 yards.', duration:'6×10yd, 45s rest', why:'Foot speed and coordination — the faster your feet, the quicker your first step.' },
+  { cat:'agility', name:'Ladder Ickey Shuffle', equipment:'Agility ladder', setup:'Pattern: in-in-out through each rung. Two feet in, one foot out, alternating sides. Focus on rhythm not speed first.', duration:'6×10yd, 45s rest', why:'Hip mobility and lateral footwork — essential for midfielders changing direction.' },
+  { cat:'agility', name:'Lateral Cone Shuffle 5 Yards', equipment:'2 cones', setup:'Place cones 5 yards apart. Shuffle side to side touching each cone. Stay low in an athletic stance throughout.', duration:'4×30s, 45s rest', why:'Lateral quickness for defensive positioning and pressing triggers.' },
+  { cat:'agility', name:'Box Drill with Ball', equipment:'4 cones, ball', setup:'4 cones in a 10×10yd box. Receive a wall pass, turn, and accelerate to the next cone. Cycle through all 4 cones.', duration:'8× reps (2 per cone)', why:'Combines technical receiving with agility — game-realistic movement.' },
+
+  // Technical — Wall
+  { cat:'technical', name:'Wall Passing One Touch', equipment:'Ball, wall', setup:'Stand 5yd from wall. Pass and receive one touch, alternating feet. Keep ball on ground, focus on clean first touch.', duration:'100 touches', why:'One-touch passing under pressure starts with clean technique against a wall.' },
+  { cat:'technical', name:'Wall Passing Two Touch (Weak Foot)', equipment:'Ball, wall', setup:'Receive with strong foot, pass with weak foot. Then reverse. Focus on controlling the ball away from pressure (imaginary defender).', duration:'50 touches each foot', why:'Two-footedness is non-negotiable at D1 level — this builds your weak foot.' },
+  { cat:'technical', name:'Receiving & Turning Off Wall', equipment:'Ball, wall, cones', setup:'Pass to wall, receive and turn in one motion through a cone gate behind you. Practice inside turn and outside turn.', duration:'40 reps, alternate sides', why:'The ability to receive and turn in one motion is what separates D1 midfielders.' },
+  { cat:'technical', name:'Driven Pass at Wall Target', equipment:'Ball, wall', setup:'Mark a small target on the wall (use tape or chalk). Drive passes at the target from 25 yards. Focus on technique — locked ankle, follow through.', duration:'30 passes', why:'Long passing and switching play requires a clean driven technique under pressure.' },
+  { cat:'technical', name:'First Touch Volleys Off Wall', equipment:'Ball, wall', setup:'Lob ball at wall, control the rebound out of the air with laces, thigh, or chest. Keep the ball within a 2yd radius.', duration:'30 reps, mix surfaces', why:'Aerial control — essential for receiving long balls and clearances in midfield.' },
+
+  // Technical — Cones & Ball
+  { cat:'technical', name:'Cone Dribbling Figure 8', equipment:'Ball, 2 cones', setup:'Place 2 cones 5yd apart. Dribble in a figure 8 pattern, keeping ball close. Use inside, outside, and sole of both feet.', duration:'5 min continuous', why:'Close control is the foundation of everything — you can never be too good at this.' },
+  { cat:'technical', name:'Cone Gate Receiving & Turning', equipment:'Ball, wall, cones', setup:'Set 3 cone gates at different angles. Pass to wall, receive through a gate, turn, and dribble to the next gate.', duration:'15 reps per gate', why:'Game scenario: receiving with a defender on your back, turning into space.' },
+  { cat:'technical', name:'Finishing from Outside the Box', equipment:'Ball, goal', setup:'Self-pass from 25yd, strike with laces aiming for corners. Alternate left and right foot.', duration:'20 shots each foot', why:'Box-to-box midfielders who can score from distance are rare and valuable.' },
+  { cat:'technical', name:'Crossing from Byline', equipment:'Ball, goal', setup:'Dribble to byline at pace, whip in a cross to a target area (far post, near post, penalty spot). Self-serve.', duration:'15 crosses each side', why:'Crossing and delivery are key for wide midfielders — practice at game speed.' },
+  { cat:'technical', name:'Long Diagonal Switching', equipment:'Ball, field', setup:'From one sideline, drive a diagonal ball to the opposite sideline 40yd away. Focus on shape and accuracy.', duration:'20 switches', why:'Switching the point of attack is a midfielder\'s job — this must be automatic.' },
+
+  // Pressing
+  { cat:'pressing', name:'Shadow Pressing — 3 Cone Pattern', equipment:'3 cones', setup:'Set up 3 cones as opponent CB and two CMs. Shadow press at game speed — approach, cut off passing lane, recover, reset. 10 reps.', duration:'10 reps, 30s rest', why:'Pressing triggers win games — train the decision-making at game speed even solo.' },
+  { cat:'pressing', name:'Pressing Sprint Intervals', equipment:'Cones', setup:'Mark 15yd zones. Sprint to press a cone target, decelerate, backpedal to recover, repeat in a new direction. Simulates pressing multiple players.', duration:'6×45s, 60s rest', why:'Pressing is repeated sprint work — train the engine for it.' },
+  { cat:'pressing', name:'Ball Win + Counter Sprint', equipment:'Ball, cones', setup:'Sprint to a cone (opponent), shadow tackle, win the imaginary ball, turn and sprint 20yd with the ball to a target cone (counter attack).', duration:'8 reps, 90s rest', why:'Winning the ball means nothing if you can\'t transition to attack — train the full sequence.' }
+];
+
+function renderLibrary(catFilter){
+  if(!catFilter) catFilter = document.querySelector('#libraryFilter .seg-btn.active')?.dataset.cat || 'all';
+  const filtered = catFilter==='all' ? DRILLS : DRILLS.filter(d=>d.cat===catFilter);
+
+  const catLabels = { acceleration:'Acceleration', agility:'Agility', technical:'Technical', pressing:'Pressing Patterns' };
+
+  let html = '';
+  let currentCat = '';
+  for(const d of filtered){
+    if(catFilter==='all' && d.cat!==currentCat){
+      currentCat = d.cat;
+      html += `<div class="section-title" style="margin-top:12px">${catLabels[d.cat]||d.cat}</div>`;
+    }
+    html += `<div class="drill-card">
+      <div class="drill-name">${esc(d.name)}</div>
+      <div class="drill-meta">
+        <span>🎒 ${d.equipment}</span>
+        <span>⏱ ${d.duration}</span>
+      </div>
+      <div class="drill-setup">${d.setup}</div>
+      <div class="drill-why">${d.why}</div>
+    </div>`;
+  }
+
+  $('#libraryList').innerHTML = html || '<div style="text-align:center;padding:24px;color:var(--text-3)">No drills in this category</div>';
+}
+
+document.querySelectorAll('#libraryFilter .seg-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#libraryFilter .seg-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    renderLibrary(btn.dataset.cat);
+  });
+});
+
+// ==================================================
+//  SECTION 5: CROSS-TAB INTELLIGENCE
+// ==================================================
+async function renderInsights(){
+  const alerts = [];
+
+  // Mass to speed conversion
+  const weight = latestWeight || ATHLETE.weight_lbs;
+  const latest10m = getLatestTest('10m_sprint');
+  if(latest10m && weight){
+    // Could compare to baseline 10m
+    const baseline10m = athleticTests.filter(t=>t.test_type==='10m_sprint').slice(-1)[0];
+    if(baseline10m && baseline10m !== latest10m){
+      if(latest10m.value < baseline10m.value){
+        alerts.push({ cls:'info', title:'✅ Mass to Speed Conversion', body:'Your 10m time has improved while gaining mass — the plan is working. Functional mass is converting to acceleration.' });
+      } else if(latest10m.value > baseline10m.value){
+        alerts.push({ cls:'warn', title:'⚠️ Mass Gained but Speed Flat', body:'Your 10m time hasn\'t improved with mass gain. Increase plyometric volume and prioritize acceleration mechanics sessions this week.' });
+      }
+    }
+  }
+
+  // Technical volume warning
+  const weekAgo = new Date(today()+'T00:00:00'); weekAgo.setDate(weekAgo.getDate()-6);
+  const ballSessions = soccerSessions.filter(s => s.date >= weekAgo.toISOString().slice(0,10) && s.session_type==='ball');
+  if(ballSessions.length < 3){
+    alerts.push({ cls:'warn', title:'⚽ Ball Work Below D1 Threshold', body:`Only ${ballSessions.length} ball work sessions in the last 7 days. You need 4+ sessions minimum per week. Even 20 minutes of wall work counts.` });
+  }
+
+  // Acceleration focus reminder — check if most recent speed/agility session was 5+ days ago
+  const allSpeedSessions = soccerSessions.filter(s => s.session_type==='speed' && s.date <= today()).sort((a,b) => b.date.localeCompare(a.date));
+  const lastSpeedDate = allSpeedSessions.length ? allSpeedSessions[0].date : null;
+  const daysSinceLastSpeed = lastSpeedDate ? Math.floor((new Date(today()+'T00:00:00') - new Date(lastSpeedDate+'T00:00:00')) / 86400000) : 999;
+  const phase = getCurrentPhase();
+  if(phase.name==='Power-Speed Block' && daysSinceLastSpeed >= 5){
+    alerts.push({ cls:'warn', title:'🏃 Acceleration Focus Needed', body:`No speed session in ${daysSinceLastSpeed} days during your Power-Speed block. Acceleration is your identified weakness — this is your most important block for it. Log a speed session today.` });
+  }
+
+  // Match integration — match counts as conditioning + match for load
+  const todaySesh = soccerSessions.filter(s => s.date === today());
+  const hasMatch = todaySesh.some(s => s.session_type==='match');
+  if(hasMatch){
+    alerts.push({ cls:'info', title:'🏟️ Match Logged Today', body:'This counts as both your match AND your conditioning session today. Focus tomorrow on technical work only — no high intensity running.' });
+  }
+
+  // Group session multiplier — show 2x value impact
+  const hasGroup = todaySesh.some(s => s.session_type==='group');
+  if(hasGroup){
+    alerts.push({ cls:'info', title:'👥 Group Session — 2× Technical Value', body:'The decision-making pressure in group training doubles the technical development value compared to solo work. This session counts double for your weekly technical volume. Prioritize these whenever available.' });
+  }    // Recovery warning
+    if(recoveryScore !== null && recoveryScore < 55){
+      alerts.push({ cls:'danger', title:'🛑 Recovery Score Low', body:`Recovery score is ${recoveryScore}. Take a full rest day regardless of the plan. Your body adapts during rest, not during training.` });
+    }
+
+    // Load spike warning — match sessions count double for conditioning load
+    const loadScore = soccerSessions.filter(s => s.date >= weekAgo.toISOString().slice(0,10)).reduce((s,ss)=>{
+      let mult = ss.intensity==='Hard'?3:ss.intensity==='Medium'?2:1;
+      if(ss.session_type==='match') mult *= 1.5; // matches count as conditioning + match
+      return s + (ss.duration_minutes||0) * mult;
+    },0);
+  const allWeeks = [];
+  for(let w=4; w>=1; w--){
+    const ws = new Date(today()+'T00:00:00'); ws.setDate(ws.getDate()-w*7);
+    const we = new Date(ws); we.setDate(we.getDate()+6);
+    const wSessions = soccerSessions.filter(s => s.date >= ws.toISOString().slice(0,10) && s.date <= we.toISOString().slice(0,10));
+    allWeeks.push(wSessions.reduce((s,ss)=>s+(ss.duration_minutes||0)*(ss.intensity==='Hard'?3:ss.intensity==='Medium'?2:1),0));
+  }
+  const avgLoad = allWeeks.length ? allWeeks.reduce((s,v)=>s+v,0)/allWeeks.length : loadScore;
+  if(loadScore > avgLoad * 1.15 && recoveryScore !== null && recoveryScore < 65){
+    alerts.push({ cls:'danger', title:'🔴 Training Load Spike', body:'Your training load is in the top 15% of your average AND recovery is low. Take a full rest day tomorrow regardless of the plan.' });
+  }
+
+  // Endurance protection: check if Yo-Yo or RSA decay worsened across last 2 tests during mass gain
+  const yoyoTests = athleticTests.filter(t=>t.test_type==='yoyo_level').slice(0,2);
+  const rsaLast2 = rsaSessions.slice(0,2);
+  if((yoyoTests.length >= 2 || rsaLast2.length >= 2) && (latestWeight || ATHLETE.weight_lbs)){
+    const startWeight = ATHLETE.weight_lbs;
+    const currentWt = latestWeight || ATHLETE.weight_lbs;
+    if(currentWt >= startWeight + 3){
+      let enduranceDeclining = false;
+      if(yoyoTests.length >= 2 && yoyoTests[0].value < yoyoTests[1].value){
+        enduranceDeclining = true;
+      }
+      if(rsaLast2.length >= 2 && rsaLast2[0].decay_pct > rsaLast2[1].decay_pct){
+        enduranceDeclining = true;
+      }
+      if(enduranceDeclining){
+        alerts.push({ cls:'warn', title:'🫁 Endurance Declining During Mass Gain', body:'Your Yo-Yo score and/or repeated sprint ability is declining while gaining mass. Add one 20-minute aerobic maintenance session per week and reduce gym volume by one session.' });
+      }
+    }
+  }
+
+  // Pre-season readiness check (within 14 days of pre-season)
+  const daysToPreseason = Math.floor((new Date(PRESEASON_START+'T00:00:00') - new Date(today()+'T00:00:00')) / 86400000);
+  if(daysToPreseason <= 14 && daysToPreseason > 0){
+    const baseline10mLatest = athleticTests.filter(t=>t.test_type==='10m_sprint').slice(-1)[0];
+    const baselineYoyoLatest = athleticTests.filter(t=>t.test_type==='yoyo_level').slice(-1)[0];
+    const totalBallSessions = soccerSessions.filter(s=>s.session_type==='ball').length;
+    const totalSpeedSessions = soccerSessions.filter(s=>s.session_type==='speed').length;
+    const startWt = ATHLETE.weight_lbs;
+    const currWt = latestWeight || startWt;
+
+    const rc = good => good ? '#6BE3A4' : '#F2C063';
+    const wtChange = currWt - startWt;
+    const wtStr = `${currWt} lbs (${wtChange>=0?'+':''}${wtChange.toFixed(1)} from ${startWt})`;
+    const speedStr = latest10m ? `${latest10m.value}s` : 'No data';
+    const speedGood = latest10m && baseline10mLatest && latest10m.value <= baseline10mLatest.value;
+    const yoyoStr = baselineYoyoLatest ? `Level ${baselineYoyoLatest.value}` : 'No data';
+    const ballGood = totalBallSessions >= 28;
+    const speedSeshGood = totalSpeedSessions >= 14;
+
+    let readinessHtml = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">`;
+    readinessHtml += `<div style="font-size:11px"><span style="color:${rc(true)}">●</span> Weight: ${wtStr}</div>`;
+    readinessHtml += `<div style="font-size:11px"><span style="color:${rc(speedGood)}">●</span> 10m: ${speedStr}</div>`;
+    readinessHtml += `<div style="font-size:11px"><span style="color:${rc(!!baselineYoyoLatest)}">●</span> Yo-Yo: ${yoyoStr}</div>`;
+    readinessHtml += `<div style="font-size:11px"><span style="color:${rc(speedSeshGood)}">●</span> Speed sess.: ${totalSpeedSessions}</div>`;
+    readinessHtml += `<div style="font-size:11px"><span style="color:${rc(ballGood)}">●</span> Ball sess.: ${totalBallSessions}</div>`;
+    readinessHtml += `</div>`;
+
+    alerts.push({ cls:'info', title:`📊 Pre-Season Readiness — ${daysToPreseason} days out`, body:readinessHtml });
+  }
+
+  if(!alerts.length){
+    $('#insightCards').innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-3);font-size:13px">Log more data across tabs to unlock insights</div>';
+    return;
+  }
+
+  $('#insightCards').innerHTML = alerts.map(a => `
+    <div class="alert-card ${a.cls}">
+      <div class="alert-card-title">${a.title}</div>
+      <div>${a.body}</div>
+    </div>
+  `).join('');
+}
+
+// ==================================================
+//  CROSS-TAB APP STATE SYNC
+// ==================================================
+async function updateAppState(){
+  const weekAgo = new Date(today()+'T00:00:00'); weekAgo.setDate(weekAgo.getDate()-6);
+  const weekSessions = soccerSessions.filter(s => s.date >= weekAgo.toISOString().slice(0,10));
+  const ballMin = weekSessions.filter(s=>s.session_type==='ball').reduce((s,ss)=>s+(ss.duration_minutes||0),0);
+  const speedCount = weekSessions.filter(s=>s.session_type==='speed').length;
+  const loadScore = weekSessions.reduce((s,ss)=>s+(ss.duration_minutes||0)*(ss.intensity==='Hard'?3:ss.intensity==='Medium'?2:1),0);
+  const phase = getCurrentPhase();
+  const daysToPreseason = Math.max(0, Math.floor((new Date(PRESEASON_START+'T00:00:00') - new Date(today()+'T00:00:00')) / 86400000));
+
+  try {
+    await sb.from('app_state').upsert({
+      key: APP_KEY,
+      data: {
+        today_session_count: soccerSessions.filter(s=>s.date===today()).length,
+        weekly_ball_minutes: ballMin,
+        weekly_speed_sessions: speedCount,
+        weekly_load_score: loadScore,
+        days_to_preseason: daysToPreseason,
+        current_offseason_phase: phase.name
+      },
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'key' });
+  } catch(e){}
+}
+
+// ==================================================
+//  TOOLTIPS
+// ==================================================
+document.addEventListener('click', (e) => {
+  if(e.target.classList.contains('tooltip-trigger')){
+    const tip = e.target.dataset.tip;
+    if(!tip) return;
+    // Remove existing tooltip
+    document.querySelectorAll('.tooltip-content').forEach(t=>t.remove());
+    const tooltip = document.createElement('div');
+    tooltip.className = 'tooltip-content';
+    tooltip.textContent = tip;
+    tooltip.style.display = 'block';
+    const rect = e.target.getBoundingClientRect();
+    tooltip.style.left = Math.min(rect.left, window.innerWidth-270) + 'px';
+    tooltip.style.top = (rect.bottom + 6) + 'px';
+    document.body.appendChild(tooltip);
+    setTimeout(() => tooltip.remove(), 4000);
+  } else {
+    document.querySelectorAll('.tooltip-content').forEach(t=>t.remove());
+  }
+});
+
+// ==================================================
+//  MODAL CLOSE ON BACKDROP CLICK
+// ==================================================
+document.querySelectorAll('.modal-bg').forEach(bg => {
+  bg.addEventListener('click', (e) => { if(e.target === bg) bg.classList.remove('show'); });
+});
+
+// ==================================================
+//  INIT
+// ==================================================
+(async function init(){
+  await loadAll();
+  renderTesting();
+  renderLibrary();
+  await renderInsights();
+
+  // If no plan config, seed with defaults
+  if(!planConfig){
+    const { data: newPlan } = await sb.from('offseason_plan').insert({
+      start_date: OFFSEASON_PLAN.startDate,
+      end_date: PRESEASON_START,
+      current_phase: 'foundation',
+      phase_week: 1,
+      mode: 'offseason'
+    }).select().single();
+    planConfig = newPlan || { start_date:OFFSEASON_PLAN.startDate, mode:'offseason', id:0 };
+  }
+  renderPlan();
+
+  // Periodic refresh
+  setInterval(async () => {
+    await loadRecovery();
+    await loadSessions();
+    await loadTests();
+    await loadLatestWeight();
+    renderPlan();
+    renderInsights();
+    renderTesting();
+  }, 60000);
+})();
+</script>
+</body>
+</html>

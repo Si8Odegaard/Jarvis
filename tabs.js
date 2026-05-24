@@ -12,6 +12,7 @@
     nutrition: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>',
     gym: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 4v16M18 4v16M6 12h12M9 7h6M9 17h6"/></svg>',
     water: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2.5c3 4.5 7 7.2 7 11a7 7 0 1 1-14 0c0-3.8 4-6.5 7-11z"/></svg>',
+    soccer: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10"/><path d="M12 2a15.3 15.3 0 0 0-4 10 15.3 15.3 0 0 0 4 10"/><path d="M2 12h20"/><line x1="12" y1="2" x2="12" y2="22"/><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"/><line x1="19.1" y1="4.9" x2="4.9" y2="19.1"/></svg>',
   };
 
   const TABS = [
@@ -20,6 +21,7 @@
     { id: 'nutrition', label: 'Nutrition', panelId: 'tab-panel-nutrition', iframeSrc: 'nutrition.html?embed=1' },
     { id: 'gym', label: 'Gym', panelId: 'tab-panel-gym', iframeSrc: 'gym.html?embed=1' },
     { id: 'water', label: 'Water', panelId: 'tab-panel-water', iframeSrc: 'po-water.html?embed=1' },
+    { id: 'soccer', label: 'Soccer', panelId: 'tab-panel-soccer', iframeSrc: 'soccer.html?embed=1' },
   ];
 
   let activeTab = 'home';
