@@ -328,15 +328,17 @@ body.topbar-modal-open {
 
     try {
       const supa = window.supabase.createClient(TOPBAR_SUPABASE_URL, TOPBAR_SUPABASE_KEY);
+      // Push to the 'water' key — same key po-water.html uses.
+      // This prevents stale 'health'-key data from overwriting profile settings.
       const { data } = await supa
-        .from('app_state').select('data').eq('key', 'health').maybeSingle();
+        .from('app_state').select('data').eq('key', 'water').maybeSingle();
       const current = (data && data.data) || {};
       const merged = Object.assign({}, current, { po_water_v1: localWater });
       await supa.from('app_state').upsert(
-        { key: 'health', data: merged, updated_at: new Date().toISOString() },
+        { key: 'water', data: merged, updated_at: new Date().toISOString() },
         { onConflict: 'key' }
       );
-    } catch (e) { /* offline — local change will sync next time user visits health */ }
+    } catch (e) { /* offline — local change will sync next time user visits water */ }
   }
 
   function addWater() {
@@ -449,9 +451,14 @@ body.topbar-modal-open {
     window.addEventListener('message', (e) => {
       if (e.data && (
         e.data.type === 'po-water-updated' ||
-        e.data.type === 'stack-updated' ||
-        e.data.type === 'dashboard-synced'
+        e.data.type === 'stack-updated'
       )) {
+        // Render immediately from localStorage — the iframe already saved it.
+        // Don't wait for cloud fetch, which can race with the iframe's push
+        // and pull stale data that overwrites fresh localStorage settings.
+        render();
+      }
+      if (e.data && e.data.type === 'dashboard-synced') {
         pullCloudState();
       }
     });
@@ -480,17 +487,13 @@ body.topbar-modal-open {
           }
         });
       }
-      if (health && health.data && typeof health.data === 'object') {
-        const h = health.data;
-        if (h.po_water_v1 != null) {
-          try { localStorage.setItem('po_water_v1', JSON.stringify(h.po_water_v1)); } catch (e) {}
-        }
-      }
-      if (water && water.data && typeof water.data === 'object') {
-        const w = water.data;
-        if (w.po_water_v1 != null) {
-          try { localStorage.setItem('po_water_v1', JSON.stringify(w.po_water_v1)); } catch (e) {}
-        }
+      // Water: prefer the dedicated 'water' key (authoritative).
+      // Only fall back to the old 'health' key if 'water' has no data.
+      if (water && water.data && typeof water.data === 'object' && water.data.po_water_v1 != null) {
+        try { localStorage.setItem('po_water_v1', JSON.stringify(water.data.po_water_v1)); } catch (e) {}
+      } else if (health && health.data && typeof health.data === 'object' && health.data.po_water_v1 != null) {
+        // Legacy fallback — migrate from health to water key next time water tab opens
+        try { localStorage.setItem('po_water_v1', JSON.stringify(health.data.po_water_v1)); } catch (e) {}
       }
       if (stack && stack.data && typeof stack.data === 'object') {
         Object.keys(stack.data).forEach((k) => {
