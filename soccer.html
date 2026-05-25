@@ -675,7 +675,7 @@ const APP_KEY = 'soccer';
 // ════════════════════════════════════════════════════════════
 //  HELPERS
 // ════════════════════════════════════════════════════════════
-const $ = id => document.getElementById(id);
+const $ = id => document.getElementById(id.replace(/^#/, ''));
 function esc(s){ const str=String(s||''); return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function today(){ return new Date().toISOString().slice(0,10); }
 
