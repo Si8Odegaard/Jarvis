@@ -776,6 +776,183 @@
       .day-ring-pct { font-size: 32px; }
       .day-ring-status { font-size: 13px; }
     }
+
+    /* ── Morning Briefing Command Center ── */
+    .brief-card {
+      background: linear-gradient(135deg, rgba(107,227,164,0.06), rgba(255,255,255,0.03));
+      border: 1px solid rgba(107,227,164,0.16);
+      border-radius: 16px;
+      padding: 20px 22px;
+      margin-bottom: 14px;
+      backdrop-filter: blur(24px) saturate(1.2);
+      -webkit-backdrop-filter: blur(24px) saturate(1.2);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+    }
+    .brief-text { font-size: 13.5px; line-height: 1.7; color: var(--text-secondary); }
+    .brief-highlight { color: var(--success); font-weight: 700; }
+    .brief-action { margin-top: 14px; }
+    .brief-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 10px 18px; border-radius: 10px;
+      border: 1px solid rgba(107,227,164,0.28);
+      background: rgba(107,227,164,0.08);
+      color: var(--success); font-size: 13px; font-weight: 600;
+      cursor: pointer; font-family: inherit; transition: all 0.15s;
+    }
+    .brief-btn:hover { background: rgba(107,227,164,0.16); }
+
+    /* Jarvis Score */
+    .jarvis-section { text-align: center; margin-bottom: 18px; }
+    .jarvis-score {
+      font-size: 72px; font-weight: 800; letter-spacing: -0.04em;
+      font-variant-numeric: tabular-nums; line-height: 1;
+    }
+    .jarvis-score.green { color: #6BE3A4; }
+    .jarvis-score.yellow { color: #F2C063; }
+    .jarvis-score.red { color: #FF6B6B; }
+    .jarvis-arrow { font-size: 20px; margin-left: 8px; }
+    .jarvis-arrow.up { color: #6BE3A4; }
+    .jarvis-arrow.down { color: #FF6B6B; }
+    .jarvis-breakdown {
+      display: flex; justify-content: center; gap: 18px;
+      margin-top: 12px; flex-wrap: wrap;
+    }
+    .jarvis-item { font-size: 10.5px; font-family: var(--mono); color: var(--text-tertiary); text-align: center; }
+    .jarvis-item-num { font-size: 15px; font-weight: 700; display: block; margin-bottom: 2px; }
+    .jarvis-item-num.good { color: var(--success); }
+    .jarvis-item-num.warn { color: var(--warning); }
+    .jarvis-item-num.bad { color: var(--danger); }
+
+    /* Status Grid */
+    .status-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 10px; margin-bottom: 14px;
+    }
+    .status-card {
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px; padding: 14px 16px;
+      backdrop-filter: blur(24px) saturate(1.2);
+      -webkit-backdrop-filter: blur(24px) saturate(1.2);
+    }
+    .status-card-icon { font-size: 20px; margin-bottom: 6px; }
+    .status-card-title {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 6px;
+    }
+    .status-card-value {
+      font-size: 28px; font-weight: 700; letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums;
+    }
+    .status-card-value.good { color: var(--success); }
+    .status-card-value.warn { color: var(--warning); }
+    .status-card-value.bad { color: var(--danger); }
+    .status-card-sub { font-size: 11px; color: var(--text-tertiary); margin-top: 4px; }
+    .status-card-trend { font-size: 11px; margin-top: 2px; }
+    .status-card-trend.up { color: var(--success); }
+    .status-card-trend.down { color: var(--danger); }
+    .status-card-trend.neutral { color: var(--text-tertiary); }
+
+    /* Active Alerts */
+    .alerts-section { margin-bottom: 14px; }
+    .alerts-scroll {
+      display: flex; gap: 10px; overflow-x: auto;
+      -webkit-overflow-scrolling: touch; scrollbar-width: none;
+      padding-bottom: 4px;
+    }
+    .alerts-scroll::-webkit-scrollbar { display: none; }
+    .alert-pill {
+      flex: 0 0 auto; width: 260px; padding: 14px 16px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-left: 4px solid;
+      backdrop-filter: blur(24px) saturate(1.2);
+      -webkit-backdrop-filter: blur(24px) saturate(1.2);
+    }
+    .alert-pill.red { border-left-color: #FF6B6B; }
+    .alert-pill.yellow { border-left-color: #F2C063; }
+    .alert-pill.green { border-left-color: #6BE3A4; }
+    .alert-pill-title { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+    .alert-pill-body { font-size: 11px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 8px; }
+    .alert-pill-btn {
+      display: inline-block; padding: 5px 12px; border-radius: 6px;
+      font-size: 11px; font-weight: 600; cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.06);
+      color: var(--text-primary); font-family: inherit; transition: all 0.15s;
+    }
+    .alert-pill-btn:hover { background: rgba(255,255,255,0.12); }
+
+    /* Quick Log Row */
+    .quick-log-row {
+      display: flex; gap: 8px; margin-bottom: 14px;
+      overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    }
+    .quick-log-row::-webkit-scrollbar { display: none; }
+    .quick-log-btn {
+      flex: 0 0 auto; display: flex; align-items: center; gap: 6px;
+      padding: 10px 16px; border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04); color: var(--text-secondary);
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      font-family: inherit; transition: all 0.15s; white-space: nowrap;
+    }
+    .quick-log-btn:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+    .quick-log-inline { display: flex; gap: 6px; align-items: center; }
+    .quick-log-input {
+      width: 74px; padding: 8px 10px; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.3); color: var(--text-primary);
+      font-size: 13px; font-family: inherit; font-weight: 600;
+    }
+    .quick-log-input:focus { outline: none; border-color: var(--success); }
+    .quick-log-save {
+      padding: 8px 14px; border-radius: 8px; border: none;
+      background: var(--success); color: #04201A;
+      font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit;
+    }
+
+    /* Weekly Snapshot */
+    .weekly-snapshot {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 8px; margin-bottom: 20px;
+    }
+    .snapshot-item {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 10px; padding: 12px 8px; text-align: center;
+    }
+    .snapshot-num {
+      font-size: 20px; font-weight: 700; font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+    }
+    .snapshot-num.good { color: var(--success); }
+    .snapshot-num.neutral { color: var(--text-primary); }
+    .snapshot-label {
+      font-size: 9px; text-transform: uppercase; letter-spacing: 0.10em;
+      color: var(--text-tertiary); margin-top: 4px; font-weight: 600;
+    }
+    .snapshot-dots {
+      display: flex; gap: 3px; justify-content: center; margin-top: 4px;
+    }
+    .snapshot-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+    }
+    .snapshot-dot.filled {
+      background: var(--success); box-shadow: 0 0 4px rgba(107,227,164,0.4);
+    }
+
+    @media (max-width: 480px) {
+      .jarvis-score { font-size: 56px; }
+      .jarvis-breakdown { gap: 12px; }
+      .status-grid { gap: 8px; }
+      .status-card-value { font-size: 22px; }
+      .status-card { padding: 12px; }
+      .weekly-snapshot { gap: 6px; }
+      .snapshot-item { padding: 10px 6px; }
+      .snapshot-num { font-size: 17px; }
+    }
   </style>
 </head>
 <body class="has-topbar has-dash-tabs dashboard-page">
@@ -785,6 +962,48 @@
     <p class="sync-banner" id="syncBanner">Connecting…</p>
 
     <h1 class="dash-title">My Dashboard</h1>
+
+    <!-- ═══ MORNING BRIEFING COMMAND CENTER ═══ -->
+    <div class="brief-card" id="briefCard">
+      <div class="brief-text" id="briefText">Loading your morning brief…</div>
+      <div class="brief-action hidden" id="briefAction">
+        <button class="brief-btn" id="briefCheckinBtn">Complete Morning Check-in →</button>
+      </div>
+    </div>
+
+    <div class="jarvis-section" id="jarvisSection">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.18em;color:var(--text-tertiary);font-weight:700;margin-bottom:6px;">Jarvis Score</div>
+      <div class="jarvis-score" id="jarvisScore">--</div>
+      <div class="jarvis-breakdown" id="jarvisBreakdown"></div>
+    </div>
+
+    <div class="status-grid" id="statusGrid">
+      <div class="status-card"><div class="status-card-title">Recovery</div><div class="status-card-value">--</div></div>
+      <div class="status-card"><div class="status-card-title">Nutrition</div><div class="status-card-value">--</div></div>
+      <div class="status-card"><div class="status-card-title">Training</div><div class="status-card-value">--</div></div>
+      <div class="status-card"><div class="status-card-title">Body</div><div class="status-card-value">--</div></div>
+    </div>
+
+    <div class="alerts-section" id="alertsSection" style="display:none;">
+      <div class="section-title">Active Alerts</div>
+      <div class="alerts-scroll" id="alertsScroll"></div>
+    </div>
+
+    <div class="quick-log-row" id="quickLogRow">
+      <button class="quick-log-btn" id="quickWeightBtn">⚖️ Log Weight</button>
+      <button class="quick-log-btn" id="quickWaterBtn">💧 Add Water</button>
+      <button class="quick-log-btn" id="quickCheckinBtn">🌅 Check-in</button>
+      <button class="quick-log-btn" id="quickSessionBtn">⚽ Log Session</button>
+    </div>
+
+    <div class="weekly-snapshot" id="weeklySnapshot">
+      <div class="snapshot-item"><div class="snapshot-num neutral">--</div><div class="snapshot-label">Gym Sessions</div></div>
+      <div class="snapshot-item"><div class="snapshot-num neutral">--</div><div class="snapshot-label">Ball Work</div></div>
+      <div class="snapshot-item"><div class="snapshot-num neutral">--</div><div class="snapshot-label">Speed Sessions</div></div>
+      <div class="snapshot-item"><div class="snapshot-num neutral">--</div><div class="snapshot-label">Protein Days</div></div>
+      <div class="snapshot-item"><div class="snapshot-num neutral">--</div><div class="snapshot-label">Avg Recovery</div></div>
+      <div class="snapshot-item"><div class="snapshot-num neutral">--</div><div class="snapshot-label">Weight Δ</div></div>
+    </div>
 
     <div class="ticker-row">
       <div class="goal-ticker" id="goalTicker" aria-live="polite" aria-atomic="true">
@@ -922,6 +1141,41 @@
     let storeReady = false;
     let todayExpanded = false;
     let tomorrowExpanded = false;
+
+    /* ── Morning Briefing State ── */
+    let briefingData = null;
+    const BRIEFING_START = '2026-06-01';
+    const BRIEFING_PRESEASON = '2026-07-20';
+    const START_WEIGHT = 135;
+    const BLOCKS = [
+      { name:'Foundation Block', weeks:2, goal:'Build muscle base & establish movement quality.' },
+      { name:'Strength-Speed Block', weeks:2, goal:'Convert muscle to power. Heavier gym, add plyometrics.' },
+      { name:'Power-Speed Block', weeks:2, goal:'Express power & speed. Max velocity sprints, game-realistic ball work.' },
+      { name:'Taper Week', weeks:1, goal:'Drop volume 35%. Arrive fresh and sharp for pre-season.' }
+    ];
+
+    function briefingToday() { return new Date().toISOString().slice(0,10); }
+
+    function getBriefingPhase() {
+      const now = new Date(briefingToday()+'T00:00:00');
+      const preseason = new Date(BRIEFING_PRESEASON+'T00:00:00');
+      if(now >= preseason) return { mode:'preseason', name:'Pre-Season', week:1, totalWeeks:1, daysLeft:0, dayOfOffseason:0, goal:'Individual work when recovery allows.' };
+      const start = new Date(BRIEFING_START+'T00:00:00');
+      let dayOffset = Math.floor((now - start) / 86400000);
+      const dayOfOffseason = Math.max(1, dayOffset + 1);
+      if(dayOffset < 0) dayOffset = 0;
+      let weekAccum = 0;
+      for(const block of BLOCKS) {
+        const blockDays = block.weeks * 7;
+        if(dayOffset < weekAccum * 7 + blockDays) {
+          const weekInBlock = Math.floor((dayOffset - weekAccum * 7) / 7) + 1;
+          const daysLeft = blockDays - (dayOffset - weekAccum * 7);
+          return { mode:'offseason', name:block.name, goal:block.goal, week:weekInBlock, totalWeeks:block.weeks, daysLeft:Math.max(0,daysLeft), dayOfOffseason };
+        }
+        weekAccum += block.weeks;
+      }
+      return { mode:'preseason', name:'Pre-Season', week:1, totalWeeks:1, daysLeft:0, dayOfOffseason:0, goal:'Individual work when recovery allows.' };
+    }
 
     const $ = (id) => document.getElementById(id);
 
@@ -1679,8 +1933,503 @@
       loadTomorrow();
     });
 
+    async function loadMorningBriefing() {
+      if (!supa) return;
+      try {
+        const today = briefingToday();
+        const weekAgo = new Date(today+'T00:00:00'); weekAgo.setDate(weekAgo.getDate()-6);
+        const weekStart = weekAgo.toISOString().slice(0,10);
+        const last7 = new Date(today+'T00:00:00'); last7.setDate(last7.getDate()-6);
+        const last7Str = last7.toISOString().slice(0,10);
+
+        const [nutRes, soccerRes, checkinsRes, weightRes, testsRes, sessRes, gymRes, rsaRes, planRes] = await Promise.all([
+          supa.from('app_state').select('data').eq('key','nutrition').maybeSingle(),
+          supa.from('app_state').select('data').eq('key','soccer').maybeSingle(),
+          supa.from('daily_checkins').select('*').gte('date',last7Str).order('date',{ascending:false}),
+          supa.from('weight_logs').select('*').order('date',{ascending:false}).limit(14),
+          supa.from('athletic_tests').select('*').order('date',{ascending:false}).limit(20),
+          supa.from('soccer_sessions').select('*').gte('date',last7Str).order('date',{ascending:false}),
+          supa.from('workout_sessions').select('*').gte('date',last7Str).order('date',{ascending:false}),
+          supa.from('sprint_decay_sessions').select('*').order('date',{ascending:false}).limit(3),
+          supa.from('offseason_plan').select('*').order('last_updated',{ascending:false}).limit(1).maybeSingle()
+        ]);
+
+        const nutData = nutRes?.data?.data || {};
+        const socData = soccerRes?.data?.data || {};
+        const recoveryToday = nutData.recovery_score_today ?? null;
+        const recovery7DayAvg = nutData.recovery_score_7day_avg ?? null;
+
+        const checkins = checkinsRes?.data || [];
+        const proteinDays = checkins.filter(c => c.protein_goal_met).length;
+
+        const weights = weightRes?.data || [];
+        const latestWeight = weights.length ? parseFloat(weights[0].weight) : null;
+        const weightWeekAgo = weights.filter(w => w.date <= weekStart).slice(0,1);
+        const prevWeekWeight = weightWeekAgo.length ? parseFloat(weightWeekAgo[0].weight) : null;
+        const weightDelta = latestWeight && prevWeekWeight ? Math.round((latestWeight - prevWeekWeight) * 10) / 10 : null;
+
+        const tests = testsRes?.data || [];
+        const sessions = sessRes?.data || [];
+        const gymSessions = gymRes?.data || [];
+        const rsaSessions = rsaRes?.data || [];
+        const plan = planRes?.data;
+
+        // Session counts this week
+        const weekSessions = sessions.filter(s => s.date >= weekStart);
+        const gymCount = gymSessions.filter(s => s.date >= weekStart && s.completed).length;
+        const ballCount = weekSessions.filter(s => s.session_type === 'ball').length;
+        const speedCount = weekSessions.filter(s => s.session_type === 'speed').length;
+
+        // Check if check-in logged today
+        const todayCheckin = checkins.find(c => c.date === today);
+
+        // Protein streak
+        let proteinStreak = 0;
+        const sortedCheckins = [...checkins].sort((a,b) => b.date.localeCompare(a.date));
+        for (const c of sortedCheckins) {
+          if (c.protein_goal_met) proteinStreak++;
+          else break;
+        }
+
+        // Athletic trend: direction of last two test results across all test types
+        let athleticTrend = 0;
+        let trendTests = 0;
+        const lowerBetter = ['10m_sprint','30m_sprint','40yd_dash','505_shuttle','t_test','ladder_10yd'];
+        const higherBetter = ['vertical_jump','broad_jump','yoyo_level'];
+        const allTestTypes = [...lowerBetter, ...higherBetter];
+        for (const type of allTestTypes) {
+          const typeTests = tests.filter(t => t.test_type === type).slice(0,2);
+          if (typeTests.length >= 2) {
+            const diff = typeTests[1].value - typeTests[0].value;
+            // For lower-is-better: positive diff means declining (newer > older = worse)
+            // For higher-is-better: positive diff means improving (newer > older = better)
+            const improving = lowerBetter.includes(type) ? (diff < 0) : (diff > 0);
+            athleticTrend += improving ? 1 : -1;
+            trendTests++;
+          }
+        }
+        // Normalize to -1..1 range
+        if (trendTests > 0) athleticTrend = athleticTrend / trendTests;
+
+        // Save/load previous Jarvis score for directional arrow
+        let prevJarvisScore = null;
+        try {
+          const { data: jarvisData } = await supa.from('app_state').select('data').eq('key','jarvis_score').maybeSingle();
+          if (jarvisData?.data?.score !== undefined) prevJarvisScore = jarvisData.data.score;
+        } catch(_) {}
+
+        // RSA decay
+        const latestRSA = rsaSessions.length ? rsaSessions[0] : null;
+
+        // Weekly avg recovery
+        const weeklyRecoveryVals = [];
+        if (recoveryToday !== null) weeklyRecoveryVals.push(recoveryToday);
+        // Use the 7-day avg directly if available, otherwise use today's
+        const avgRecovery = recovery7DayAvg || recoveryToday;
+
+        // Phase
+        const phase = getBriefingPhase();
+
+        // Today's recommendation (simplified for brief)
+        const dow = new Date().getDay();
+        let todayRec = 'Rest day';
+        if (phase.mode === 'preseason') {
+          todayRec = (dow === 0 || dow === 6) ? 'Rest day' : 'Technical ball work or light gym';
+        } else if (phase.name === 'Foundation Block') {
+          if (dow === 1) todayRec = 'Gym: Upper Push';
+          else if (dow === 2) todayRec = 'Ball Work + Ladder';
+          else if (dow === 3) todayRec = 'Gym: Lower Body';
+          else if (dow === 4) todayRec = 'Acceleration + Plyos';
+          else if (dow === 5) todayRec = 'Gym: Upper Pull';
+          else if (dow === 6) todayRec = 'Ball Work: Finishing';
+          else todayRec = 'Rest day';
+        } else {
+          todayRec = 'Check Plan tab';
+        }
+
+        briefingData = {
+          today, phase, recoveryToday, recovery7DayAvg, avgRecovery,
+          latestWeight, weightDelta, weightWeekAgo: prevWeekWeight,
+          proteinDays, proteinStreak, todayCheckin, checkins,
+          tests, sessions, weekSessions, gymCount, ballCount, speedCount,
+          athleticTrend, latestRSA, rsaSessions,
+          todayRec, plan, nutData, socData, prevJarvisScore
+        };
+
+        renderAllBriefing();
+      } catch(e) {
+        console.error('Briefing load error:', e);
+      }
+    }
+
+    function renderAllBriefing() {
+      if (!briefingData) return;
+      renderDailyBrief();
+      renderJarvisScore();
+      renderStatusGrid();
+      renderAlerts();
+      renderWeeklySnapshot();
+    }
+
+    function renderDailyBrief() {
+      const d = briefingData;
+      const phase = d.phase;
+      const name = 'Silas';
+
+      if (!d.todayCheckin) {
+        $('briefText').textContent = `Complete your morning check-in to personalize today's brief.`;
+        $('briefAction').classList.remove('hidden');
+        return;
+      }
+      $('briefAction').classList.add('hidden');
+
+      let brief = `Good morning ${name}. `;
+      if (phase.mode === 'preseason') {
+        brief += `Pre-season active. Individual work when recovery allows. `;
+      } else {
+        brief += `<span class="brief-highlight">${phase.name}</span> — Day ${phase.dayOfOffseason} of off-season (${phase.daysLeft} days to pre-season). `;
+      }
+      brief += `<span class="brief-highlight">${d.todayRec}</span>. `;
+      brief += `Recovery: <span class="brief-highlight">${d.recoveryToday ?? '--'}/100</span>. `;
+      const wt = d.latestWeight || START_WEIGHT;
+      const wtDiff = wt - START_WEIGHT;
+      const wtSign = wtDiff >= 0 ? '+' : '';
+      brief += `Weight: <span class="brief-highlight">${wt}lbs</span> (${wtSign}${wtDiff.toFixed(1)} from ${START_WEIGHT}lbs).`;
+
+      // One specific action item based on most important alert
+      if (d.recoveryToday !== null && d.recoveryToday < 55) {
+        brief += ` Recovery is low — prioritize sleep and hydration today.`;
+      } else if (d.proteinDays < 4) {
+        brief += ` Protein has been below target — hit your goal today.`;
+      }
+
+      $('briefText').innerHTML = brief;
+    }
+
+    function renderJarvisScore() {
+      const d = briefingData;
+
+      // Recovery component (30%)
+      const recRaw = d.recovery7DayAvg || d.recoveryToday || 50;
+      const recScore = Math.min(100, Math.max(0, recRaw));
+
+      // Nutrition / protein component (20%)
+      const nutScore = Math.round((d.proteinDays / 7) * 100);
+
+      // Training Load Balance (25%)
+      const loadRaw = d.socData?.weekly_load_score || 0;
+      // Normalize: higher than 1500 = overtraining, below 300 = undertraining
+      let loadScore = 50;
+      if (loadRaw > 0) {
+        if (loadRaw <= 1500) loadScore = Math.round((loadRaw / 1500) * 50 + 25);
+        else loadScore = Math.max(0, Math.round(75 - ((loadRaw - 1500) / 500) * 25));
+      }
+      loadScore = Math.min(100, Math.max(0, loadScore));
+
+      // Athletic Trend (25%) - now -1..1 range, map to 0..100
+      let athScore = 50;
+      if (d.athleticTrend !== null) {
+        athScore = Math.round(50 + d.athleticTrend * 25);
+      }
+      athScore = Math.min(100, Math.max(0, athScore));
+
+      // Composite
+      const composite = Math.round(recScore * 0.30 + nutScore * 0.20 + loadScore * 0.25 + athScore * 0.25);
+
+      // Directional arrow vs last week
+      let arrowHtml = '';
+      if (d.prevJarvisScore !== null && d.prevJarvisScore !== undefined) {
+        const diff = composite - d.prevJarvisScore;
+        if (diff > 2) arrowHtml = '<span class="jarvis-arrow up">▲</span>';
+        else if (diff < -2) arrowHtml = '<span class="jarvis-arrow down">▼</span>';
+        else arrowHtml = '<span class="jarvis-arrow" style="color:var(--text-tertiary)">▬</span>';
+      }
+
+      const scoreEl = $('jarvisScore');
+      scoreEl.innerHTML = composite + arrowHtml;
+      scoreEl.className = 'jarvis-score ' + (composite >= 75 ? 'green' : composite >= 55 ? 'yellow' : 'red');
+
+      function statusWord(s) {
+        if (s >= 75) return 'Good';
+        if (s >= 55) return 'Okay';
+        if (s >= 35) return 'Low';
+        return 'Poor';
+      }
+      function cls(s) { return s >= 75 ? 'good' : s >= 55 ? 'warn' : 'bad'; }
+
+      $('jarvisBreakdown').innerHTML = `
+        <div class="jarvis-item"><span class="jarvis-item-num ${cls(recScore)}">${recScore}</span>Recovery ${statusWord(recScore)}</div>
+        <div class="jarvis-item"><span class="jarvis-item-num ${cls(nutScore)}">${nutScore}</span>Nutrition ${statusWord(nutScore)}</div>
+        <div class="jarvis-item"><span class="jarvis-item-num ${cls(loadScore)}">${loadScore}</span>Load ${statusWord(loadScore)}</div>
+        <div class="jarvis-item"><span class="jarvis-item-num ${cls(athScore)}">${athScore}</span>Athletic ${statusWord(athScore)}</div>
+      `;
+
+      // Persist score for next comparison
+      if (supa) {
+        supa.from('app_state').upsert({
+          key:'jarvis_score', data:{ score: composite },
+          updated_at: new Date().toISOString()
+        }, { onConflict:'key' }).catch(()=>{});
+      }
+    }
+
+    function renderStatusGrid() {
+      const d = briefingData;
+
+      // Recovery card
+      const recScore = d.recoveryToday ?? 0;
+      let recStatus = '--', recCls = '';
+      if (recScore >= 75) { recStatus = 'Fresh'; recCls = 'good'; }
+      else if (recScore >= 60) { recStatus = 'Okay'; recCls = ''; }
+      else if (recScore >= 45) { recStatus = 'Fatigued'; recCls = 'warn'; }
+      else if (recScore > 0) { recStatus = 'Depleted'; recCls = 'bad'; }
+
+      // Nutrition card
+      const proteinStreak = d.proteinStreak || 0;
+      const proteinTarget = 140; // grams per day target
+      const yesterday = new Date(briefingToday()+'T00:00:00'); yesterday.setDate(yesterday.getDate()-1);
+      const yestStr = yesterday.toISOString().slice(0,10);
+      const yesterdayCheckin = (d.checkins || []).find(c => c.date === yestStr);
+      const yesterdayProtein = yesterdayCheckin?.protein_grams || null;
+
+      // Training card
+      const phase = d.phase;
+
+      // Body card
+      const wt = d.latestWeight || START_WEIGHT;
+      const wtDiff = wt - START_WEIGHT;
+      let wtTrend = 'neutral', wtArrow = '→';
+      if (d.weightDelta !== null) {
+        if (d.weightDelta > 0.3) { wtTrend = 'up'; wtArrow = '↑'; }
+        else if (d.weightDelta < -0.3) { wtTrend = 'down'; wtArrow = '↓'; }
+      }
+
+      $('statusGrid').innerHTML = `
+        <div class="status-card">
+          <div class="status-card-icon">🛌</div>
+          <div class="status-card-title">Recovery</div>
+          <div class="status-card-value ${recCls}">${d.recoveryToday ?? '--'}</div>
+          <div class="status-card-sub">${recStatus}</div>
+        </div>
+        <div class="status-card">
+          <div class="status-card-icon">🥩</div>
+          <div class="status-card-title">Nutrition</div>
+          <div class="status-card-value">${d.proteinDays}/7</div>
+          <div class="status-card-sub">Target: ${proteinTarget}g · ${yesterdayProtein ? 'Yesterday: '+yesterdayProtein+'g' : 'No data yesterday'}</div>
+          <div class="status-card-trend ${proteinStreak >= 7 ? 'up' : 'neutral'}">${proteinStreak}d adherence streak</div>
+        </div>
+        <div class="status-card">
+          <div class="status-card-icon">⚽</div>
+          <div class="status-card-title">Training</div>
+          <div class="status-card-value">${phase.name}</div>
+          <div class="status-card-sub">${d.todayRec}</div>
+          <div class="status-card-trend neutral">${phase.daysLeft}d to pre-season</div>
+        </div>
+        <div class="status-card">
+          <div class="status-card-icon">⚖️</div>
+          <div class="status-card-title">Body</div>
+          <div class="status-card-value">${wt}lbs</div>
+          <div class="status-card-sub">${wtDiff >= 0 ? '+' : ''}${wtDiff.toFixed(1)} from ${START_WEIGHT}lbs</div>
+          <div class="status-card-trend ${wtTrend}">${wtArrow} weekly</div>
+        </div>
+      `;
+    }
+
+    function renderAlerts() {
+      const d = briefingData;
+      const alerts = [];
+      const today = briefingToday();
+
+      // Red: Recovery below 55 (with 7-day avg also low as proxy for sustained)
+      if (d.recoveryToday !== null && d.recoveryToday < 55 && d.recovery7DayAvg !== null && d.recovery7DayAvg < 60) {
+        alerts.push({ level:'red', title:'Recovery Low (Sustained)', body:'Accumulated fatigue detected — deload recommended today.', action:'Rest Day' });
+      }
+
+      // Red: Protein below target 4+ consecutive days
+      if (d.proteinStreak === 0 && d.proteinDays <= 2) {
+        alerts.push({ level:'red', title:'Protein Gap', body:'Muscle building compromised — you are leaving gains on the table.', action:'Log Protein' });
+      }
+
+      // Red: No ball work in 5+ days during off-season
+      const ballDays = d.sessions.filter(s => s.session_type === 'ball').map(s => s.date);
+      const lastBallDate = ballDays.length ? ballDays.sort().reverse()[0] : null;
+      const daysSinceBall = lastBallDate ? Math.floor((new Date(today+'T00:00:00') - new Date(lastBallDate+'T00:00:00')) / 86400000) : 999;
+      if (d.phase.mode === 'offseason' && daysSinceBall >= 5) {
+        alerts.push({ level:'red', title:'Technical Volume Low', body:'Even 20 minutes of wall work today counts.', action:'Wall Work' });
+      }
+
+      // Red: Sprint decay > 8%
+      if (d.latestRSA && d.latestRSA.decay_pct > 8) {
+        alerts.push({ level:'red', title:'RSA Quality Poor', body:'Repeated sprint decay above 8% — add aerobic base work this week.', action:'Add Base Work' });
+      }
+
+      // Yellow: Weight not logged in 3+ days
+      const lastWeightDate = d.weights?.length ? d.weights[0].date : null;
+      const daysSinceWeight = lastWeightDate ? Math.floor((new Date(today+'T00:00:00') - new Date(lastWeightDate+'T00:00:00')) / 86400000) : 999;
+      if (daysSinceWeight >= 3) {
+        alerts.push({ level:'yellow', title:'Weight Gap', body:'Log your weight to keep the system accurate.', action:'Log Weight' });
+      }
+
+      // Yellow: No speed session in 5+ days during Power-Speed block
+      const speedDays = d.sessions.filter(s => s.session_type === 'speed').map(s => s.date);
+      const lastSpeedDate = speedDays.length ? speedDays.sort().reverse()[0] : null;
+      const daysSinceSpeed = lastSpeedDate ? Math.floor((new Date(today+'T00:00:00') - new Date(lastSpeedDate+'T00:00:00')) / 86400000) : 999;
+      if (d.phase.name === 'Power-Speed Block' && daysSinceSpeed >= 5) {
+        alerts.push({ level:'yellow', title:'Speed Window Open', body:'Acceleration is your weakness — this block is your window to fix it.', action:'Speed Session' });
+      }
+
+      // Yellow: Yo-Yo score declining
+      const yoyoTests = d.tests.filter(t => t.test_type === 'yoyo_level').slice(0,2);
+      if (yoyoTests.length >= 2 && yoyoTests[0].value < yoyoTests[1].value) {
+        alerts.push({ level:'yellow', title:'Endurance Declining', body:'Protect your engine while gaining mass.', action:'Add Cardio' });
+      }
+
+      // Green: Weight up +2lbs and sprint improved
+      const wtChange = (d.latestWeight || START_WEIGHT) - START_WEIGHT;
+      const sprintTests = d.tests.filter(t => t.test_type === '10m_sprint').slice(0,2);
+      if (wtChange >= 2 && sprintTests.length >= 2 && sprintTests[0].value < sprintTests[1].value) {
+        alerts.push({ level:'green', title:'Mass → Speed', body:'Mass gain converting to speed — the plan is working.', action:'' });
+      }
+
+      // Green: 7-day protein streak
+      if (d.proteinStreak >= 7) {
+        alerts.push({ level:'green', title:'Perfect Protein Week', body:'Muscle building optimized.', action:'' });
+      }
+
+      // Green: All three session types logged this week
+      if (d.gymCount > 0 && d.ballCount > 0 && d.speedCount > 0) {
+        alerts.push({ level:'green', title:'Complete Week', body:'Gym, ball work, and speed all covered.', action:'' });
+      }
+
+      if (!alerts.length) {
+        $('alertsSection').style.display = 'none';
+        return;
+      }
+      $('alertsSection').style.display = '';
+      $('alertsScroll').innerHTML = alerts.map(a => `
+        <div class="alert-pill ${a.level}">
+          <div class="alert-pill-title">${a.title}</div>
+          <div class="alert-pill-body">${a.body}</div>
+          ${a.action ? `<button class="alert-pill-btn">${a.action}</button>` : ''}
+        </div>
+      `).join('');
+    }
+
+    function renderWeeklySnapshot() {
+      const d = briefingData;
+      const maxSessions = 7;
+
+      function dots(count, max) {
+        return `<div class="snapshot-dots">${Array.from({length:max}, (_,i) =>
+          `<div class="snapshot-dot${i < count ? ' filled' : ''}"></div>`
+        ).join('')}</div>`;
+      }
+
+      const avgRec = d.avgRecovery || 0;
+      const wtDelta = d.weightDelta;
+      const wtSign = wtDelta !== null ? (wtDelta >= 0 ? '+' : '') : '';
+      const wtStr = wtDelta !== null ? `${wtSign}${wtDelta.toFixed(1)}lbs` : '--';
+
+      $('weeklySnapshot').innerHTML = `
+        <div class="snapshot-item">
+          <div class="snapshot-num neutral">${d.gymCount}</div>
+          <div class="snapshot-label">Gym Sessions</div>
+          ${dots(d.gymCount, Math.min(7, d.gymCount + 2))}
+        </div>
+        <div class="snapshot-item">
+          <div class="snapshot-num neutral">${d.ballCount}</div>
+          <div class="snapshot-label">Ball Work</div>
+          ${dots(d.ballCount, Math.min(7, d.ballCount + 2))}
+        </div>
+        <div class="snapshot-item">
+          <div class="snapshot-num neutral">${d.speedCount}</div>
+          <div class="snapshot-label">Speed Sessions</div>
+          ${dots(d.speedCount, Math.min(7, d.speedCount + 2))}
+        </div>
+        <div class="snapshot-item">
+          <div class="snapshot-num ${d.proteinDays >= 6 ? 'good' : 'neutral'}">${d.proteinDays}/7</div>
+          <div class="snapshot-label">Protein Days</div>
+        </div>
+        <div class="snapshot-item">
+          <div class="snapshot-num ${avgRec >= 70 ? 'good' : 'neutral'}">${avgRec}</div>
+          <div class="snapshot-label">Avg Recovery</div>
+        </div>
+        <div class="snapshot-item">
+          <div class="snapshot-num neutral">${wtStr}</div>
+          <div class="snapshot-label">Weight Δ</div>
+        </div>
+      `;
+    }
+
+    /* ── Quick Log Row Handlers ── */
+    let weightInputVisible = false;
+
+    $('quickWeightBtn').addEventListener('click', () => {
+      if (weightInputVisible) return;
+      weightInputVisible = true;
+      const btn = $('quickWeightBtn');
+      btn.innerHTML = '<span class="quick-log-inline"><input class="quick-log-input" id="quickWeightInput" type="number" step="0.1" placeholder="lbs" inputmode="decimal"><button class="quick-log-save" id="quickWeightSave">Save</button></span>';
+      const inp = $('quickWeightInput');
+      inp.focus();
+
+      const save = () => {
+        const v = parseFloat(inp.value);
+        if (!isNaN(v) && v > 0 && supa) {
+          supa.from('weight_logs').insert({ date: briefingToday(), weight: v }).then(() => {
+            btn.innerHTML = '⚖️ Log Weight';
+            weightInputVisible = false;
+            loadMorningBriefing();
+          }).catch(() => {
+            btn.innerHTML = '⚖️ Log Weight';
+            weightInputVisible = false;
+          });
+        } else {
+          btn.innerHTML = '⚖️ Log Weight';
+          weightInputVisible = false;
+        }
+      };
+
+      $('quickWeightSave').addEventListener('click', save);
+      inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
+
+    });
+
+    $('quickWaterBtn').addEventListener('click', () => {
+      if (!supa) return;
+      const today = briefingToday();
+      supa.from('app_state').select('data').eq('key','nutrition').maybeSingle().then(({data}) => {
+        const nutData = data?.data || {};
+        const current = nutData.water_oz || 0;
+        nutData.water_oz = current + 8;
+        return supa.from('app_state').upsert({ key:'nutrition', data: nutData, updated_at: new Date().toISOString() }, { onConflict:'key' });
+      }).then(() => {
+        $('quickWaterBtn').textContent = '💧 +8oz ✓';
+        setTimeout(() => { $('quickWaterBtn').textContent = '💧 Add Water'; }, 1500);
+      }).catch(() => {});
+    });
+
+    $('quickCheckinBtn').addEventListener('click', () => {
+      // Navigate to nutrition tab and open check-in
+      const nutritionTab = document.querySelector('[data-tab="nutrition"]');
+      if (nutritionTab) nutritionTab.click();
+    });
+
+    $('quickSessionBtn').addEventListener('click', () => {
+      // Navigate to soccer tab
+      const soccerTab = document.querySelector('[data-tab="soccer"]');
+      if (soccerTab) soccerTab.click();
+    });
+
+    $('briefCheckinBtn').addEventListener('click', () => {
+      const nutritionTab = document.querySelector('[data-tab="nutrition"]');
+      if (nutritionTab) nutritionTab.click();
+    });
+
+    /* ── End Morning Briefing ── */
+
     async function boot() {
       await initStore();
+      loadMorningBriefing(); // Fire-and-forget: briefing loads async
       runRollover();
       runStreakCheck();
 
@@ -1695,6 +2444,7 @@
       renderStreak();
       updateDayBar();
       setInterval(updateDayBar, 60000);
+      setInterval(() => { loadMorningBriefing(); }, 120000); // Refresh briefing every 2 min
       tickerStart();
 
       document.addEventListener('focusout', () => setTimeout(applyPendingIfReady, 0), true);
