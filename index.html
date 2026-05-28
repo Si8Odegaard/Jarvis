@@ -951,12 +951,15 @@
       align-items:flex-end; justify-content:center;
     }
     .inl-modal-bg.show { display:flex; }
+    body:has(.inl-modal-bg.show) { overflow:hidden; }
     .inl-modal {
       background:#0e0e10; border:1px solid rgba(255,255,255,0.07);
       border-radius:16px 16px 0 0;
       padding:20px 20px calc(20px + env(safe-area-inset-bottom));
       width:100%; max-width:640px;
       max-height:88vh; overflow-y:auto;
+      -webkit-overflow-scrolling:touch;
+      overscroll-behavior:contain;
     }
     .inl-modal-header {
       display:flex; justify-content:space-between; align-items:center;
