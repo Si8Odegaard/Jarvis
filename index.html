@@ -1342,7 +1342,7 @@
       return { mode:'preseason', name:'Pre-Season', week:1, totalWeeks:1, daysLeft:0, dayOfOffseason:0, goal:'Individual work when recovery allows.' };
     }
 
-    const $ = (id) => document.getElementById(id);
+    const $ = (id) => document.getElementById(id.startsWith('#') ? id.slice(1) : id);
 
     function goalsKey(dateStr) { return 'goals:' + dateStr; }
 
