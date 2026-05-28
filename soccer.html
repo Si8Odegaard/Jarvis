@@ -420,6 +420,18 @@ label.field-label{
       <button class="btn btn-ghost btn-sm mt8" id="switchToPreseason">Switch to Pre-Season Mode</button>
     </div>
 
+    <!-- Phase Readiness Check -->
+    <div class="hidden" id="phaseReadinessCard" style="margin-bottom:12px;">
+      <div class="alert-card warn">
+        <div class="alert-card-title" id="phaseReadinessTitle">⚠️ Phase Readiness Check</div>
+        <div id="phaseReadinessBody"></div>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <button class="btn btn-primary btn-sm" id="advancePhaseBtn">Advance Anyway</button>
+          <button class="btn btn-ghost btn-sm" id="extendPhaseBtn">Extend Block +1 Week</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Daily Recommendation -->
     <div class="daily-rec" id="dailyRec">
       <div class="daily-rec-title">📋 Today's Recommendation</div>
@@ -722,12 +734,13 @@ let todayGymCompleted = false;
 let todayGymType = null;
 let yesterdayGymCompleted = false;
 let yesterdayGymType = null;
+let phaseOverrideDays = 0;
 
 // ==================================================
 //  DATA LOADING
 // ==================================================
 async function loadAll(){
-  await Promise.all([loadTests(), loadRSASessions(), loadSessions(), loadPlan(), loadRecovery(), loadLatestWeight(), loadGymWorkouts()]);
+  await Promise.all([loadTests(), loadRSASessions(), loadSessions(), loadPlan(), loadRecovery(), loadLatestWeight(), loadGymWorkouts(), loadPhaseOverride()]);
 }
 
 async function loadTests(){
@@ -827,6 +840,23 @@ async function loadGymWorkouts(){
     todayGymCompleted = false; todayGymType = null;
     yesterdayGymCompleted = false; yesterdayGymType = null;
   }
+}
+
+async function loadPhaseOverride(){
+  try {
+    const { data } = await sb.from('app_state').select('data').eq('key','soccer_readiness').maybeSingle();
+    if(data?.data?.phaseOverrideDays) phaseOverrideDays = parseInt(data.data.phaseOverrideDays) || 0;
+  } catch(e){ phaseOverrideDays = 0; }
+}
+
+async function savePhaseOverride(){
+  try {
+    await sb.from('app_state').upsert({
+      key: 'soccer_readiness',
+      data: { phaseOverrideDays },
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'key' });
+  } catch(e){}
 }
 
 // ==================================================
@@ -1384,7 +1414,7 @@ function getCurrentPhase(){
     return { mode:'preseason', name:'Pre-Season', goal:'Gym 3 days/week max. Individual technical only when recovery > 65. No speed on consecutive days. Recovery < 60 = rest day.', week:1, totalWeeks:1, daysLeft:0, progress:100 };
   }
 
-  let dayOffset = Math.floor((now - start) / 86400000);
+  let dayOffset = Math.floor((now - start) / 86400000) - phaseOverrideDays;
   if(dayOffset < 0) dayOffset = 0;
 
   let weekAccum = 0;
@@ -1395,10 +1425,11 @@ function getCurrentPhase(){
       const daysLeft = blockDays - (dayOffset - weekAccum * 7);
       const totalDays = OFFSEASON_PLAN.blocks.reduce((s,b)=>s+b.weeks*7,0);
       const progress = Math.min(100, Math.round((dayOffset / totalDays) * 100));
+      const readiness = checkPhaseReadiness(daysLeft);
       return {
         mode:'offseason', name:block.name, goal:block.goal,
         week:weekInBlock, totalWeeks:block.weeks,
-        daysLeft:Math.max(0,daysLeft), progress
+        daysLeft:Math.max(0,daysLeft), progress, readiness
       };
     }
     weekAccum += block.weeks;
@@ -1406,6 +1437,33 @@ function getCurrentPhase(){
 
   // Past all blocks = taper complete, pre-season mode
   return { mode:'preseason', name:'Pre-Season', goal:'Gym 3 days/week max. Individual technical only when recovery > 65.', week:1, totalWeeks:1, daysLeft:0, progress:100 };
+}
+
+function checkPhaseReadiness(daysLeft){
+  const warnings = [];
+  let shouldExtend = false;
+
+  // Only check near phase transitions (within 3 days)
+  const isTransitionWeek = daysLeft <= 3;
+  if(!isTransitionWeek) return { warnings:[], shouldExtend:false, isTransitionWeek:false };
+
+  // Check 7-day average recovery score
+  if(recoveryScore7DayAvg !== null && recoveryScore7DayAvg < 60){
+    warnings.push({ icon:'🛌', msg:`7-day avg recovery is ${recoveryScore7DayAvg} — below the 60 threshold. Extend this block by one week to allow proper adaptation.` });
+    shouldExtend = true;
+  }
+
+  // Check if user logged fewer than 4 sessions in the previous week
+  const weekAgo = new Date(today()+'T00:00:00');
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  const weekStart = weekAgo.toISOString().slice(0,10);
+  const prevWeekSessions = soccerSessions.filter(s => s.date >= weekStart && s.date < today());
+  if(prevWeekSessions.length < 4){
+    warnings.push({ icon:'📋', msg:`Only ${prevWeekSessions.length} sessions logged in the last 7 days (excluding today). Phase target of 4+ sessions not met.` });
+    shouldExtend = true;
+  }
+
+  return { warnings, shouldExtend, isTransitionWeek:true };
 }
 
 function getWeeklyTemplate(phase){
@@ -1534,7 +1592,19 @@ function renderPlan(){
   $('#phaseGoal').textContent = phase.goal;
   $('#phaseBarFill').style.width = phase.progress + '%';
   $('#phaseMeta').textContent = `Week ${phase.week} of ${phase.totalWeeks}`;
-  $('#phaseDaysLeft').textContent = phase.daysLeft + ' days remaining';
+  $('#phaseDaysLeft').textContent = phase.daysLeft + (phaseOverrideDays > 0 ? ` (extended by ${phaseOverrideDays} days)` : '') + ' remaining';
+
+  // Render phase readiness card
+  if(phase.readiness?.isTransitionWeek && phase.readiness?.warnings?.length){
+    const r = phase.readiness;
+    $('#phaseReadinessCard').classList.remove('hidden');
+    $('#phaseReadinessTitle').textContent = '⚠️ Phase Readiness Check — ' + phase.name;
+    $('#phaseReadinessBody').innerHTML = r.warnings.map(w =>
+      `<div style="margin-bottom:6px;line-height:1.5;"><span style="margin-right:6px;">${w.icon}</span>${w.msg}</div>`
+    ).join('') + `<div style="margin-top:8px;font-weight:700;">Recommendation: extend ${phase.name} by one week before advancing.</div>`;
+  } else {
+    $('#phaseReadinessCard').classList.add('hidden');
+  }
 
   if(phase.mode==='preseason'){
     $('#phaseDates').textContent = 'Pre-Season Mode (July 13+)';
@@ -1578,6 +1648,31 @@ $('switchToPreseason').addEventListener('click', async () => {
   if(updated) planConfig = updated;
   else planConfig = { ...planConfig, mode:'preseason' };
   renderPlan();
+});
+
+// Phase readiness: Advance Anyway
+$('advancePhaseBtn').addEventListener('click', async () => {
+  const phase = getCurrentPhase();
+  if(phaseOverrideDays > 0){
+    if(!confirm('Reset all block extensions and let the plan advance based on the calendar date?')) return;
+    phaseOverrideDays = 0;
+  } else {
+    if(!confirm(`Skip the readiness check and advance past ${phase.name}?`)) return;
+    // Force-advance: set offset to push past the current block boundary
+    phaseOverrideDays = -(phase.daysLeft + 1);
+  }
+  await savePhaseOverride();
+  renderPlan();
+  await renderInsights();
+});
+
+// Phase readiness: Extend Block
+$('extendPhaseBtn').addEventListener('click', async () => {
+  if(!confirm('Extend the current block by one week? You can advance manually at any time.')) return;
+  phaseOverrideDays += 7;
+  await savePhaseOverride();
+  renderPlan();
+  await renderInsights();
 });
 
 // ==================================================
