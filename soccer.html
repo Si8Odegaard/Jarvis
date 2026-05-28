@@ -718,12 +718,16 @@ let planConfig = null;
 let recoveryScore = null;
 let recoveryScore7DayAvg = null;
 let latestWeight = null;
+let todayGymCompleted = false;
+let todayGymType = null;
+let yesterdayGymCompleted = false;
+let yesterdayGymType = null;
 
 // ==================================================
 //  DATA LOADING
 // ==================================================
 async function loadAll(){
-  await Promise.all([loadTests(), loadRSASessions(), loadSessions(), loadPlan(), loadRecovery(), loadLatestWeight()]);
+  await Promise.all([loadTests(), loadRSASessions(), loadSessions(), loadPlan(), loadRecovery(), loadLatestWeight(), loadGymWorkouts()]);
 }
 
 async function loadTests(){
@@ -754,6 +758,75 @@ async function loadLatestWeight(){
     const { data } = await sb.from('weight_logs').select('weight').order('date',{ascending:false}).limit(1).maybeSingle();
     if(data?.weight) latestWeight = parseFloat(data.weight);
   } catch(e){}
+}
+
+async function loadGymWorkouts(){
+  try {
+    const yesterday = new Date(today()+'T00:00:00'); yesterday.setDate(yesterday.getDate()-1);
+    const yestStr = yesterday.toISOString().slice(0,10);
+
+    const { data: gymSessions } = await sb.from('workout_sessions')
+      .select('id, date, completed')
+      .in('date', [today(), yestStr])
+      .order('date', { ascending: false });
+
+    if(!gymSessions || !gymSessions.length){
+      todayGymCompleted = false; todayGymType = null;
+      yesterdayGymCompleted = false; yesterdayGymType = null;
+      return;
+    }
+
+    const todaySession = gymSessions.find(s => s.date === today() && s.completed);
+    const yesterdaySession = gymSessions.find(s => s.date === yestStr && s.completed);
+
+    const sessionIds = [todaySession?.id, yesterdaySession?.id].filter(Boolean);
+
+    if(sessionIds.length){
+      const { data: setsData } = await sb.from('session_sets')
+        .select('exercise_id, session_id')
+        .in('session_id', sessionIds);
+
+      const exIds = [...new Set((setsData || []).map(s => s.exercise_id))];
+
+      if(exIds.length){
+        const { data: exData } = await sb.from('exercises')
+          .select('id, day')
+          .in('id', exIds);
+
+        const exMap = {};
+        (exData || []).forEach(e => { exMap[e.id] = e.day; });
+
+        if(todaySession){
+          const todayExIds = [...new Set((setsData || []).filter(s => s.session_id === todaySession.id).map(s => s.exercise_id))];
+          const days = todayExIds.map(id => exMap[id]).filter(Boolean);
+          todayGymCompleted = true;
+          todayGymType = days[0] || 'Gym';
+        } else {
+          todayGymCompleted = false;
+          todayGymType = null;
+        }
+
+        if(yesterdaySession){
+          const yestExIds = [...new Set((setsData || []).filter(s => s.session_id === yesterdaySession.id).map(s => s.exercise_id))];
+          const days = yestExIds.map(id => exMap[id]).filter(Boolean);
+          yesterdayGymCompleted = true;
+          yesterdayGymType = days[0] || 'Gym';
+        } else {
+          yesterdayGymCompleted = false;
+          yesterdayGymType = null;
+        }
+      } else {
+        todayGymCompleted = !!todaySession; todayGymType = todaySession ? 'Gym' : null;
+        yesterdayGymCompleted = !!yesterdaySession; yesterdayGymType = yesterdaySession ? 'Gym' : null;
+      }
+    } else {
+      todayGymCompleted = false; todayGymType = null;
+      yesterdayGymCompleted = false; yesterdayGymType = null;
+    }
+  } catch(e){
+    todayGymCompleted = false; todayGymType = null;
+    yesterdayGymCompleted = false; yesterdayGymType = null;
+  }
 }
 
 // ==================================================
@@ -1351,6 +1424,12 @@ function getDailyRecommendation(phase){
   const yestStr = yesterday.toISOString().slice(0,10);
   const yestSessions = soccerSessions.filter(s => s.date === yestStr);
   const hadSpeedYesterday = yestSessions.some(s => s.session_type==='speed');
+  const gymTag = todayGymType || 'Gym';
+  const yesterdayGymNote = yesterdayGymCompleted && yesterdayGymType
+    ? ` Yesterday: gym (${yesterdayGymType}) completed.`
+    : '';
+  // Prevent same-type gym on consecutive days
+  const sameGymTypeYesterday = yesterdayGymCompleted && yesterdayGymType && todayGymCompleted && todayGymType && todayGymType === yesterdayGymType;
 
   // Recovery check
   if(recoveryScore !== null && recoveryScore < 55){
@@ -1377,56 +1456,76 @@ function getDailyRecommendation(phase){
 
   // Pre-season mode
   if(phase.mode==='preseason'){
-    if(dow===0 || dow===6) return { type:'Rest Day', focus:'Recovery', duration:'—', equipment:'—', why:'Pre-season: rest days are as important as training days.' };
+    if(dow===0 || dow===6) return { type:'Rest Day', focus:'Recovery', duration:'—', equipment:'—', why:'Pre-season: rest days are as important as training days.'+yesterdayGymNote };
     // No consecutive speed days in pre-season
-    if(hadSpeedYesterday) return { type:'Technical Ball Work', focus:'Wall passing, receiving & turning — speed yesterday, so technical only today', duration:'30–45 min', equipment:'Ball, wall, cones', why:'Pre-season rule: no speed work on consecutive days. You had a speed session yesterday.' };
-    if(dow===1 || dow===4) return { type:'Gym Maintenance', focus:'Upper body focus at Planet Fitness', duration:'45 min', equipment:'Dumbbells, cables, Smith machine', why:'Pre-season gym cap: 3 days/week max, moderate volume only.' };
-    if(dow===2 || dow===5) return { type:'Technical Ball Work', focus:'Wall passing, receiving & turning', duration:'30–45 min', equipment:'Ball, wall, cones', why:'Pre-season: individual technical only when recovery > 65.' };
-    return { type:'Speed Strides', focus:'Short sharp sprints, not maximal', duration:'20 min', equipment:'Field, cones', why:'Pre-season speed day — keep strides short and sharp, not maximal.' };
+    if(hadSpeedYesterday) return { type:'Technical Ball Work', focus:'Wall passing, receiving & turning — speed yesterday, so technical only today', duration:'30–45 min', equipment:'Ball, wall, cones', why:'Pre-season rule: no speed work on consecutive days. You had a speed session yesterday.'+yesterdayGymNote };
+    if(dow===1 || dow===4) return todayGymCompleted
+      ? { type:'Technical Ball Work', focus:'Wall passing, receiving & turning — gym already done today', duration:'30 min', equipment:'Ball, wall, cones', why:'Pre-season gym cap: 3 days/week max. Gym already done today — switch to technical.'+yesterdayGymNote }
+      : { type:'Gym Maintenance', focus:'Upper body focus at Planet Fitness', duration:'45 min', equipment:'Dumbbells, cables, Smith machine', why:'Pre-season gym cap: 3 days/week max, moderate volume only.'+yesterdayGymNote };
+    if(dow===2 || dow===5) return { type:'Technical Ball Work', focus:'Wall passing, receiving & turning', duration:'30–45 min', equipment:'Ball, wall, cones', why:'Pre-season: individual technical only when recovery > 65.'+yesterdayGymNote };
+    return { type:'Speed Strides', focus:'Short sharp sprints, not maximal', duration:'20 min', equipment:'Field, cones', why:'Pre-season speed day — keep strides short and sharp, not maximal.'+yesterdayGymNote };
   }
 
   // Foundation Block
   if(phase.name==='Foundation Block'){
-    if(dow===1) return {type:'Gym Upper Push',focus:'Planet Fitness — dumbbell press, shoulder press, tricep pushdowns',duration:'50 min',equipment:'Dumbbells, cables',why:'Foundation: build upper body muscle base with higher volume.'};
-    if(dow===2) return {type:'Ball Work + Ladder',focus:'Wall passing, cone dribbling, agility ladder footwork',duration:'45 min',equipment:'Ball, wall, cones, agility ladder',why:'Technical quality and foot coordination are the foundation of everything.'};
-    if(dow===3) return {type:'Gym Lower Body',focus:'Planet Fitness — leg press, leg curl, leg extension, Smith machine squat',duration:'50 min',equipment:'Leg press, Smith machine, cables',why:'Foundation: build the muscle base that will convert to power later.'};
-    if(dow===4) return {type:'Acceleration Mechanics + Plyometrics',focus:'10m drive phase drills, broad jumps, A-skips, B-skips',duration:'40 min',equipment:'Cones, field',why:'Your identified weakness is acceleration — this session builds the mechanics first.'};
-    if(dow===5) return {type:'Gym Upper Pull',focus:'Planet Fitness — lat pulldown, cable row, bicep curls, rear delts',duration:'50 min',equipment:'Cables, dumbbells',why:'Foundation: balanced upper body development for posture and injury prevention.'};
-    if(dow===6) return {type:'Ball Work: Finishing + Turning',focus:'Shooting at goal, receiving & turning with cone gates',duration:'60 min',equipment:'Ball, goal, cones, wall',why:'Weekend session — longer ball work to build technical volume.'};
-    return {type:'Rest Day',focus:'Recovery walk or light stretch',duration:'—',equipment:'—',why:'Your body adapts during rest, not during training.'};
+    if(dow===1) return todayGymCompleted
+      ? {type:'Technical Ball Work',focus:'Wall passing, receiving & turning — gym already done today',duration:'30 min',equipment:'Ball, wall',why:'Gym ('+gymTag+') already completed today. Switch to light technical work for recovery.'+yesterdayGymNote}
+      : {type:'Gym Upper Push',focus:'Planet Fitness — dumbbell press, shoulder press, tricep pushdowns',duration:'50 min',equipment:'Dumbbells, cables',why:'Foundation: build upper body muscle base with higher volume.'+yesterdayGymNote};
+    if(dow===2) return {type:'Ball Work + Ladder',focus:'Wall passing, cone dribbling, agility ladder footwork',duration:'45 min',equipment:'Ball, wall, cones, agility ladder',why:'Technical quality and foot coordination are the foundation of everything.'+yesterdayGymNote};
+    if(dow===3) return todayGymCompleted
+      ? {type:'Technical Ball Work',focus:'Light wall passing & stretching — gym already done today',duration:'20–30 min',equipment:'Ball, wall',why:'Gym ('+gymTag+') already completed today. Light technical work for active recovery.'+yesterdayGymNote}
+      : {type:'Gym Lower Body',focus:'Planet Fitness — leg press, leg curl, leg extension, Smith machine squat',duration:'50 min',equipment:'Leg press, Smith machine, cables',why:'Foundation: build the muscle base that will convert to power later.'+yesterdayGymNote};
+    if(dow===4) return {type:'Acceleration Mechanics + Plyometrics',focus:'10m drive phase drills, broad jumps, A-skips, B-skips',duration:'40 min',equipment:'Cones, field',why:'Your identified weakness is acceleration — this session builds the mechanics first.'+yesterdayGymNote};
+    if(dow===5) return todayGymCompleted
+      ? {type:'Technical Ball Work',focus:'Wall passing, light finishing — gym already done today',duration:'30 min',equipment:'Ball, wall, goal',why:'Gym ('+gymTag+') already completed today. Use this time for technical quality.'+yesterdayGymNote}
+      : {type:'Gym Upper Pull',focus:'Planet Fitness — lat pulldown, cable row, bicep curls, rear delts',duration:'50 min',equipment:'Cables, dumbbells',why:'Foundation: balanced upper body development for posture and injury prevention.'+yesterdayGymNote};
+    if(dow===6) return {type:'Ball Work: Finishing + Turning',focus:'Shooting at goal, receiving & turning with cone gates',duration:'60 min',equipment:'Ball, goal, cones, wall',why:'Weekend session — longer ball work to build technical volume.'+yesterdayGymNote};
+    return {type:'Rest Day',focus:'Recovery walk or light stretch',duration:'—',equipment:'—',why:'Your body adapts during rest, not during training.'+yesterdayGymNote};
   }
 
   // Strength-Speed Block
   if(phase.name==='Strength-Speed Block'){
-    if(dow===1) return {type:'Gym Upper Strength',focus:'Planet Fitness — heavier dumbbell press, cable flyes, lateral raises',duration:'45 min',equipment:'Dumbbells, cables',why:'Strength-Speed: gym shifts heavier, lower rep. Converting muscle to power.'};
-    if(dow===2) return {type:'Speed: Reactive Agility + Plyometrics',focus:'Broad jump series, single leg bounding, reactive sprint starts',duration:'45 min',equipment:'Cones, field, phone timer',why:'Plyometrics bridge the gap between gym strength and field speed.'};
-    if(dow===3) return {type:'Gym Lower Strength (Heavy)',focus:'Planet Fitness — heavy leg press, Smith machine squat, leg curl, calf raises',duration:'50 min',equipment:'Leg press, Smith machine',why:'Lower body strength is the engine for speed — push heavy this session.'};
-    if(dow===4) return {type:'Ball Work: Tactical + Pressing',focus:'Pressing patterns with cones as opponents, tactical shadow play',duration:'45 min',equipment:'Ball, cones, full field',why:'Tactical work keeps your soccer brain sharp while your body gets stronger.'};
-    if(dow===5) return {type:'Gym Upper Pull Strength',focus:'Planet Fitness — heavy lat pulldown, cable row, face pulls',duration:'45 min',equipment:'Cables, pull-up bar',why:'Upper pull strength for shielding, holding off opponents, and aerial duels.'};
-    if(dow===6) return {type:'Speed: Planned Agility + 20m Sprints',focus:'T-test reps, 5-10-5 reps, 20m sprint repeats',duration:'50 min',equipment:'Cones, field, phone timer',why:'Now that mechanics are built, begin pushing speed with planned agility and 20m sprints.'};
-    return {type:'Rest Day',focus:'Recovery',duration:'—',equipment:'—',why:'Rest is when the adaptation happens.'};
+    if(dow===1) return todayGymCompleted
+      ? {type:'Technical Ball Work',focus:'Wall passing, turning drills — gym already done today',duration:'30 min',equipment:'Ball, wall, cones',why:'Gym ('+gymTag+') already completed today. Technical work for recovery.'+yesterdayGymNote}
+      : {type:'Gym Upper Strength',focus:'Planet Fitness — heavier dumbbell press, cable flyes, lateral raises',duration:'45 min',equipment:'Dumbbells, cables',why:'Strength-Speed: gym shifts heavier, lower rep. Converting muscle to power.'+yesterdayGymNote};
+    if(dow===2) return {type:'Speed: Reactive Agility + Plyometrics',focus:'Broad jump series, single leg bounding, reactive sprint starts',duration:'45 min',equipment:'Cones, field, phone timer',why:'Plyometrics bridge the gap between gym strength and field speed.'+yesterdayGymNote};
+    if(dow===3) return todayGymCompleted
+      ? {type:'Technical Ball Work',focus:'Wall passing & stretching — gym already done today',duration:'20–30 min',equipment:'Ball, wall',why:'Gym ('+gymTag+') already completed today. Light technical work for recovery.'+yesterdayGymNote}
+      : {type:'Gym Lower Strength (Heavy)',focus:'Planet Fitness — heavy leg press, Smith machine squat, leg curl, calf raises',duration:'50 min',equipment:'Leg press, Smith machine',why:'Lower body strength is the engine for speed — push heavy this session.'+yesterdayGymNote};
+    if(dow===4) return {type:'Ball Work: Tactical + Pressing',focus:'Pressing patterns with cones as opponents, tactical shadow play',duration:'45 min',equipment:'Ball, cones, full field',why:'Tactical work keeps your soccer brain sharp while your body gets stronger.'+yesterdayGymNote};
+    if(dow===5) return todayGymCompleted
+      ? {type:'Technical Ball Work',focus:'Light wall passing, first touch — gym already done today',duration:'30 min',equipment:'Ball, wall',why:'Gym ('+gymTag+') already completed today. Focus on technical quality.'+yesterdayGymNote}
+      : {type:'Gym Upper Pull Strength',focus:'Planet Fitness — heavy lat pulldown, cable row, face pulls',duration:'45 min',equipment:'Cables, pull-up bar',why:'Upper pull strength for shielding, holding off opponents, and aerial duels.'+yesterdayGymNote};
+    if(dow===6) return {type:'Speed: Planned Agility + 20m Sprints',focus:'T-test reps, 5-10-5 reps, 20m sprint repeats',duration:'50 min',equipment:'Cones, field, phone timer',why:'Now that mechanics are built, begin pushing speed with planned agility and 20m sprints.'+yesterdayGymNote};
+    return {type:'Rest Day',focus:'Recovery',duration:'—',equipment:'—',why:'Rest is when the adaptation happens.'+yesterdayGymNote};
   }
 
   // Power-Speed Block
   if(phase.name==='Power-Speed Block'){
-    if(dow===1) return {type:'Gym Maintenance Upper',focus:'Planet Fitness — moderate dumbbell work, cables',duration:'35 min',equipment:'Dumbbells, cables',why:'Power-Speed: gym volume drops, intensity stays. Maintenance mode.'};
-    if(dow===2) return {type:'Full Speed: Max Velocity + Reactive Agility',focus:'40yd max sprints, reactive agility with visual cues',duration:'50 min',equipment:'Field, cones, phone timer',why:'This is the peak speed block — every sprint should be at max intent.'};
-    if(dow===3) return {type:'Gym Maintenance Lower',focus:'Planet Fitness — leg press, leg extension, light plyometrics',duration:'35 min',equipment:'Leg press, cables',why:'Maintain lower body strength while the real work happens on the field.'};
-    if(dow===4) return {type:'High Intensity Ball Work',focus:'SSG simulation — cones as opponents, game-realistic intensity',duration:'55 min',equipment:'Ball, cones, goal, full field',why:'Ball work now at game intensity — technical quality under fatigue.'};
-    if(dow===5) return {type:'Optional Gym or Rest',focus:'Active recovery or light upper body',duration:'25–35 min',equipment:'Optional',why:'Listen to your body. Recovery score below 60 = rest.'};
-    if(dow===6) return {type:'Repeated Sprint + Ball Work',focus:'6×30m RSA protocol, then 20 min technical ball work',duration:'55 min',equipment:'Field, cones, ball, phone timer',why:'Repeated sprint ability matters as much as top speed for a box-to-box midfielder.'};
-    return {type:'Rest Day',focus:'Recovery',duration:'—',equipment:'—',why:'Rest.'};
+    if(dow===1) return todayGymCompleted
+      ? {type:'Technical Ball Work',focus:'Wall passing, first touch — gym already done today',duration:'25 min',equipment:'Ball, wall',why:'Gym ('+gymTag+') already completed today. Light technical work for recovery.'+yesterdayGymNote}
+      : {type:'Gym Maintenance Upper',focus:'Planet Fitness — moderate dumbbell work, cables',duration:'35 min',equipment:'Dumbbells, cables',why:'Power-Speed: gym volume drops, intensity stays. Maintenance mode.'+yesterdayGymNote};
+    if(dow===2) return {type:'Full Speed: Max Velocity + Reactive Agility',focus:'40yd max sprints, reactive agility with visual cues',duration:'50 min',equipment:'Field, cones, phone timer',why:'This is the peak speed block — every sprint should be at max intent.'+yesterdayGymNote};
+    if(dow===3) return todayGymCompleted
+      ? {type:'Technical Ball Work',focus:'Light wall passing, stretching — gym already done today',duration:'20 min',equipment:'Ball, wall',why:'Gym ('+gymTag+') already completed today. Active recovery session.'+yesterdayGymNote}
+      : {type:'Gym Maintenance Lower',focus:'Planet Fitness — leg press, leg extension, light plyometrics',duration:'35 min',equipment:'Leg press, cables',why:'Maintain lower body strength while the real work happens on the field.'+yesterdayGymNote};
+    if(dow===4) return {type:'High Intensity Ball Work',focus:'SSG simulation — cones as opponents, game-realistic intensity',duration:'55 min',equipment:'Ball, cones, goal, full field',why:'Ball work now at game intensity — technical quality under fatigue.'+yesterdayGymNote};
+    if(dow===5) return {type:'Optional Gym or Rest',focus:'Active recovery or light upper body',duration:'25–35 min',equipment:'Optional',why:'Listen to your body. Recovery score below 60 = rest.'+yesterdayGymNote};
+    if(dow===6) return {type:'Repeated Sprint + Ball Work',focus:'6×30m RSA protocol, then 20 min technical ball work',duration:'55 min',equipment:'Field, cones, ball, phone timer',why:'Repeated sprint ability matters as much as top speed for a box-to-box midfielder.'+yesterdayGymNote};
+    return {type:'Rest Day',focus:'Recovery',duration:'—',equipment:'—',why:'Rest.'+yesterdayGymNote};
   }
 
   // Taper
   if(phase.name==='Taper Week'){
-    if(dow===1||dow===4) return {type:'Light Gym',focus:'Planet Fitness — light full body, moderate volume',duration:'30 min',equipment:'Dumbbells, cables',why:'Taper: maintain movement patterns, don\'t chase fatigue.'};
-    if(dow===2||dow===5) return {type:'Technical Ball Work',focus:'Wall passing, first touch, light finishing',duration:'30 min',equipment:'Ball, wall, goal',why:'Taper: technical work only — no conditioning ball sessions.'};
-    if(dow===3) return {type:'Speed Strides',focus:'Short sharp strides — not maximal sprints',duration:'15 min',equipment:'Field',why:'Keep the nervous system primed without accumulating fatigue.'};
-    return {type:'Rest Day',focus:'Full rest — sleep & recovery prioritized',duration:'—',equipment:'—',why:'Arrive at pre-season fresh, sharp, and confident.'};
+    if(dow===1||dow===4) return todayGymCompleted
+      ? {type:'Recovery Walk',focus:'Light walk or foam rolling — gym already done today',duration:'20 min',equipment:'None',why:'Gym ('+gymTag+') already completed today. Prioritize recovery during taper.'+yesterdayGymNote}
+      : {type:'Light Gym',focus:'Planet Fitness — light full body, moderate volume',duration:'30 min',equipment:'Dumbbells, cables',why:'Taper: maintain movement patterns, don\'t chase fatigue.'+yesterdayGymNote};
+    if(dow===2||dow===5) return {type:'Technical Ball Work',focus:'Wall passing, first touch, light finishing',duration:'30 min',equipment:'Ball, wall, goal',why:'Taper: technical work only — no conditioning ball sessions.'+yesterdayGymNote};
+    if(dow===3) return {type:'Speed Strides',focus:'Short sharp strides — not maximal sprints',duration:'15 min',equipment:'Field',why:'Keep the nervous system primed without accumulating fatigue.'+yesterdayGymNote};
+    return {type:'Rest Day',focus:'Full rest — sleep & recovery prioritized',duration:'—',equipment:'—',why:'Arrive at pre-season fresh, sharp, and confident.'+yesterdayGymNote};
   }
 
-  return {type:'Rest Day',focus:'Recovery',duration:'—',equipment:'—',why:'Follow your plan.'};
+  return {type:'Rest Day',focus:'Recovery',duration:'—',equipment:'—',why:'Follow your plan.'+yesterdayGymNote};
 }
 
 function renderPlan(){
@@ -1775,6 +1874,7 @@ document.querySelectorAll('.modal-bg').forEach(bg => {
     await loadSessions();
     await loadTests();
     await loadLatestWeight();
+    await loadGymWorkouts();
     renderPlan();
     renderInsights();
     renderTesting();
