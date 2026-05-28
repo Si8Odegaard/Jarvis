@@ -943,6 +943,53 @@
       background: var(--success); box-shadow: 0 0 4px rgba(107,227,164,0.4);
     }
 
+    /* Inline Modals */
+    .inl-modal-bg {
+      display:none; position:fixed; inset:0; z-index:300;
+      background:rgba(0,0,0,.75); backdrop-filter:blur(8px);
+      -webkit-backdrop-filter:blur(8px);
+      align-items:flex-end; justify-content:center;
+    }
+    .inl-modal-bg.show { display:flex; }
+    .inl-modal {
+      background:#0e0e10; border:1px solid rgba(255,255,255,0.07);
+      border-radius:16px 16px 0 0;
+      padding:20px 20px calc(20px + env(safe-area-inset-bottom));
+      width:100%; max-width:640px;
+      max-height:88vh; overflow-y:auto;
+    }
+    .inl-modal-header {
+      display:flex; justify-content:space-between; align-items:center;
+      margin-bottom:16px;
+    }
+    .inl-modal-title { font-size:17px; font-weight:700; }
+    .inl-modal-close {
+      background:rgba(255,255,255,.07); border:none; color:var(--text-secondary);
+      font-size:18px; border-radius:50%; width:30px; height:30px;
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer;
+    }
+    .inl-seg { display:flex; gap:4px; }
+    .inl-seg-btn {
+      flex:1; padding:8px; border:1px solid rgba(255,255,255,0.08);
+      background:rgba(0,0,0,.20); color:var(--text-tertiary);
+      border-radius:7px; font-family:inherit; font-size:12px;
+      font-weight:600; cursor:pointer; transition:all .15s; text-align:center;
+    }
+    .inl-seg-btn.active {
+      background:rgba(107,227,164,.12); color:var(--success);
+      border-color:rgba(107,227,164,.30);
+    }
+    .inl-star-row { display:flex; gap:8px; }
+    .inl-star-btn { background:none; border:none; font-size:28px; cursor:pointer; color:rgba(255,255,255,0.08); transition:color .15s; padding:0; line-height:1; }
+    .inl-star-btn.filled { color:var(--warning); }
+    .inl-range { width:100%; height:6px; background:rgba(255,255,255,0.08); border-radius:3px; -webkit-appearance:none; appearance:none; outline:none; }
+    .inl-range::-webkit-slider-thumb { -webkit-appearance:none; width:22px; height:22px; background:var(--success); border-radius:50%; cursor:pointer; box-shadow:0 0 6px rgba(107,227,164,.5); }
+
+    /* Jarvis trend chart */
+    .jarvis-trend-wrap { margin-top:8px; }
+    .jarvis-trend-svg { display:block; width:100%; height:48px; overflow:visible; }
+
     @media (max-width: 480px) {
       .jarvis-score { font-size: 56px; }
       .jarvis-breakdown { gap: 12px; }
@@ -975,6 +1022,9 @@
       <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.18em;color:var(--text-tertiary);font-weight:700;margin-bottom:6px;">Jarvis Score</div>
       <div class="jarvis-score" id="jarvisScore">--</div>
       <div class="jarvis-breakdown" id="jarvisBreakdown"></div>
+      <div class="jarvis-trend-wrap" id="jarvisTrendWrap" style="display:none;">
+        <svg class="jarvis-trend-svg" id="jarvisTrendSvg" viewBox="0 0 280 48" preserveAspectRatio="none"></svg>
+      </div>
     </div>
 
     <div class="status-grid" id="statusGrid">
@@ -1003,6 +1053,103 @@
       <div class="snapshot-item"><div class="snapshot-num neutral">--</div><div class="snapshot-label">Protein Days</div></div>
       <div class="snapshot-item"><div class="snapshot-num neutral">--</div><div class="snapshot-label">Avg Recovery</div></div>
       <div class="snapshot-item"><div class="snapshot-num neutral">--</div><div class="snapshot-label">Weight Δ</div></div>
+    </div>
+
+    <!-- ═══ INLINE MODALS ═══ -->
+    <!-- Check-in Modal -->
+    <div class="inl-modal-bg" id="inlCheckinModal">
+      <div class="inl-modal">
+        <div class="inl-modal-header">
+          <div class="inl-modal-title">🌅 Morning Check-in</div>
+          <button class="inl-modal-close" id="inlCheckinClose">×</button>
+        </div>
+        <div id="inlCheckinMsg" style="display:none;background:rgba(255,138,138,.1);border:1px solid var(--danger);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:var(--danger)"></div>
+        <div style="margin-bottom:14px">
+          <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:6px">Sleep Hours: <strong id="inlSleepVal">7</strong>h</label>
+          <input type="range" class="inl-range" id="inlSleepHours" min="4" max="12" step="0.5" value="7">
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:6px">Sleep Quality</label>
+          <div class="inl-star-row" id="inlSleepQuality">
+            <button class="inl-star-btn" data-rating="1">★</button>
+            <button class="inl-star-btn" data-rating="2">★</button>
+            <button class="inl-star-btn" data-rating="3">★</button>
+            <button class="inl-star-btn" data-rating="4">★</button>
+            <button class="inl-star-btn" data-rating="5">★</button>
+          </div>
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:6px">Energy: <strong id="inlEnergyVal">7</strong>/10</label>
+          <input type="range" class="inl-range" id="inlEnergyScore" min="1" max="10" step="1" value="7">
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:6px">Muscle Soreness</label>
+          <div class="inl-seg" id="inlSoreness">
+            <button class="inl-seg-btn" data-value="none">None</button>
+            <button class="inl-seg-btn" data-value="mild">Mild</button>
+            <button class="inl-seg-btn active" data-value="moderate">Moderate</button>
+            <button class="inl-seg-btn" data-value="severe">Severe</button>
+          </div>
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:6px">Protein (g) yesterday</label>
+          <input type="number" id="inlProteinGrams" placeholder="e.g. 150" inputmode="numeric" style="width:100%;padding:10px 12px;background:rgba(0,0,0,.30);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--text-primary);font-size:14px;font-family:inherit;outline:none">
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:6px">Hydration</label>
+          <div class="inl-seg" id="inlHydration">
+            <button class="inl-seg-btn active" data-value="good">Good</button>
+            <button class="inl-seg-btn" data-value="okay">Okay</button>
+            <button class="inl-seg-btn" data-value="poor">Poor</button>
+          </div>
+        </div>
+        <div style="margin-bottom:16px">
+          <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:6px">Hit Calorie Target?</label>
+          <div class="inl-seg" id="inlCalorie">
+            <button class="inl-seg-btn" data-value="yes">Yes</button>
+            <button class="inl-seg-btn active" data-value="roughly">Roughly</button>
+            <button class="inl-seg-btn" data-value="no">No</button>
+          </div>
+        </div>
+        <button class="brief-btn" id="inlCheckinSubmit" style="width:100%;justify-content:center;padding:14px;font-size:15px">Submit Check-in</button>
+      </div>
+    </div>
+
+    <!-- Session Modal -->
+    <div class="inl-modal-bg" id="inlSessionModal">
+      <div class="inl-modal">
+        <div class="inl-modal-header">
+          <div class="inl-modal-title">⚽ Log Session</div>
+          <button class="inl-modal-close" id="inlSessionClose">×</button>
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:6px">Session Type</label>
+          <div class="inl-seg" id="inlSessionType">
+            <button class="inl-seg-btn active" data-value="ball">⚽ Ball Work</button>
+            <button class="inl-seg-btn" data-value="speed">🏃 Speed</button>
+            <button class="inl-seg-btn" data-value="gym">🏋️ Gym</button>
+            <button class="inl-seg-btn" data-value="match">🏟️ Match</button>
+            <button class="inl-seg-btn" data-value="group">👥 Group</button>
+          </div>
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:6px">Duration (minutes)</label>
+          <input type="number" id="inlSessionDuration" placeholder="e.g. 45" inputmode="numeric" min="5" max="180" style="width:100%;padding:10px 12px;background:rgba(0,0,0,.30);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--text-primary);font-size:14px;font-family:inherit;outline:none">
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:6px">Intensity</label>
+          <div class="inl-seg" id="inlSessionIntensity">
+            <button class="inl-seg-btn" data-value="Light">Light</button>
+            <button class="inl-seg-btn active" data-value="Medium">Medium</button>
+            <button class="inl-seg-btn" data-value="Hard">Hard</button>
+          </div>
+        </div>
+        <div style="margin-bottom:16px">
+          <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:6px">Note (optional)</label>
+          <input type="text" id="inlSessionNote" placeholder="One-line note…" style="width:100%;padding:10px 12px;background:rgba(0,0,0,.30);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--text-primary);font-size:14px;font-family:inherit;outline:none">
+        </div>
+        <button class="brief-btn" id="inlSessionSubmit" style="width:100%;justify-content:center;padding:14px;font-size:15px">Save Session</button>
+      </div>
     </div>
 
     <div class="ticker-row">
@@ -1155,6 +1302,24 @@
     ];
 
     function briefingToday() { return new Date().toISOString().slice(0,10); }
+
+    function briefingYesterday() {
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
+
+    // Jarvis score history (loaded inline in loadMorningBriefing from app_state key: jarvis_history)
+    let jarvisHistory = [];
+
+    async function saveJarvisHistory() {
+      if (!supa) return;
+      supa.from('app_state').upsert({
+        key: 'jarvis_history',
+        data: { scores: jarvisHistory },
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'key' }).catch(() => {});
+    }
 
     function getBriefingPhase() {
       const now = new Date(briefingToday()+'T00:00:00');
@@ -1942,7 +2107,7 @@
         const last7 = new Date(today+'T00:00:00'); last7.setDate(last7.getDate()-6);
         const last7Str = last7.toISOString().slice(0,10);
 
-        const [nutRes, soccerRes, checkinsRes, weightRes, testsRes, sessRes, gymRes, rsaRes, planRes] = await Promise.all([
+        const [nutRes, soccerRes, checkinsRes, weightRes, testsRes, sessRes, gymRes, rsaRes, planRes, jarvisHistRes] = await Promise.all([
           supa.from('app_state').select('data').eq('key','nutrition').maybeSingle(),
           supa.from('app_state').select('data').eq('key','soccer').maybeSingle(),
           supa.from('daily_checkins').select('*').gte('date',last7Str).order('date',{ascending:false}),
@@ -1951,8 +2116,11 @@
           supa.from('soccer_sessions').select('*').gte('date',last7Str).order('date',{ascending:false}),
           supa.from('workout_sessions').select('*').gte('date',last7Str).order('date',{ascending:false}),
           supa.from('sprint_decay_sessions').select('*').order('date',{ascending:false}).limit(3),
-          supa.from('offseason_plan').select('*').order('last_updated',{ascending:false}).limit(1).maybeSingle()
+          supa.from('offseason_plan').select('*').order('last_updated',{ascending:false}).limit(1).maybeSingle(),
+          supa.from('app_state').select('data').eq('key','jarvis_history').maybeSingle()
         ]);
+        // Load jarvis history
+        if (jarvisHistRes?.data?.data?.scores) jarvisHistory = jarvisHistRes.data.data.scores;
 
         const nutData = nutRes?.data?.data || {};
         const socData = soccerRes?.data?.data || {};
@@ -2171,6 +2339,83 @@
           updated_at: new Date().toISOString()
         }, { onConflict:'key' }).catch(()=>{});
       }
+
+      // ── Jarvis Trend Chart ──
+      const today = briefingToday();
+      // Only append if today isn't already the last entry
+      const lastEntry = jarvisHistory.length ? jarvisHistory[jarvisHistory.length - 1] : null;
+      if (!lastEntry || lastEntry.date !== today) {
+        jarvisHistory.push({ date: today, score: composite });
+        // Keep last 14 days
+        if (jarvisHistory.length > 14) jarvisHistory = jarvisHistory.slice(-14);
+        saveJarvisHistory();
+      } else {
+        // Update today's score if it changed by 3+ points
+        if (Math.abs(lastEntry.score - composite) >= 3) {
+          lastEntry.score = composite;
+          saveJarvisHistory();
+        }
+      }
+
+      if (jarvisHistory.length >= 2) {
+        renderJarvisSparkline(composite);
+      }
+    }
+
+    function renderJarvisSparkline(currentScore) {
+      const wrap = $('#jarvisTrendWrap');
+      const svg = $('#jarvisTrendSvg');
+      if (!wrap || !svg) return;
+
+      const scores = jarvisHistory.map(h => h.score);
+      const min = Math.min(...scores);
+      const max = Math.max(...scores);
+      const range = max - min || 1;
+      const pad = range * 0.15;
+      const yMin = Math.max(0, min - pad);
+      const yMax = Math.min(100, max + pad);
+      const yRange = yMax - yMin;
+
+      const W = 280, H = 48;
+      const padX = 2, padY = 4;
+      const plotW = W - padX * 2;
+      const plotH = H - padY * 2;
+
+      const points = scores.map((s, i) => {
+        const x = padX + (i / Math.max(1, scores.length - 1)) * plotW;
+        const y = padY + (1 - (s - yMin) / yRange) * plotH;
+        return `${x},${y}`;
+      });
+
+      // Determine line color based on trend and current score
+      const firstScore = scores[0];
+      const trend = currentScore - firstScore;
+      let strokeColor = '#F2C063'; // yellow default
+      if (currentScore >= 75 || trend > 5) strokeColor = '#6BE3A4';
+      else if (currentScore < 55 || trend < -5) strokeColor = '#FF6B6B';
+
+      // Gradient fill
+      const gradId = 'jarvisGrad';
+
+      svg.innerHTML = `
+        <defs>
+          <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="${strokeColor}" stop-opacity="0.25"/>
+            <stop offset="100%" stop-color="${strokeColor}" stop-opacity="0.02"/>
+          </linearGradient>
+        </defs>
+        <!-- Area fill -->
+        <polygon points="${padX},${padY+plotH} ${points.join(' ')} ${padX+plotW},${padY+plotH}"
+          fill="url(#${gradId})" stroke="none"/>
+        <!-- Line -->
+        <polyline points="${points.join(' ')}"
+          fill="none" stroke="${strokeColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <!-- Current dot -->
+        <circle cx="${points[points.length-1].split(',')[0]}" cy="${points[points.length-1].split(',')[1]}"
+          r="3" fill="${strokeColor}" stroke="#050506" stroke-width="1.5"/>
+      `;
+
+      wrap.style.display = '';
     }
 
     function renderStatusGrid() {
@@ -2409,20 +2654,157 @@
     });
 
     $('quickCheckinBtn').addEventListener('click', () => {
-      // Navigate to nutrition tab and open check-in
-      const nutritionTab = document.querySelector('[data-tab="nutrition"]');
-      if (nutritionTab) nutritionTab.click();
+      $('#inlCheckinModal').classList.add('show');
     });
 
     $('quickSessionBtn').addEventListener('click', () => {
-      // Navigate to soccer tab
-      const soccerTab = document.querySelector('[data-tab="soccer"]');
-      if (soccerTab) soccerTab.click();
+      $('#inlSessionModal').classList.add('show');
     });
 
     $('briefCheckinBtn').addEventListener('click', () => {
-      const nutritionTab = document.querySelector('[data-tab="nutrition"]');
-      if (nutritionTab) nutritionTab.click();
+      $('#inlCheckinModal').classList.add('show');
+    });
+
+    /* ── Inline Check-in Modal Handlers ── */
+    let inlCheckinSleepQuality = null;
+
+    $('#inlCheckinClose').addEventListener('click', () => {
+      $('#inlCheckinModal').classList.remove('show');
+    });
+
+    // Sleep range
+    $('#inlSleepHours').addEventListener('input', function() {
+      $('#inlSleepVal').textContent = this.value;
+    });
+    $('#inlEnergyScore').addEventListener('input', function() {
+      $('#inlEnergyVal').textContent = this.value;
+    });
+
+    // Star rating
+    document.querySelectorAll('#inlSleepQuality .inl-star-btn').forEach(star => {
+      const rating = parseInt(star.dataset.rating, 10);
+      star.addEventListener('click', () => {
+        inlCheckinSleepQuality = rating;
+        document.querySelectorAll('#inlSleepQuality .inl-star-btn').forEach((s,i) => {
+          s.classList.toggle('filled', i < rating);
+        });
+      });
+    });
+
+    // Segmented button groups
+    function wireInlSeg(groupId) {
+      const el = document.getElementById(groupId);
+      if(!el) return;
+      el.querySelectorAll('.inl-seg-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          el.querySelectorAll('.inl-seg-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+        });
+      });
+    }
+    ['inlSoreness','inlHydration','inlCalorie','inlSessionType','inlSessionIntensity'].forEach(wireInlSeg);
+
+    // Submit check-in
+    $('#inlCheckinSubmit').addEventListener('click', async () => {
+      if(!inlCheckinSleepQuality) {
+        const msg = $('#inlCheckinMsg');
+        msg.textContent = 'Please rate your sleep quality.';
+        msg.style.display = 'block';
+        return;
+      }
+      const proteinVal = $('#inlProteinGrams').value.trim();
+      if(!proteinVal) {
+        const msg = $('#inlCheckinMsg');
+        msg.textContent = 'Please enter yesterday\'s protein (grams).';
+        msg.style.display = 'block';
+        return;
+      }
+
+      const btn = $('#inlCheckinSubmit');
+      btn.disabled = true; btn.textContent = 'Saving…';
+
+      const checkin = {
+        date: briefingToday(),
+        sleep_hours: parseFloat($('#inlSleepHours').value),
+        sleep_quality: inlCheckinSleepQuality,
+        energy_score: parseInt($('#inlEnergyScore').value, 10),
+        soreness: document.querySelector('#inlSoreness .inl-seg-btn.active')?.dataset.value || 'moderate',
+        protein_grams: parseInt(proteinVal, 10),
+        hydration: document.querySelector('#inlHydration .inl-seg-btn.active')?.dataset.value || 'good',
+        calorie_hit: document.querySelector('#inlCalorie .inl-seg-btn.active')?.dataset.value || 'roughly'
+      };
+
+      if(!supa) { btn.disabled=false; btn.textContent='Submit Check-in'; return; }
+
+      try {
+        // Calculate recovery score (same formula as nutrition.html)
+        const sleepScore = Math.min(checkin.sleep_hours / 9, 1) * 40;
+        const qualityScore = (checkin.sleep_quality / 5) * 20;
+        const energyScore = (checkin.energy_score / 10) * 25;
+        const sorenessMap = { none: 100, mild: 75, moderate: 40, severe: 10 };
+        const sorenessScore = ((sorenessMap[checkin.soreness] || 0) / 100) * 15;
+        const recoveryScore = Math.round(sleepScore + qualityScore + energyScore + sorenessScore);
+
+        await supa.from('daily_checkins').upsert(checkin, { onConflict: 'date' });
+        await supa.from('recovery_scores').upsert({ date: briefingToday(), score: recoveryScore }, { onConflict: 'date' });
+
+        const { data: last7 } = await supa.from('recovery_scores').select('score').order('date', { ascending: false }).limit(7);
+        const avg7 = last7 && last7.length ? Math.round(last7.reduce((s, r) => s + r.score, 0) / last7.length) : recoveryScore;
+
+        await supa.from('app_state').upsert({
+          key: 'nutrition',
+          data: { recovery_score_today: recoveryScore, recovery_score_7day_avg: avg7, checkin_date: briefingToday() },
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'key' });
+
+        $('#inlCheckinModal').classList.remove('show');
+        $('#inlCheckinMsg').style.display = 'none';
+        loadMorningBriefing();
+      } catch(e) {
+        btn.disabled = false; btn.textContent = 'Submit Check-in';
+        const msg = $('#inlCheckinMsg');
+        msg.textContent = 'Save failed: ' + (e.message || 'Check console');
+        msg.style.display = 'block';
+      } finally {
+        btn.disabled = false; btn.textContent = 'Submit Check-in';
+      }
+    });
+
+    /* ── Inline Session Modal Handlers ── */
+    $('#inlSessionClose').addEventListener('click', () => {
+      $('#inlSessionModal').classList.remove('show');
+    });
+
+    $('#inlSessionSubmit').addEventListener('click', async () => {
+      const type = document.querySelector('#inlSessionType .inl-seg-btn.active')?.dataset.value || 'ball';
+      const duration = parseInt($('#inlSessionDuration').value) || 0;
+      if(!duration) {
+        alert('Enter a duration.');
+        return;
+      }
+      const intensity = document.querySelector('#inlSessionIntensity .inl-seg-btn.active')?.dataset.value || 'Medium';
+      const note = $('#inlSessionNote').value.trim() || null;
+
+      if(!supa) return;
+      const btn = $('#inlSessionSubmit');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      try {
+        await supa.from('soccer_sessions').insert({
+          date: briefingToday(),
+          session_type: type,
+          duration_minutes: duration,
+          intensity,
+          note
+        });
+        $('#inlSessionModal').classList.remove('show');
+        $('#inlSessionDuration').value = '';
+        $('#inlSessionNote').value = '';
+        loadMorningBriefing();
+      } catch(e) {
+        alert('Save failed: ' + (e.message || e));
+      } finally {
+        btn.disabled = false; btn.textContent = 'Save Session';
+      }
     });
 
     /* ── End Morning Briefing ── */
