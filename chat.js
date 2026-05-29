@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
 //  JARVIS CHAT — AI Performance Coach
-//  Import into any HTML page with: <script src="chat.js" defer></script>
+//  Import into any HTML page with: <script src="chat.js"></script>
 //  Then call: initJarvisChat(yourSupabaseClient)
 // ═══════════════════════════════════════════════════════════════
 
@@ -780,10 +780,21 @@
   // ──────────────── INIT ────────────────
   function initJarvisChat(supabaseClient) {
     supa = supabaseClient;
-    inject();
-    wireEvents();
-    updateModelIndicator();
-    console.log('Jarvis Chat ready — model:', GEMINI_API_KEY.includes('PASTE') ? 'NEEDS KEY' : 'Gemini 2.0 Flash');
+    // If DOM isn't ready yet (script loaded synchronously in <head>),
+    // defer injection until DOMContentLoaded. Otherwise inject now.
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        inject();
+        wireEvents();
+        updateModelIndicator();
+        console.log('Jarvis Chat ready — model:', GEMINI_API_KEY.includes('PASTE') ? 'NEEDS KEY' : 'Gemini 2.0 Flash');
+      });
+    } else {
+      inject();
+      wireEvents();
+      updateModelIndicator();
+      console.log('Jarvis Chat ready — model:', GEMINI_API_KEY.includes('PASTE') ? 'NEEDS KEY' : 'Gemini 2.0 Flash');
+    }
   }
 
   window.initJarvisChat = initJarvisChat;
