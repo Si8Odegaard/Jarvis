@@ -7,6 +7,7 @@
 <meta name="color-scheme" content="dark">
 <title>Nutrition & Recovery</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="chat.js" defer></script>
 <style>
 :root {
   --bg: #050506;
@@ -260,6 +261,7 @@ input[type="number"].error { border-color:var(--danger); }
 const SUPABASE_URL = 'https://cskbbioyniryonkukamw.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNza2JiaW95bmlyeW9ua3VrYW13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NjE2MTYsImV4cCI6MjA5NDUzNzYxNn0.R3Vx3fA-iAc8LhNL3WPSa9-BxH_087c7VaIbrB3CBJM';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+initJarvisChat(sb);
 const APP_KEY = 'nutrition';
 
 // ═══════════════════════════════════════════════

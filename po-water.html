@@ -458,6 +458,7 @@ html, body {
 }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="chat.js" defer></script>
 </head>
 <body>
 <script>if (/[?&]embed=1/.test(location.search)) document.body.classList.add('water-embed');</script>
@@ -1320,6 +1321,7 @@ html, body {
     // Init Supabase client if available
     if (window.supabase && SUPABASE_URL && SUPABASE_KEY && SUPABASE_URL.indexOf('PASTE-') === -1) {
       pwSupa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      initJarvisChat(pwSupa);
 
       // Fetch remote with 3-second timeout — render NOTHING until resolved/timeout
       try {

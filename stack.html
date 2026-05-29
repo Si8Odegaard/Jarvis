@@ -7,6 +7,7 @@
 <meta name="color-scheme" content="dark">
 <title>Daily Stack</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="chat.js" defer></script>
 <style>
 :root {
   --bg: #050506;
@@ -1165,6 +1166,7 @@ body.stack-embed main {
   (async function stInitCloudSync() {
     if (!window.supabase || !SUPABASE_URL || !SUPABASE_KEY) return;
     stSupa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    initJarvisChat(stSupa);
     try {
       const { data, error } = await stSupa
         .from('app_state').select('data').eq('key', APP_KEY).maybeSingle();

@@ -1257,6 +1257,7 @@
 
   <script src="tabs.js" defer></script>
   <script src="topbar.js" defer></script>
+  <script src="chat.js" defer></script>
   <script>
   (function () {
     'use strict';
@@ -1522,6 +1523,7 @@
         return;
       }
       supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      initJarvisChat(supa);
       try {
         const { data, error } = await supa.from('app_state').select('data').eq('key', APP_KEY).maybeSingle();
         if (error) throw error;
