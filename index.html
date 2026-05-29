@@ -1318,11 +1318,11 @@
 
     async function saveJarvisHistory() {
       if (!supa) return;
-      supa.from('app_state').upsert({
+      Promise.resolve(supa.from('app_state').upsert({
         key: 'jarvis_history',
         data: { scores: jarvisHistory },
         updated_at: new Date().toISOString()
-      }, { onConflict: 'key' }).catch(() => {});
+      }, { onConflict: 'key' })).catch(() => {});
     }
 
     function getBriefingPhase() {
@@ -2339,10 +2339,10 @@
 
       // Persist score for next comparison
       if (supa) {
-        supa.from('app_state').upsert({
+        Promise.resolve(supa.from('app_state').upsert({
           key:'jarvis_score', data:{ score: composite },
           updated_at: new Date().toISOString()
-        }, { onConflict:'key' }).catch(()=>{});
+        }, { onConflict:'key' })).catch(()=>{});
       }
 
       // ── Jarvis Trend Chart ──
@@ -2625,7 +2625,7 @@
       const save = () => {
         const v = parseFloat(inp.value);
         if (!isNaN(v) && v > 0 && supa) {
-          supa.from('weight_logs').insert({ date: briefingToday(), weight: v }).then(() => {
+          Promise.resolve(supa.from('weight_logs').insert({ date: briefingToday(), weight: v })).then(() => {
             btn.innerHTML = '⚖️ Log Weight';
             weightInputVisible = false;
             loadMorningBriefing();

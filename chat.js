@@ -280,17 +280,20 @@
     last14.setDate(last14.getDate() - 13);
     const last14Str = last14.toISOString().slice(0, 10);
 
+    const safeQuery = (qb) => Promise.resolve(qb).catch(() => ({ data: [] }));
+    const safeMaybe = (qb) => Promise.resolve(qb).catch(() => ({ data: null }));
+
     const queries = [
-      supa.from('app_state').select('key, data').in('key', [
+      safeQuery(supa.from('app_state').select('key, data').in('key', [
         'nutrition', 'soccer', 'health', 'jarvis_score', 'jarvis_history'
-      ]).catch(() => ({ data: [] })),
-      supa.from('daily_checkins').select('*').gte('date', last7Str).order('date', { ascending: false }).limit(7).catch(() => ({ data: [] })),
-      supa.from('recovery_scores').select('*').gte('date', last7Str).order('date', { ascending: false }).limit(7).catch(() => ({ data: [] })),
-      supa.from('weight_logs').select('*').order('date', { ascending: false }).limit(14).catch(() => ({ data: [] })),
-      supa.from('soccer_sessions').select('*').order('date', { ascending: false }).limit(10).catch(() => ({ data: [] })),
-      supa.from('workout_sessions').select('*').gte('date', last7Str).order('date', { ascending: false }).limit(7).catch(() => ({ data: [] })),
-      supa.from('athletic_tests').select('*').order('date', { ascending: false }).limit(5).catch(() => ({ data: [] })),
-      supa.from('nutrition_profile').select('*').limit(1).maybeSingle().catch(() => ({ data: null })),
+      ])),
+      safeQuery(supa.from('daily_checkins').select('*').gte('date', last7Str).order('date', { ascending: false }).limit(7)),
+      safeQuery(supa.from('recovery_scores').select('*').gte('date', last7Str).order('date', { ascending: false }).limit(7)),
+      safeQuery(supa.from('weight_logs').select('*').order('date', { ascending: false }).limit(14)),
+      safeQuery(supa.from('soccer_sessions').select('*').order('date', { ascending: false }).limit(10)),
+      safeQuery(supa.from('workout_sessions').select('*').gte('date', last7Str).order('date', { ascending: false }).limit(7)),
+      safeQuery(supa.from('athletic_tests').select('*').order('date', { ascending: false }).limit(5)),
+      safeMaybe(supa.from('nutrition_profile').select('*').limit(1).maybeSingle()),
     ];
 
     const results = await Promise.all(queries);
