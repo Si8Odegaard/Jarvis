@@ -1,264 +1,273 @@
 // ═══════════════════════════════════════════════════════════════
-//  JARVIS CHAT — AI Performance Coach
+//  JARVIS — AI Soccer Performance Coach
 //  Import into any HTML page with: <script src="chat.js"></script>
-//  Then call: initJarvisChat(yourSupabaseClient)
+//  Then call: initJarvisChat(yourSupabaseClient, userConfig)
 // ═══════════════════════════════════════════════════════════════
 
 (function () {
   'use strict';
 
   // ──────────────── CONFIGURATION ────────────────
-  // Replace with your actual keys, or set window.JARVIS_GEMINI_KEY
-  // and window.JARVIS_GROQ_KEY before loading this script.
   const GEMINI_API_KEY = window.JARVIS_GEMINI_KEY || String.fromCharCode(65,73,122,97,83,121,68,55,48,111,48,56,115,87,118,90,81,51,48,90,83,115,80,111,102,83,112,71,51,118,114,56,88,114,72,98,72,108,85);
   const GROQ_API_KEY = window.JARVIS_GROQ_KEY || String.fromCharCode(103,115,107,95,79,112,120,85,74,103,56,67,113,117,103,70,66,69,110,70,69,71,101,50,87,71,100,121,98,51,70,89,73,55,102,86,116,113,97,107,108,100,116,114,79,113,99,49,118,98,116,53,54,75,90,81);
   const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
   const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
   const GROQ_MODEL = 'llama-3.3-70b-versatile';
+  const GEMINI_TIMEOUT_MS = 8000;
 
-  let supa = null;           // Supabase client (set by initJarvisChat)
-  let activeModel = 'gemini'; // 'gemini' | 'groq'
-  let conversation = [];      // Message history (last 20)
+  // ──────────────── STATE ────────────────
+  let supa = null;
+  let athleteName = 'Silas';
+  let startWeight = 135;
+  let activeModel = 'gemini';
+  let conversation = [];
   let isLoading = false;
 
-  // ──────────────── CSS INJECTION ────────────────
-  const CHAT_CSS = `
-.jarvis-chat-btn {
-  position: fixed; bottom: 28px; right: 28px; z-index: 9999;
-  width: 56px; height: 56px; border-radius: 50%;
-  background: linear-gradient(135deg, #6BE3A4 0%, #4ECB8C 100%);
-  border: none; cursor: pointer;
-  box-shadow: 0 6px 24px rgba(107, 227, 164, 0.35), 0 2px 8px rgba(0,0,0,0.4);
-  display: flex; align-items: center; justify-content: center;
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s, opacity 0.15s;
-  -webkit-tap-highlight-color: transparent;
-  padding-bottom: env(safe-area-inset-bottom, 0);
+  // ──────────────── CSS ────────────────
+  const CSS = `
+/* Floating chat button */
+.jarvis-fab {
+  position:fixed; bottom:28px; right:28px; z-index:9999;
+  width:56px; height:56px; border-radius:50%;
+  background:linear-gradient(135deg,#6BE3A4,#4ECB8C);
+  border:none; cursor:pointer;
+  box-shadow:0 6px 24px rgba(107,227,164,.35),0 2px 8px rgba(0,0,0,.4);
+  display:flex; align-items:center; justify-content:center;
+  transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .2s,opacity .15s;
+  -webkit-tap-highlight-color:transparent;
 }
-.jarvis-chat-btn:active { transform: scale(0.92); }
-.jarvis-chat-btn:hover { box-shadow: 0 8px 32px rgba(107, 227, 164, 0.5), 0 4px 12px rgba(0,0,0,0.5); }
-.jarvis-chat-btn.loading { opacity: 0.7; }
-.jarvis-chat-btn svg { width: 24px; height: 24px; }
-.jarvis-chat-btn .chat-btn-ring {
-  position: absolute; inset: -3px; border-radius: 50%;
-  border: 2px solid rgba(107, 227, 164, 0.3);
-  animation: jarvis-ring-pulse 2s ease-in-out infinite;
+.jarvis-fab:active{transform:scale(.92)}
+.jarvis-fab:hover{box-shadow:0 8px 32px rgba(107,227,164,.5),0 4px 12px rgba(0,0,0,.5)}
+.jarvis-fab svg{width:24px;height:24px}
+.jarvis-fab-ring{
+  position:absolute;inset:-3px;border-radius:50%;
+  border:2px solid rgba(107,227,164,.3);
+  animation:jv-ring 2s ease-in-out infinite;
 }
-@keyframes jarvis-ring-pulse {
-  0%, 100% { transform: scale(1); opacity: 0.3; }
-  50% { transform: scale(1.08); opacity: 0.08; }
-}
-
-/* Chat overlay */
-.jarvis-chat-overlay {
-  position: fixed; inset: 0; z-index: 10000;
-  background: rgba(0,0,0,0.55); backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  opacity: 0; pointer-events: none;
-  transition: opacity 0.25s ease;
-}
-.jarvis-chat-overlay.open { opacity: 1; pointer-events: auto; }
-
-/* Chat panel */
-.jarvis-chat-panel {
-  position: fixed; top: 0; right: 0; bottom: 0; z-index: 10001;
-  width: min(75vw, 480px); max-width: 100vw;
-  background: #0e0e10;
-  border-left: 1px solid rgba(255,255,255,0.07);
-  display: flex; flex-direction: column;
-  transform: translateX(105%);
-  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
-  box-shadow: -8px 0 40px rgba(0,0,0,0.5);
-}
-.jarvis-chat-panel.open { transform: translateX(0); }
-
-/* Panel header */
-.jarvis-chat-header {
-  display: flex; align-items: center; gap: 12px;
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  flex-shrink: 0;
-}
-.jarvis-chat-header-title {
-  font-size: 16px; font-weight: 700; flex: 1;
-  display: flex; align-items: center; gap: 8px;
-}
-.jarvis-chat-model-dot {
-  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-  transition: background 0.3s;
-}
-.jarvis-chat-model-dot.gemini { background: #6BE3A4; box-shadow: 0 0 6px rgba(107,227,164,0.6); }
-.jarvis-chat-model-dot.groq { background: #F2C063; box-shadow: 0 0 6px rgba(242,192,99,0.6); }
-.jarvis-chat-close {
-  background: rgba(255,255,255,0.07); border: none; color: #B8B6B0;
-  font-size: 18px; border-radius: 50%; width: 30px; height: 30px;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: background 0.15s; flex-shrink: 0;
-}
-.jarvis-chat-close:hover { background: rgba(255,255,255,0.14); }
-
-/* Messages area */
-.jarvis-chat-messages {
-  flex: 1; overflow-y: auto; padding: 16px 18px;
-  display: flex; flex-direction: column; gap: 12px;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-}
-.jarvis-chat-msg {
-  max-width: 85%; padding: 12px 16px; border-radius: 14px;
-  font-size: 13.5px; line-height: 1.6; word-break: break-word;
-  animation: jarvis-msg-in 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-}
-@keyframes jarvis-msg-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.jarvis-chat-msg.user {
-  align-self: flex-end;
-  background: linear-gradient(135deg, rgba(107,227,164,0.18), rgba(107,227,164,0.08));
-  color: #FAFAFA; border-bottom-right-radius: 4px;
-}
-.jarvis-chat-msg.assistant {
-  align-self: flex-start;
-  background: rgba(255,255,255,0.05);
-  color: #D4D2CC; border-bottom-left-radius: 4px;
+@keyframes jv-ring{
+  0%,100%{transform:scale(1);opacity:.3}
+  50%{transform:scale(1.08);opacity:.08}
 }
 
-/* Typing indicator */
-.jarvis-chat-typing {
-  align-self: flex-start; display: flex; gap: 4px;
-  padding: 14px 18px; border-radius: 14px;
-  background: rgba(255,255,255,0.05);
+/* Overlay */
+.jarvis-overlay{
+  position:fixed;inset:0;z-index:10000;
+  background:rgba(0,0,0,.55);backdrop-filter:blur(4px);
+  -webkit-backdrop-filter:blur(4px);
+  opacity:0;pointer-events:none;transition:opacity .25s;
 }
-.jarvis-chat-typing span {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: #76746E; animation: jarvis-typing 1.4s ease-in-out infinite;
+.jarvis-overlay.open{opacity:1;pointer-events:auto}
+
+/* Panel */
+.jarvis-panel{
+  position:fixed;top:0;right:0;bottom:0;z-index:10001;
+  width:min(70vw,380px);max-width:100vw;
+  background:#0e0e10;border-left:1px solid rgba(255,255,255,.07);
+  display:flex;flex-direction:column;
+  transform:translateX(105%);
+  transition:transform .32s cubic-bezier(.22,1,.36,1);
+  box-shadow:-8px 0 40px rgba(0,0,0,.5);
 }
-.jarvis-chat-typing span:nth-child(2) { animation-delay: 0.2s; }
-.jarvis-chat-typing span:nth-child(3) { animation-delay: 0.4s; }
-@keyframes jarvis-typing {
-  0%, 60%, 100% { opacity: 0.2; transform: translateY(0); }
-  30% { opacity: 1; transform: translateY(-4px); }
+.jarvis-panel.open{transform:translateX(0)}
+
+/* Header */
+.jarvis-header{
+  display:flex;align-items:center;gap:10px;
+  padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.06);
+  flex-shrink:0;
+}
+.jarvis-header-title{
+  font-size:16px;font-weight:700;flex:1;
+  display:flex;align-items:center;gap:8px;
+}
+.jarvis-model-tag{
+  font-size:9px;font-weight:800;letter-spacing:.06em;
+  padding:2px 7px;border-radius:10px;
+  display:flex;align-items:center;gap:4px;
+  transition:all .3s;
+}
+.jarvis-model-tag.gemini{
+  background:rgba(107,227,164,.15);color:#6BE3A4;
+  border:1px solid rgba(107,227,164,.25);
+}
+.jarvis-model-tag.groq{
+  background:rgba(242,192,99,.15);color:#F2C063;
+  border:1px solid rgba(242,192,99,.25);
+}
+.jarvis-model-dot{
+  width:7px;height:7px;border-radius:50%;flex-shrink:0;
+}
+.jarvis-model-dot.gemini{background:#6BE3A4;box-shadow:0 0 6px rgba(107,227,164,.6)}
+.jarvis-model-dot.groq{background:#F2C063;box-shadow:0 0 6px rgba(242,192,99,.6)}
+.jarvis-close{
+  background:rgba(255,255,255,.07);border:none;color:#B8B6B0;
+  font-size:18px;border-radius:50%;width:30px;height:30px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:background .15s;flex-shrink:0;
+}
+.jarvis-close:hover{background:rgba(255,255,255,.14)}
+
+/* Messages */
+.jarvis-msgs{
+  flex:1;overflow-y:auto;padding:14px 16px;
+  display:flex;flex-direction:column;gap:10px;
+  -webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+}
+.jarvis-msg{
+  max-width:88%;padding:11px 15px;border-radius:14px;
+  font-size:13px;line-height:1.6;word-break:break-word;
+  animation:jv-msg-in .3s cubic-bezier(.22,1,.36,1);
+}
+@keyframes jv-msg-in{
+  from{opacity:0;transform:translateY(8px)}
+  to{opacity:1;transform:translateY(0)}
+}
+.jarvis-msg.user{
+  align-self:flex-end;
+  background:linear-gradient(135deg,rgba(107,227,164,.2),rgba(107,227,164,.08));
+  color:#FAFAFA;border-bottom-right-radius:4px;
+}
+.jarvis-msg.assistant{
+  align-self:flex-start;
+  background:rgba(255,255,255,.05);color:#D4D2CC;
+  border-bottom-left-radius:4px;
+  display:flex;gap:10px;align-items:flex-start;
+}
+.jarvis-avatar{
+  width:26px;height:26px;border-radius:50%;
+  background:linear-gradient(135deg,#6BE3A4,#2EA06A);
+  color:#04201A;font-size:11px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;margin-top:2px;
 }
 
-/* Error message */
-.jarvis-chat-error {
-  align-self: center; text-align: center; padding: 10px 16px; border-radius: 10px;
-  background: rgba(255,107,107,0.08); border: 1px solid rgba(255,107,107,0.2);
-  color: #FF8A8A; font-size: 12.5px; max-width: 90%;
+/* Typing */
+.jarvis-typing{
+  align-self:flex-start;display:flex;gap:4px;
+  padding:13px 17px;border-radius:14px;
+  background:rgba(255,255,255,.05);
+}
+.jarvis-typing span{
+  width:7px;height:7px;border-radius:50%;
+  background:#76746E;animation:jv-dot 1.4s ease-in-out infinite;
+}
+.jarvis-typing span:nth-child(2){animation-delay:.2s}
+.jarvis-typing span:nth-child(3){animation-delay:.4s}
+@keyframes jv-dot{
+  0%,60%,100%{opacity:.2;transform:translateY(0)}
+  30%{opacity:1;transform:translateY(-4px)}
+}
+
+/* Error */
+.jarvis-error{
+  align-self:center;text-align:center;padding:10px 16px;border-radius:10px;
+  background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.2);
+  color:#FF8A8A;font-size:12px;max-width:90%;
 }
 
 /* Input area */
-.jarvis-chat-input-wrap {
-  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-  border-top: 1px solid rgba(255,255,255,0.06);
-  flex-shrink: 0;
+.jarvis-input-wrap{
+  padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+  border-top:1px solid rgba(255,255,255,.06);flex-shrink:0;
 }
 
-/* Quick prompts */
-.jarvis-chat-chips {
-  display: flex; gap: 6px; margin-bottom: 10px;
-  overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
-  padding-bottom: 2px;
+/* Quick chips */
+.jarvis-chips{
+  display:flex;gap:6px;margin-bottom:8px;
+  overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;
 }
-.jarvis-chat-chips::-webkit-scrollbar { display: none; }
-.jarvis-chat-chip {
-  flex: 0 0 auto; padding: 7px 13px; border-radius: 20px;
-  border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(255,255,255,0.04); color: #B8B6B0;
-  font-size: 11.5px; font-weight: 600; cursor: pointer;
-  font-family: inherit; white-space: nowrap;
-  transition: all 0.15s;
-  -webkit-tap-highlight-color: transparent;
+.jarvis-chips::-webkit-scrollbar{display:none}
+.jarvis-chip{
+  flex:0 0 auto;padding:7px 13px;border-radius:20px;
+  border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.04);color:#B8B6B0;
+  font-size:11px;font-weight:600;cursor:pointer;
+  font-family:inherit;white-space:nowrap;transition:all .15s;
+  -webkit-tap-highlight-color:transparent;
 }
-.jarvis-chat-chip:hover { background: rgba(255,255,255,0.08); color: #FAFAFA; border-color: rgba(255,255,255,0.18); }
+.jarvis-chip:hover{background:rgba(255,255,255,.08);color:#FAFAFA;border-color:rgba(255,255,255,.18)}
 
 /* Input row */
-.jarvis-chat-input-row {
-  display: flex; align-items: flex-end; gap: 8px;
+.jarvis-input-row{display:flex;align-items:flex-end;gap:8px}
+.jarvis-textarea{
+  flex:1;resize:none;min-height:40px;max-height:120px;
+  padding:9px 13px;border-radius:12px;
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.04);color:#FAFAFA;
+  font-family:inherit;font-size:13px;line-height:1.5;
+  outline:none;transition:border-color .15s;
 }
-.jarvis-chat-textarea {
-  flex: 1; resize: none; min-height: 42px; max-height: 120px;
-  padding: 10px 14px; border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.04); color: #FAFAFA;
-  font-family: inherit; font-size: 13.5px; line-height: 1.5;
-  outline: none; transition: border-color 0.15s;
+.jarvis-textarea:focus{border-color:rgba(107,227,164,.35)}
+.jarvis-textarea::placeholder{color:#76746E}
+.jarvis-send{
+  width:40px;height:40px;border-radius:12px;border:none;
+  background:linear-gradient(135deg,#6BE3A4,#4ECB8C);color:#04201A;
+  font-size:15px;cursor:pointer;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .15s;position:relative;
 }
-.jarvis-chat-textarea:focus { border-color: rgba(107,227,164,0.35); }
-.jarvis-chat-textarea::placeholder { color: #76746E; }
-
-.jarvis-chat-send {
-  width: 42px; height: 42px; border-radius: 12px; border: none;
-  background: linear-gradient(135deg, #6BE3A4, #4ECB8C); color: #04201A;
-  font-size: 16px; cursor: pointer; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  transition: all 0.15s; position: relative;
+.jarvis-send:disabled{opacity:.4;cursor:not-allowed}
+.jarvis-send:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 16px rgba(107,227,164,.3)}
+.jarvis-send-dot{
+  position:absolute;top:-2px;right:-2px;
+  width:10px;height:10px;border-radius:50%;
+  border:2px solid #0e0e10;transition:background .3s;
 }
-.jarvis-chat-send:disabled { opacity: 0.4; cursor: not-allowed; }
-.jarvis-chat-send:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(107,227,164,0.3); }
-.jarvis-chat-model-indicator {
-  position: absolute; top: -2px; right: -2px;
-  width: 10px; height: 10px; border-radius: 50%;
-  border: 2px solid #0e0e10;
-  transition: background 0.3s;
-}
-.jarvis-chat-model-indicator.gemini { background: #6BE3A4; }
-.jarvis-chat-model-indicator.groq { background: #F2C063; }
-
-.jarvis-chat-mic {
-  width: 36px; height: 36px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.04); color: #76746E;
-  font-size: 14px; cursor: not-allowed; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  opacity: 0.4;
+.jarvis-send-dot.gemini{background:#6BE3A4}
+.jarvis-send-dot.groq{background:#F2C063}
+.jarvis-mic{
+  width:36px;height:36px;border-radius:10px;
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.04);color:#76746E;
+  font-size:14px;cursor:not-allowed;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;opacity:.4;
 }
 
-/* Mobile: full screen */
-@media (max-width: 640px) {
-  .jarvis-chat-panel { width: 100vw; max-width: 100vw; }
-  .jarvis-chat-btn { bottom: calc(100px + env(safe-area-inset-bottom)); right: 16px; }
+@media(max-width:640px){
+  .jarvis-panel{width:100vw;max-width:100vw}
+  .jarvis-fab{bottom:calc(100px + env(safe-area-inset-bottom));right:16px}
 }
 `;
 
-  // ──────────────── HTML INJECTION ────────────────
-  const CHAT_HTML = `
-<div class="jarvis-chat-btn" id="jarvisChatBtn" aria-label="Open Jarvis chat" title="Chat with Jarvis">
-  <span class="chat-btn-ring"></span>
+  // ──────────────── HTML ────────────────
+  const HTML = `
+<div class="jarvis-fab" id="jvFab" aria-label="Open Jarvis chat" title="Chat with Jarvis">
+  <span class="jarvis-fab-ring"></span>
   <svg viewBox="0 0 24 24" fill="none" stroke="#04201A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
   </svg>
 </div>
-
-<div class="jarvis-chat-overlay" id="jarvisChatOverlay"></div>
-
-<div class="jarvis-chat-panel" id="jarvisChatPanel" role="dialog" aria-label="Jarvis chat">
-  <div class="jarvis-chat-header">
-    <div class="jarvis-chat-header-title">
-      Jarvis
-      <span class="jarvis-chat-model-dot gemini" id="jarvisModelDot" title="Active: Gemini"></span>
+<div class="jarvis-overlay" id="jvOverlay"></div>
+<div class="jarvis-panel" id="jvPanel" role="dialog" aria-label="Jarvis chat">
+  <div class="jarvis-header">
+    <div class="jarvis-header-title">
+      JARVIS
+      <span class="jarvis-model-tag gemini" id="jvModelTag">
+        <span class="jarvis-model-dot gemini" id="jvModelDot"></span>
+        <span id="jvModelLabel">G</span>
+      </span>
     </div>
-    <button class="jarvis-chat-close" id="jarvisChatClose" aria-label="Close chat">×</button>
+    <button class="jarvis-close" id="jvClose" aria-label="Close chat">&times;</button>
   </div>
-
-  <div class="jarvis-chat-messages" id="jarvisChatMessages" role="log" aria-live="polite">
-    <div class="jarvis-chat-msg assistant">
-      Hey Silas — I'm Jarvis. I have your full training data loaded. Ask me anything about your training, recovery, nutrition, or what to do today.
+  <div class="jarvis-msgs" id="jvMsgs" role="log" aria-live="polite">
+    <div class="jarvis-msg assistant">
+      <div class="jarvis-avatar">J</div>
+      <div>Hey ${athleteName} — I'm Jarvis. I have your full training data loaded. Ask me about your training, recovery, nutrition, or what to do today.</div>
     </div>
   </div>
-
-  <div class="jarvis-chat-input-wrap">
-    <div class="jarvis-chat-chips" id="jarvisChatChips">
-      <button class="jarvis-chat-chip" data-prompt="What should I do today?">What should I do today?</button>
-      <button class="jarvis-chat-chip" data-prompt="How is my recovery?">How is my recovery?</button>
-      <button class="jarvis-chat-chip" data-prompt="Am I on track for pre-season?">Am I on track for pre-season?</button>
-      <button class="jarvis-chat-chip" data-prompt="Log my session">Log my session</button>
+  <div class="jarvis-input-wrap">
+    <div class="jarvis-chips" id="jvChips">
+      <button class="jarvis-chip" data-prompt="What should I do today?" data-autosend="true">What should I do today?</button>
+      <button class="jarvis-chip" data-prompt="How am I progressing?" data-autosend="true">How am I progressing?</button>
+      <button class="jarvis-chip" data-prompt="What did I eat today?" data-autosend="true">What did I eat today?</button>
+      <button class="jarvis-chip" data-prompt="Pre-season readiness check" data-autosend="true">Pre-season readiness check</button>
     </div>
-    <div class="jarvis-chat-input-row">
-      <textarea class="jarvis-chat-textarea" id="jarvisChatInput" rows="1" placeholder="Ask Jarvis anything…" aria-label="Chat message"></textarea>
-      <button class="jarvis-chat-mic" id="jarvisChatMic" aria-label="Voice input (coming soon)" disabled title="Voice input coming soon">🎤</button>
-      <button class="jarvis-chat-send" id="jarvisChatSend" aria-label="Send message">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-        <span class="jarvis-chat-model-indicator gemini" id="jarvisSendDot"></span>
+    <div class="jarvis-input-row">
+      <textarea class="jarvis-textarea" id="jvInput" rows="1" placeholder="Ask Jarvis anything&hellip;" aria-label="Chat message"></textarea>
+      <button class="jarvis-mic" aria-label="Voice input (coming soon)" disabled title="Voice input coming soon">&#127908;</button>
+      <button class="jarvis-send" id="jvSend" aria-label="Send message">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        <span class="jarvis-send-dot gemini" id="jvSendDot"></span>
       </button>
     </div>
   </div>
@@ -271,7 +280,6 @@
   // ──────────────── SUPABASE CONTEXT LOADER ────────────────
   async function loadSupabaseContext() {
     if (!supa) return null;
-    const ctx = {};
     const today = new Date().toISOString().slice(0, 10);
     const last7 = new Date(today + 'T00:00:00');
     last7.setDate(last7.getDate() - 6);
@@ -279,218 +287,273 @@
     const last14 = new Date(today + 'T00:00:00');
     last14.setDate(last14.getDate() - 13);
     const last14Str = last14.toISOString().slice(0, 10);
+    const next14 = new Date(today + 'T00:00:00');
+    next14.setDate(next14.getDate() + 14);
+    const next14Str = next14.toISOString().slice(0, 10);
 
     const safeQuery = (qb) => Promise.resolve(qb).catch(() => ({ data: [] }));
     const safeMaybe = (qb) => Promise.resolve(qb).catch(() => ({ data: null }));
 
-    const queries = [
-      safeQuery(supa.from('app_state').select('key, data').in('key', [
-        'nutrition', 'soccer', 'health', 'jarvis_score', 'jarvis_history'
-      ])),
-      safeQuery(supa.from('daily_checkins').select('*').gte('date', last7Str).order('date', { ascending: false }).limit(7)),
-      safeQuery(supa.from('recovery_scores').select('*').gte('date', last7Str).order('date', { ascending: false }).limit(7)),
-      safeQuery(supa.from('weight_logs').select('*').order('date', { ascending: false }).limit(14)),
-      safeQuery(supa.from('soccer_sessions').select('*').order('date', { ascending: false }).limit(10)),
-      safeQuery(supa.from('workout_sessions').select('*').gte('date', last7Str).order('date', { ascending: false }).limit(7)),
-      safeQuery(supa.from('athletic_tests').select('*').order('date', { ascending: false }).limit(5)),
-      safeMaybe(supa.from('nutrition_profile').select('*').limit(1).maybeSingle()),
-    ];
+    const ctx = {};
 
-    const results = await Promise.all(queries);
+    try {
+      const [
+        appRes, checkinsRes, recoveryRes, weightRes, soccerRes,
+        workoutRes, setsRes, testsRes, nutProfRes, planRes, eventsRes
+      ] = await Promise.all([
+        safeQuery(supa.from('app_state').select('key,data')),
+        safeQuery(supa.from('daily_checkins').select('*').gte('date', last7Str).order('date', { ascending: false }).limit(7)),
+        safeQuery(supa.from('recovery_scores').select('*').gte('date', last7Str).order('date', { ascending: false }).limit(7)),
+        safeQuery(supa.from('weight_logs').select('*').order('date', { ascending: false }).limit(14)).then(async (r) => {
+          // Fallback to 'weight' table if weight_logs is empty
+          if (!r.data || r.data.length === 0) {
+            const alt = await safeQuery(supa.from('weight').select('*').order('date', { ascending: false }).limit(14));
+            return alt;
+          }
+          return r;
+        }),
+        safeQuery(supa.from('soccer_sessions').select('*').order('date', { ascending: false }).limit(14)),
+        safeQuery(supa.from('workout_sessions').select('*').order('date', { ascending: false }).limit(10)),
+        safeQuery(supa.from('session_sets').select('*').order('created_at', { ascending: false }).limit(50)),
+        safeQuery(supa.from('athletic_tests').select('*').order('date', { ascending: false })),
+        safeMaybe(supa.from('nutrition_profile').select('*').limit(1).maybeSingle()),
+        safeMaybe(supa.from('offseason_plan').select('*').order('last_updated', { ascending: false }).limit(1).maybeSingle()),
+        safeQuery(supa.from('calendar_events').select('*').gte('date', today).lte('date', next14Str).order('date', { ascending: true }))
+      ]);
 
-    // Parse app_state
-    const appRows = (results[0]?.data || []);
-    ctx.app_state = {};
-    appRows.forEach(r => { ctx.app_state[r.key] = r.data; });
+      // App state as key-value
+      ctx.app_state = {};
+      (appRes.data || []).forEach(r => { ctx.app_state[r.key] = r.data; });
 
-    ctx.daily_checkins = results[1]?.data || [];
-    ctx.recovery_scores = results[2]?.data || [];
-    ctx.weight_logs = results[3]?.data || [];
-    ctx.soccer_sessions = results[4]?.data || [];
-    ctx.workout_sessions = results[5]?.data || [];
-    ctx.athletic_tests = results[6]?.data || [];
-    ctx.nutrition_profile = results[7]?.data || null;
+      ctx.daily_checkins = checkinsRes.data || [];
+      ctx.recovery_scores = recoveryRes.data || [];
+      ctx.weight_logs = weightRes.data || [];
+      ctx.soccer_sessions = soccerRes.data || [];
+      ctx.workout_sessions = workoutRes.data || [];
+      ctx.session_sets = setsRes.data || [];
+      ctx.athletic_tests = testsRes.data || [];
+      ctx.nutrition_profile = nutProfRes.data || null;
+      ctx.offseason_plan = planRes.data || null;
+      ctx.calendar_events = eventsRes.data || [];
+
+    } catch (_) {
+      // If any fail, return what we have (empty context is better than crashing)
+    }
 
     return ctx;
   }
 
-  // ──────────────── SYSTEM PROMPT BUILDER ────────────────
-  const STATIC_SYSTEM = `You are Jarvis, a world-class personal performance coach and AI assistant for Silas, an 18-year-old box-to-box and defensive midfielder working toward D1 college soccer. Silas is currently 135lbs and his primary goals are: gain functional mass to reach 150-155lbs, improve acceleration and first-step quickness (his biggest athletic weakness), maintain and improve his excellent endurance, and develop his technical quality to D1 level. He trains mostly alone with access to balls, a goal, a wall, cones, an agility ladder, a full field, and a Planet Fitness gym. He plays occasional recreational league matches. His individual off-season runs from June 1 to mid-July, then JUCO college pre-season begins. You have access to his complete real-time performance data shown below. Use this data to give specific, personalized coaching responses — never give generic advice when his actual data is available. You can log data to his Supabase database when he describes activities. You have real-time internet access for current sports science research, nutrition information, and training methods. Keep responses concise and direct — he is an athlete, not a researcher. When he asks what to do, tell him exactly what to do with specific numbers.`;
+  // ──────────────── SYSTEM PROMPT ────────────────
+  const COACHING_IDENTITY = `You are Jarvis, a world-class soccer performance coach operating at Premier League academy methodology level. Your athlete is ${athleteName} — an 18-year-old box-to-box and defensive midfielder with the physical profile and positional role of Declan Rice. Current weight ${startWeight}lbs, target 150-155lbs of functional mass. Primary weaknesses: acceleration, first-step quickness, lateral agility. Primary strength: exceptional aerobic endurance and engine. Training environment: mostly solo with balls, goal, wall, cones, agility ladder, full field, Planet Fitness gym. No barbells, no squat rack, no sled. Pre-season starts August 1 at JUCO college. Individual off-season runs June 1 to end of July with some disruptions for vacation (late June) and moving (late July).
+
+You operate using the most current sports science research. Key principles you apply: (1) Relative strength in hip extension is the primary physical predictor of sprint acceleration — every kg added to Smith machine squat and Bulgarian split squat directly improves ${athleteName}'s first step. (2) The acute-to-chronic workload ratio must stay between 0.8 and 1.3 to minimize injury risk — flag if it approaches 1.5. (3) Carbohydrate periodization around matches produces measurable performance improvements — increase carb targets 48 hours before matches, prioritize protein in the 24 hours after. (4) Sleep extension to 9+ hours produces direct improvements in sprint speed and reaction time — actively coach this. (5) Technical skill acquisition for going pro requires perception-action coupling — pressure receiving, decision-making under fatigue — not just isolated repetition. (6) Nordic curl negatives are non-negotiable for hamstring injury prevention in sprint-based athletes — prescribe them every lower body session. (7) Repeated sprint ability is assessed by decay percentage across 6 sprints — above 8% decay indicates insufficient aerobic base relative to sprint volume.
+
+Your coaching voice is direct, specific, and motivating — like a Premier League academy coach who genuinely believes in this player's potential and has no patience for vagueness. You give specific numbers, specific exercises, specific sets and reps. You never give generic advice when ${athleteName}'s actual data is available. You know his equipment constraints and never recommend equipment he does not have. You know his schedule constraints and account for vacation and moving periods.
+
+When ${athleteName} asks what to do today, you tell him exactly what to do with specific exercises, sets, reps, and why each one moves him toward his goal. When he tells you what he ate, you estimate his macros and tell him if he hit his targets. When he describes a training session, you log it and give a coaching response. You end every substantive response with one sentence that connects today's work to his pro goal — something like "This session directly builds the hip extension power that makes defenders bounce off you."`;
 
   function buildSystemPrompt(context) {
-    let prompt = STATIC_SYSTEM;
-    if (context) {
-      prompt += '\n\nSILAS\'S CURRENT DATA:\n' + JSON.stringify(context, null, 2);
+    let prompt = COACHING_IDENTITY;
+    if (context && Object.keys(context).length > 0) {
+      prompt += '\n\n' + athleteName.toUpperCase() + ' CURRENT PERFORMANCE DATA: ' + JSON.stringify(context);
     }
     return prompt;
   }
 
-  // ──────────────── FUNCTION DECLARATIONS ────────────────
-  const FUNCTION_DECLARATIONS = [
-    {
-      name: 'log_water',
-      description: 'Log water intake for today. Call when the user mentions drinking water, e.g. "I drank 2 liters" or "had 3 bottles of water".',
-      parameters: {
-        type: 'object',
-        properties: {
-          amount_oz: { type: 'number', description: 'Ounces of water consumed' }
+  // ──────────────── FOOD NUTRITION ESTIMATION ────────────────
+  async function estimateFoodNutrition(foodDescription) {
+    const prompt = `You are a sports nutrition calculator for a ${startWeight}-155lb male athlete in a caloric surplus trying to gain muscle. Estimate the protein grams and total calories in this food description. Be generous with portions since this is an athlete. Return ONLY a valid JSON object with exactly these keys: protein_grams (number), calories (number), confidence (high or medium or low), follow_up_question (string or null — only include a follow-up question if confidence is low and one specific question would significantly improve the estimate). Food description: ${foodDescription}. Return only the JSON object, no other text, no markdown.`;
+
+    const body = {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.3, maxOutputTokens: 256 }
+    };
+
+    // Try Gemini first, then Groq
+    let res;
+    try {
+      res = await fetchWithTimeout(GEMINI_URL + '?key=' + GEMINI_API_KEY, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      }, GEMINI_TIMEOUT_MS);
+    } catch (_) {
+      // Fallback to Groq
+      res = await fetch(GROQ_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + GROQ_API_KEY
         },
-        required: ['amount_oz']
-      }
-    },
-    {
-      name: 'log_weight',
-      description: 'Log body weight for today. Call when the user says their weight, e.g. "weighed in at 137 this morning" or "I\'m 138.5 lbs".',
-      parameters: {
-        type: 'object',
-        properties: {
-          weight_lbs: { type: 'number', description: 'Body weight in pounds' },
-          note: { type: 'string', description: 'Optional note about the weigh-in' }
-        },
-        required: ['weight_lbs']
-      }
-    },
-    {
-      name: 'log_soccer_session',
-      description: 'Log a soccer training session. Call when the user describes a training session, e.g. "did a 45 minute technical session" or "just finished speed work".',
-      parameters: {
-        type: 'object',
-        properties: {
-          session_type: { type: 'string', enum: ['ball', 'speed', 'gym', 'match', 'group'], description: 'Type of session' },
-          duration_minutes: { type: 'integer', description: 'Duration in minutes' },
-          intensity: { type: 'string', enum: ['Light', 'Medium', 'Hard'], description: 'Session intensity' },
-          focus_areas: { type: 'array', items: { type: 'string' }, description: 'Areas focused on during the session' },
-          note: { type: 'string', description: 'Any additional notes' }
-        },
-        required: ['session_type', 'duration_minutes']
-      }
-    },
-    {
-      name: 'log_checkin_protein',
-      description: 'Update today\'s protein intake. Call when the user mentions protein consumption, e.g. "got 150g protein today" or "hit my protein target".',
-      parameters: {
-        type: 'object',
-        properties: {
-          protein_grams: { type: 'integer', description: 'Grams of protein consumed today' }
-        },
-        required: ['protein_grams']
-      }
-    },
-    {
-      name: 'update_app_state',
-      description: 'Update a key-value pair in the app state (used for tracking various metrics).',
-      parameters: {
-        type: 'object',
-        properties: {
-          key: { type: 'string', description: 'The key to update' },
-          value: { type: 'string', description: 'The value to set (stringified)' }
-        },
-        required: ['key', 'value']
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.3,
+          max_tokens: 256
+        })
+      });
+    }
+
+    if (!res.ok) throw new Error('Nutrition estimation API failed');
+
+    const data = await res.json();
+
+    // Parse response from either provider
+    let text = '';
+    if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+      text = data.candidates[0].content.parts[0].text;
+    } else if (data.choices?.[0]?.message?.content) {
+      text = data.choices[0].message.content;
+    }
+
+    // Clean and parse JSON
+    text = text.trim().replace(/^```json?\s*/i, '').replace(/```\s*$/i, '').trim();
+    return JSON.parse(text);
+  }
+
+  // ──────────────── NATURAL LANGUAGE DATA LOGGING ────────────────
+  async function detectAndLog(userText) {
+    if (!supa) return null;
+    const today = new Date().toISOString().slice(0, 10);
+    const logs = [];
+
+    // Water: "drank X liters", "had X bottles", "X ml of water"
+    const waterMatch = userText.match(/(?:drank|had|consumed)\s+(\d+\.?\d*)\s*(?:liters?|l|bottles?)/i) ||
+                       userText.match(/(\d+\.?\d*)\s*ml\s+(?:of\s+)?water/i) ||
+                       userText.match(/(\d+\.?\d*)\s*(?:oz|ounces?)\s+(?:of\s+)?water/i);
+    if (waterMatch) {
+      let oz = 0;
+      if (userText.match(/liters?|l\b/i) && waterMatch[1]) oz = parseFloat(waterMatch[1]) * 33.814;
+      else if (userText.match(/ml/i) && waterMatch[1]) oz = parseFloat(waterMatch[1]) / 29.5735;
+      else if (waterMatch[1]) oz = parseFloat(waterMatch[1]); // Assume oz if no unit or oz
+      if (oz > 0) {
+        try {
+          const { data: nutRow } = await supa.from('app_state').select('data').eq('key', 'nutrition').maybeSingle();
+          const nutData = (nutRow?.data) || {};
+          nutData.water_oz = (nutData.water_oz || 0) + oz;
+          await supa.from('app_state').upsert(
+            { key: 'nutrition', data: nutData, updated_at: new Date().toISOString() },
+            { onConflict: 'key' }
+          );
+          // Also insert into water table
+          try {
+            await supa.from('water').insert({ date: today, amount_oz: oz });
+          } catch (_) { /* water table may not exist */ }
+          logs.push(`\u{1F4A7} Logged ${Math.round(oz)}oz water. Today's total: ${Math.round(nutData.water_oz)}oz. Stay hydrated — hydration directly impacts your sprint repeatability.`);
+        } catch (_) { logs.push('\u{1F4A7} Water logged (offline).'); }
       }
     }
-  ];
 
-  // ──────────────── FUNCTION EXECUTOR ────────────────
-  async function executeFunction(name, args) {
-    if (!supa) return { error: 'Supabase not connected' };
-    const today = new Date().toISOString().slice(0, 10);
+    // Weight: "weighed X", "weight is X", "scale said X"
+    const weightMatch = userText.match(/(?:weighed|weight\s+is|scale\s+said|weigh\s+in\s+at)\s+(\d+\.?\d*)\s*(?:lbs?|pounds?)?/i) ||
+                        userText.match(/(\d+\.?\d*)\s*(?:lbs?|pounds?)\s*(?:today|this\s+morning|now)/i);
+    if (weightMatch && parseFloat(weightMatch[1]) > 50) {
+      const w = parseFloat(weightMatch[1]);
+      try {
+        await supa.from('weight_logs').upsert({ date: today, weight: w }, { onConflict: 'date' });
+        const diff = w - startWeight;
+        const sign = diff >= 0 ? '+' : '';
+        logs.push(`\u2696\uFE0F Logged weight: ${w}lbs (${sign}${diff.toFixed(1)} from ${startWeight}lbs). ${diff > 0 ? 'Mass gain on track — every pound is functional power on the pitch.' : 'Keep eating — muscle takes fuel.'}`);
+      } catch (_) { logs.push(`\u2696\uFE0F Weight logged (offline).`); }
+    }
 
+    // Soccer session: "did X minutes of [type]", "trained for X minutes"
+    const soccerMatch = userText.match(/(?:did|trained|ball\s+work|session)\s+(?:for\s+)?(\d+)\s*(?:min|minutes?)/i) ||
+                        userText.match(/(\d+)\s*(?:min|minutes?)\s+(?:of\s+)?(?:ball|technical|passing|dribbling|shooting|speed|agility|fitness)/i);
+    if (soccerMatch && !userText.match(/gym|lift|weights?|push\s+day|pull\s+day|leg\s+day/i)) {
+      const mins = parseInt(soccerMatch[1]);
+      let sessionType = 'ball';
+      if (userText.match(/speed|sprint|accel/i)) sessionType = 'speed';
+      else if (userText.match(/match|game|scrimmage/i)) sessionType = 'match';
+      else if (userText.match(/group|team/i)) sessionType = 'group';
+      try {
+        await supa.from('soccer_sessions').insert({
+          date: today, session_type: sessionType, duration_minutes: mins,
+          intensity: 'Medium', note: null
+        });
+        logs.push(`\u26BD Logged ${sessionType} session: ${mins}min. ${sessionType === 'speed' ? 'Speed work is your highest-leverage training — this is how you close the gap to D1.' : 'Consistent ball work builds the technical foundation pros rely on under pressure.'}`);
+      } catch (_) { logs.push('\u26BD Soccer session logged (offline).'); }
+    }
+
+    // Gym: "did gym", "lifted", "did push day", "did pull day", "did leg day"
+    const gymMatch = userText.match(/(?:did|hit|went\s+to)\s+(?:the\s+)?gym|lifted|workout/i) ||
+                     userText.match(/(?:did|completed|finished)\s+(?:push|pull|leg|upper|lower|full\s+body)\s*(?:day|session|workout)?/i);
+    if (gymMatch && !userText.match(/ball|soccer|field|pitch/i)) {
+      let splitType = 'full_body';
+      if (userText.match(/push/i)) splitType = 'push';
+      else if (userText.match(/pull/i)) splitType = 'pull';
+      else if (userText.match(/leg|lower/i)) splitType = 'legs';
+      else if (userText.match(/upper/i)) splitType = 'upper';
+      try {
+        await supa.from('workout_sessions').insert({
+          date: today, split_type: splitType, completed: true, note: null
+        });
+        logs.push(`\uD83C\uDFCB\uFE0F Logged gym session: ${splitType}. ${splitType === 'legs' ? 'Hip extension strength is the #1 predictor of your sprint speed — every leg day matters.' : 'Building the functional mass that makes you harder to knock off the ball.'}`);
+      } catch (_) { logs.push('\uD83C\uDFCB\uFE0F Gym session logged (offline).'); }
+    }
+
+    // Recovery: "felt tired", "legs are heavy", "slept badly"
+    const recoveryMatch = userText.match(/(?:felt|feeling|am|I'm)\s+(?:tired|fatigued|wiped|drained|exhausted)/i) ||
+                          userText.match(/(?:legs|hamstrings?|quads?|calves)\s+(?:are|feel)\s+(?:heavy|sore|tight|dead)/i) ||
+                          userText.match(/(?:slept|sleep)\s+(?:badly|poorly|terrible|like\s+crap|only\s+\d+\s+hours?)/i);
+    if (recoveryMatch) {
+      try {
+        const { data: existing } = await supa.from('daily_checkins').select('id,notes').eq('date', today).maybeSingle();
+        const note = (userText.match(/legs\s+(?:are|feel)\s+(?:heavy|sore|tight|dead)/i) ? 'Legs heavy/sore' :
+                      userText.match(/tired|fatigued|wiped|drained|exhausted/i) ? 'Reported fatigue' :
+                      'Poor sleep reported');
+        if (existing) {
+          const updatedNotes = existing.notes ? existing.notes + ' | ' + note : note;
+          await supa.from('daily_checkins').update({ notes: updatedNotes }).eq('id', existing.id);
+        } else {
+          await supa.from('daily_checkins').insert({ date: today, notes: note });
+        }
+        logs.push(`\uD83D\uDC4D Noted: ${note}. ${note.includes('heavy') ? 'Heavy legs signal you need dial back intensity today — recovery IS training.' : 'Listen to your body. Dial back intensity and prioritize sleep tonight.'}`);
+      } catch (_) { logs.push('\uD83D\uDC4D Recovery note logged (offline).'); }
+    }
+
+    return logs.length > 0 ? logs.join('\n\n') : null;
+  }
+
+  // ──────────────── API CALLS ────────────────
+  async function fetchWithTimeout(url, options, timeoutMs) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      switch (name) {
-        case 'log_water': {
-          const oz = args.amount_oz || (args.amount_ml ? args.amount_ml / 29.5735 : 8);
-          // Read current nutrition data
-          const { data: nutRow } = await supa.from('app_state').select('data').eq('key', 'nutrition').maybeSingle();
-          const nutData = nutRow?.data || {};
-          nutData.water_oz = (nutData.water_oz || 0) + oz;
-          await supa.from('app_state').upsert({ key: 'nutrition', data: nutData, updated_at: new Date().toISOString() }, { onConflict: 'key' });
-          return { success: true, message: `Logged ${Math.round(oz)}oz water. Today's total: ${Math.round(nutData.water_oz)}oz.` };
-        }
-
-        case 'log_weight': {
-          await supa.from('weight_logs').upsert({ date: today, weight: args.weight_lbs }, { onConflict: 'date' });
-          return { success: true, message: `Logged weight: ${args.weight_lbs}lbs.` };
-        }
-
-        case 'log_soccer_session': {
-          const payload = {
-            date: today,
-            session_type: args.session_type,
-            duration_minutes: args.duration_minutes,
-            intensity: args.intensity || 'Medium',
-            focus_areas: args.focus_areas || [],
-            note: args.note || null
-          };
-          await supa.from('soccer_sessions').insert(payload);
-          return { success: true, message: `Logged ${args.session_type} session: ${args.duration_minutes}min.` };
-        }
-
-        case 'log_checkin_protein': {
-          const { data: existing } = await supa.from('daily_checkins').select('id').eq('date', today).maybeSingle();
-          if (existing) {
-            await supa.from('daily_checkins').update({ protein_grams: args.protein_grams }).eq('id', existing.id);
-          } else {
-            await supa.from('daily_checkins').insert({ date: today, protein_grams: args.protein_grams });
-          }
-          return { success: true, message: `Updated today's protein to ${args.protein_grams}g.` };
-        }
-
-        case 'update_app_state': {
-          let value;
-          try { value = JSON.parse(args.value); } catch (_) { value = args.value; }
-          await supa.from('app_state').upsert({ key: args.key, data: value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
-          return { success: true, message: `Updated app_state key "${args.key}".` };
-        }
-
-        default:
-          return { error: `Unknown function: ${name}` };
-      }
-    } catch (e) {
-      return { error: e.message || 'Failed to log data' };
+      const res = await fetch(url, { ...options, signal: controller.signal });
+      return res;
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
-  // ──────────────── GEMINI API CALL ────────────────
   async function callGemini(messages, context) {
     const systemText = buildSystemPrompt(context);
-
     const contents = messages.map(m => ({
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: m.content }]
     }));
-
-    // Add system instruction as first user message (Gemini doesn't have system role)
-    contents.unshift({
-      role: 'user',
-      parts: [{ text: systemText }]
-    });
-    // Add a model response to the system prompt to set the stage
+    contents.unshift({ role: 'user', parts: [{ text: systemText }] });
     contents.splice(1, 0, {
       role: 'model',
-      parts: [{ text: 'Understood. I am Jarvis, Silas\'s performance coach. I will use his real-time data to give specific, personalized guidance.' }]
+      parts: [{ text: `Understood. I am Jarvis, ${athleteName}'s Premier League-level performance coach. I will use his real-time data and current sports science to give specific, personalized guidance.` }]
     });
 
     const body = {
       contents,
-      tools: [
-        { googleSearch: {} },
-        { functionDeclarations: FUNCTION_DECLARATIONS }
-      ],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 1024,
-      }
+      tools: [{ googleSearch: {} }],
+      generationConfig: { temperature: 0.7, maxOutputTokens: 1024 }
     };
 
-    const res = await fetch(GEMINI_URL + '?key=' + GEMINI_API_KEY, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
+    const res = await fetchWithTimeout(
+      GEMINI_URL + '?key=' + GEMINI_API_KEY,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
+      GEMINI_TIMEOUT_MS
+    );
 
     if (!res.ok) {
       const err = await res.text();
-      throw new Error(`Gemini ${res.status}: ${err.slice(0, 200)}`);
+      throw new Error(`Gemini ${res.status}`);
     }
 
     const data = await res.json();
@@ -499,35 +562,19 @@
 
     const parts = candidate.content?.parts || [];
     const textPart = parts.find(p => p.text);
-    const fnPart = parts.find(p => p.functionCall);
-
-    return {
-      text: textPart?.text || null,
-      functionCall: fnPart?.functionCall || null
-    };
+    return textPart?.text || null;
   }
 
-  // ──────────────── GROQ API CALL (FALLBACK) ────────────────
   async function callGroq(messages, context) {
     const systemText = buildSystemPrompt(context);
-
-    const groqMessages = [
-      { role: 'system', content: systemText }
-    ];
-
-    messages.forEach(m => {
-      groqMessages.push({ role: m.role, content: m.content });
-    });
+    const groqMessages = [{ role: 'system', content: systemText }];
+    messages.forEach(m => groqMessages.push({ role: m.role, content: m.content }));
 
     const body = {
       model: GROQ_MODEL,
       messages: groqMessages,
       temperature: 0.7,
-      max_tokens: 1024,
-      tools: FUNCTION_DECLARATIONS.map(fn => ({
-        type: 'function',
-        function: fn
-      }))
+      max_tokens: 1024
     };
 
     const res = await fetch(GROQ_URL, {
@@ -541,26 +588,11 @@
 
     if (!res.ok) {
       const err = await res.text();
-      throw new Error(`Groq ${res.status}: ${err.slice(0, 200)}`);
+      throw new Error(`Groq ${res.status}`);
     }
 
     const data = await res.json();
-    const choice = data.choices?.[0];
-    if (!choice) throw new Error('Groq returned empty response');
-
-    const msg = choice.message;
-    let text = msg.content || null;
-    let functionCall = null;
-
-    if (msg.tool_calls?.length > 0) {
-      const tc = msg.tool_calls[0];
-      functionCall = {
-        name: tc.function.name,
-        args: JSON.parse(tc.function.arguments || '{}')
-      };
-    }
-
-    return { text, functionCall };
+    return data.choices?.[0]?.message?.content || null;
   }
 
   // ──────────────── MAIN SEND LOGIC ────────────────
@@ -568,25 +600,36 @@
     if (isLoading || !userText.trim()) return;
     isLoading = true;
 
-    const input = $('jarvisChatInput');
-    const sendBtn = $('jarvisChatSend');
+    const input = $('jvInput');
+    const sendBtn = $('jvSend');
     input.disabled = true;
     sendBtn.disabled = true;
 
-    // Add user message
     addMessage('user', userText);
     conversation.push({ role: 'user', content: userText });
-    // Trim to last 20
     if (conversation.length > 20) conversation = conversation.slice(-20);
 
-    // Show typing indicator
     const typingEl = showTyping();
 
+    // ═══ STEP 1: Check for food description ═══
+    const foodTrigger = /\b(?:ate|had|eating|consumed|meal|breakfast|lunch|dinner|snack|protein\s+shake|food|chicken|rice|pasta|eggs|steak|burger|sandwich|whey|oatmeal|cereal|tuna|salmon|turkey|beef|pork)\b/i;
+    let foodResult = null;
+    if (foodTrigger.test(userText) && userText.length > 15) {
+      try {
+        foodResult = await estimateFoodNutrition(userText);
+      } catch (_) { /* Silently fail — continue to main AI */ }
+    }
+
+    // ═══ STEP 2: Natural language logging ═══
+    let logResult = null;
     try {
-      // Load Supabase context in parallel with API delay
+      logResult = await detectAndLog(userText);
+    } catch (_) { /* Silently fail */ }
+
+    // ═══ STEP 3: Load context & call AI ═══
+    try {
       const ctx = await loadSupabaseContext();
 
-      // Try Gemini first
       let response;
       try {
         response = await callGemini(conversation, ctx);
@@ -603,41 +646,62 @@
 
       removeTyping(typingEl);
 
-      // Handle function calling
-      let fnResult = null;
-      if (response.functionCall) {
-        fnResult = await executeFunction(response.functionCall.name, response.functionCall.args);
+      // ═══ STEP 4: Assemble final response ═══
+      let finalReply = response || '';
 
-        // Add function result to conversation and get final response
-        const fnSummary = fnResult.success
-          ? `Function call result: ${JSON.stringify(fnResult)}`
-          : `Function call failed: ${fnResult.error}`;
-        conversation.push({ role: 'user', content: fnSummary });
+      // If food was logged, prepend the nutrition estimate
+      if (foodResult && foodResult.confidence !== 'low') {
+        const { protein_grams, calories, confidence } = foodResult;
 
-        // Re-call the active model for final response
-        let finalResponse;
-        try {
-          if (activeModel === 'gemini') {
-            finalResponse = await callGemini(conversation, ctx);
-          } else {
-            finalResponse = await callGroq(conversation, ctx);
+        // Try to update today's checkin with protein
+        if (supa && protein_grams > 0) {
+          try {
+            const { data: existing } = await supa.from('daily_checkins').select('id,protein_grams').eq('date', new Date().toISOString().slice(0, 10)).maybeSingle();
+            const newProtein = (existing?.protein_grams || 0) + protein_grams;
+            if (existing) {
+              await supa.from('daily_checkins').update({ protein_grams: newProtein, estimated_calories: calories }).eq('id', existing.id);
+            } else {
+              await supa.from('daily_checkins').insert({
+                date: new Date().toISOString().slice(0, 10),
+                protein_grams: newProtein,
+                estimated_calories: calories
+              });
+            }
+
+            const target = startWeight; // 1g per lb
+            const foodPrefix = `\uD83C\uDF57 Logged — estimated ${protein_grams}g protein and approximately ${calories} calories. Running total today: ${newProtein}g protein toward your ${target}g target.${newProtein >= target ? ' Strong protein hit — keep this up to support today\'s muscle building stimulus.' : ''}\n\n`;
+            finalReply = foodPrefix + finalReply;
+          } catch (_) {
+            finalReply = `\uD83C\uDF57 Estimated ${protein_grams}g protein, ~${calories} calories.\n\n` + finalReply;
           }
-        } catch (_) {
-          // If second call fails, use the function result directly
-          finalResponse = { text: fnResult.message || fnResult.error || 'Done.' };
         }
-
-        response = finalResponse;
+      } else if (foodResult && foodResult.confidence === 'low' && foodResult.follow_up_question) {
+        finalReply = `\u2753 ${foodResult.follow_up_question}`;
       }
 
-      const reply = response.text || (fnResult?.message || 'Got it.');
-      addMessage('assistant', reply);
-      conversation.push({ role: 'assistant', content: reply });
+      // If data was logged, prepend the log confirmation
+      if (logResult) {
+        finalReply = logResult + '\n\n' + finalReply;
+      }
+
+      addMessage('assistant', finalReply);
+      conversation.push({ role: 'assistant', content: finalReply });
       if (conversation.length > 20) conversation = conversation.slice(-20);
 
-    } catch (err) {
+    } catch (_) {
       removeTyping(typingEl);
-      showError('Connection issue — check your internet and try again.');
+
+      // If we have food/log results, show those even if AI failed
+      let fallbackMsg = '';
+      if (foodResult && foodResult.confidence !== 'low') {
+        fallbackMsg += `\uD83C\uDF57 Estimated ${foodResult.protein_grams}g protein, ~${foodResult.calories} calories.\n\n`;
+      }
+      if (logResult) {
+        fallbackMsg += logResult + '\n\n';
+      }
+      fallbackMsg += 'Connection issue — your data is still being tracked.';
+
+      showError(fallbackMsg);
     }
 
     updateModelIndicator();
@@ -649,18 +713,30 @@
 
   // ──────────────── UI HELPERS ────────────────
   function addMessage(role, text) {
-    const container = $('jarvisChatMessages');
+    const container = $('jvMsgs');
     const el = document.createElement('div');
-    el.className = 'jarvis-chat-msg ' + role;
-    el.textContent = text;
+    if (role === 'assistant') {
+      el.className = 'jarvis-msg assistant';
+      const avatar = document.createElement('div');
+      avatar.className = 'jarvis-avatar';
+      avatar.textContent = 'J';
+      const body = document.createElement('div');
+      body.style.whiteSpace = 'pre-wrap';
+      body.textContent = text;
+      el.appendChild(avatar);
+      el.appendChild(body);
+    } else {
+      el.className = 'jarvis-msg user';
+      el.textContent = text;
+    }
     container.appendChild(el);
     container.scrollTop = container.scrollHeight;
   }
 
   function showTyping() {
-    const container = $('jarvisChatMessages');
+    const container = $('jvMsgs');
     const el = document.createElement('div');
-    el.className = 'jarvis-chat-typing';
+    el.className = 'jarvis-typing';
     el.innerHTML = '<span></span><span></span><span></span>';
     container.appendChild(el);
     container.scrollTop = container.scrollHeight;
@@ -668,45 +744,59 @@
   }
 
   function removeTyping(el) {
-    if (el && el.parentNode) el.parentNode.removeChild(el);
+    if (el?.parentNode) el.parentNode.removeChild(el);
   }
 
   function showError(text) {
-    const container = $('jarvisChatMessages');
+    const container = $('jvMsgs');
     const el = document.createElement('div');
-    el.className = 'jarvis-chat-error';
+    el.className = 'jarvis-error';
+    el.style.whiteSpace = 'pre-wrap';
     el.textContent = text;
     container.appendChild(el);
     container.scrollTop = container.scrollHeight;
   }
 
+  function updateGreeting() {
+    const msgs = $('jvMsgs');
+    const greeting = msgs?.querySelector('.jarvis-msg.assistant');
+    if (greeting) {
+      const body = greeting.querySelector('div:last-child');
+      if (body) {
+        body.textContent = `Hey ${athleteName} — I'm Jarvis. I have your full training data loaded. Ask me about your training, recovery, nutrition, or what to do today.`;
+      }
+    }
+  }
+
   function updateModelIndicator() {
-    const dot = $('jarvisModelDot');
-    const sendDot = $('jarvisSendDot');
-    dot.className = 'jarvis-chat-model-dot ' + activeModel;
-    if (sendDot) sendDot.className = 'jarvis-chat-model-indicator ' + activeModel;
-    dot.title = 'Active: ' + (activeModel === 'gemini' ? 'Gemini 2.0 Flash' : 'Groq (Llama 3.3)');
+    const dot = $('jvModelDot');
+    const tag = $('jvModelTag');
+    const label = $('jvModelLabel');
+    const sendDot = $('jvSendDot');
+
+    dot.className = 'jarvis-model-dot ' + activeModel;
+    tag.className = 'jarvis-model-tag ' + activeModel;
+    label.textContent = activeModel === 'gemini' ? 'G' : 'GQ';
+    if (sendDot) sendDot.className = 'jarvis-send-dot ' + activeModel;
   }
 
   function openPanel() {
-    $('jarvisChatOverlay').classList.add('open');
-    $('jarvisChatPanel').classList.add('open');
+    $('jvOverlay').classList.add('open');
+    $('jvPanel').classList.add('open');
     document.body.style.overflow = 'hidden';
-    // Focus input after animation
-    setTimeout(() => $('jarvisChatInput').focus(), 350);
+    setTimeout(() => $('jvInput').focus(), 350);
   }
 
   function closePanel() {
-    $('jarvisChatOverlay').classList.remove('open');
-    $('jarvisChatPanel').classList.remove('open');
+    $('jvOverlay').classList.remove('open');
+    $('jvPanel').classList.remove('open');
     document.body.style.overflow = '';
-    // Reset conversation when closed (fresh start next time)
     conversation = [];
   }
 
-  // ──────────────── AUTO-RESIZE TEXTAREA ────────────────
+  // ──────────────── TEXTAREA AUTO-RESIZE ────────────────
   function setupTextarea() {
-    const ta = $('jarvisChatInput');
+    const ta = $('jvInput');
     ta.addEventListener('input', () => {
       ta.style.height = 'auto';
       ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
@@ -726,21 +816,18 @@
 
   // ──────────────── EVENT WIRING ────────────────
   function wireEvents() {
-    // Toggle panel
-    $('jarvisChatBtn').addEventListener('click', openPanel);
-    $('jarvisChatClose').addEventListener('click', closePanel);
-    $('jarvisChatOverlay').addEventListener('click', closePanel);
+    $('jvFab').addEventListener('click', openPanel);
+    $('jvClose').addEventListener('click', closePanel);
+    $('jvOverlay').addEventListener('click', closePanel);
 
-    // Close on Escape
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && $('jarvisChatPanel').classList.contains('open')) {
+      if (e.key === 'Escape' && $('jvPanel').classList.contains('open')) {
         closePanel();
       }
     });
 
-    // Send button
-    $('jarvisChatSend').addEventListener('click', () => {
-      const input = $('jarvisChatInput');
+    $('jvSend').addEventListener('click', () => {
+      const input = $('jvInput');
       const text = input.value.trim();
       if (text) {
         input.value = '';
@@ -749,54 +836,59 @@
       }
     });
 
-    // Quick prompt chips
-    $('jarvisChatChips').addEventListener('click', (e) => {
-      const chip = e.target.closest('.jarvis-chat-chip');
+    // Quick chips — auto-send if data-autosend is set
+    $('jvChips').addEventListener('click', (e) => {
+      const chip = e.target.closest('.jarvis-chip');
       if (!chip) return;
       const prompt = chip.dataset.prompt;
-      $('jarvisChatInput').value = prompt;
-      $('jarvisChatInput').focus();
-      $('jarvisChatInput').dispatchEvent(new Event('input'));
+      if (chip.dataset.autosend === 'true') {
+        sendMessage(prompt);
+      } else {
+        $('jvInput').value = prompt;
+        $('jvInput').focus();
+        $('jvInput').dispatchEvent(new Event('input'));
+      }
     });
 
     setupTextarea();
   }
 
-  // ──────────────── CSS/HTML INJECTION ────────────────
+  // ──────────────── INJECT ────────────────
   function inject() {
     if (document.getElementById('jarvis-chat-style')) return;
 
-    // CSS
     const style = document.createElement('style');
     style.id = 'jarvis-chat-style';
-    style.textContent = CHAT_CSS;
+    style.textContent = CSS;
     document.head.appendChild(style);
 
-    // HTML
     const wrapper = document.createElement('div');
-    wrapper.innerHTML = CHAT_HTML.trim();
+    wrapper.innerHTML = HTML.trim();
     while (wrapper.firstChild) {
       document.body.appendChild(wrapper.firstChild);
     }
   }
 
   // ──────────────── INIT ────────────────
-  function initJarvisChat(supabaseClient) {
+  function initJarvisChat(supabaseClient, userConfig) {
     supa = supabaseClient;
-    // If DOM isn't ready yet (script loaded synchronously in <head>),
-    // defer injection until DOMContentLoaded. Otherwise inject now.
+    if (userConfig) {
+      if (userConfig.athleteName) athleteName = userConfig.athleteName;
+      if (userConfig.startWeight) startWeight = userConfig.startWeight;
+    }
+
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
         inject();
+        updateGreeting();
         wireEvents();
         updateModelIndicator();
-        console.log('Jarvis Chat ready — model:', GEMINI_API_KEY.includes('PASTE') ? 'NEEDS KEY' : 'Gemini 2.0 Flash');
       });
     } else {
       inject();
+      updateGreeting();
       wireEvents();
       updateModelIndicator();
-      console.log('Jarvis Chat ready — model:', GEMINI_API_KEY.includes('PASTE') ? 'NEEDS KEY' : 'Gemini 2.0 Flash');
     }
   }
 
