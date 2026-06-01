@@ -1312,6 +1312,7 @@
   <section id="tab-panel-football" class="tab-panel" hidden aria-label="Football"></section>
   </div>
 
+  <script src="env.js"></script>
   <script src="tabs.js" defer></script>
   <script src="topbar.js" defer></script>
   <script src="utils.js"></script>
@@ -2100,7 +2101,7 @@
       }
       try {
         const prompt = 'Clean up exactly ONE todo goal. Return ONLY a valid JSON array with exactly one string element — the polished goal. No markdown fences, no explanation. Input: "' + text.replace(/"/g, '\\"') + '"';
-        const res = await fetch(GEMINI_URL, {
+        const res = await fetch(GEMINI_URL + '?key=' + GEMINI_API_KEY, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
