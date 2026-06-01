@@ -455,18 +455,6 @@ body.stack-embed main {
 ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.15); }
 
 /* Jarvis floating chat button */
-.jarvis-chat-fab {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--success);
-  z-index: 9999;
-  box-shadow: 0 4px 20px rgba(107,227,164,0.4);
-  cursor: pointer;
-}
 </style>
 </head>
 <body>
@@ -1180,7 +1168,6 @@ body.stack-embed main {
   (async function stInitCloudSync() {
     if (!window.supabase || !SUPABASE_URL || !SUPABASE_KEY) return;
     stSupa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    initJarvisChat(stSupa);
     try {
       const { data, error } = await stSupa
         .from('app_state').select('data').eq('key', APP_KEY).maybeSingle();

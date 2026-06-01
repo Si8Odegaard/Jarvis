@@ -639,18 +639,6 @@
     .toast.show { opacity: 1; }
 
     /* ── Jarvis FAB ── */
-    .jarvis-chat-fab {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      background: var(--success);
-      z-index: 9999;
-      box-shadow: 0 4px 20px rgba(107,227,164,0.4);
-      cursor: pointer;
-    }
 
     @media (max-width: 480px) {
       body { padding: 12px 14px calc(100px + env(safe-area-inset-bottom)); }
@@ -791,7 +779,6 @@
   const TARGET_WEEKLY_RATE = 0.007; // 0.7% per week
 
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  initJarvisChat(sb);
 
   // ── State ──
   let weights = [];

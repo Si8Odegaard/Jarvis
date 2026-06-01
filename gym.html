@@ -441,18 +441,6 @@ label.field-label{
 .mono{font-family:var(--mono);}
 
 /* Jarvis floating chat button */
-.jarvis-chat-fab {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--success);
-  z-index: 9999;
-  box-shadow: 0 4px 20px rgba(107,227,164,0.4);
-  cursor: pointer;
-}
 
 @media (max-width: 480px) {
   .shell{padding:12px 12px 100px;}
@@ -652,7 +640,6 @@ label.field-label{
 const SB_URL = 'https://cskbbioyniryonkukamw.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNza2JiaW95bmlyeW9ua3VrYW13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NjE2MTYsImV4cCI6MjA5NDUzNzYxNn0.R3Vx3fA-iAc8LhNL3WPSa9-BxH_087c7VaIbrB3CBJM';
 const sb = window.supabase.createClient(SB_URL, SB_KEY);
-initJarvisChat(sb);
 
 // ════════════════════════════════════════════════════════════
 //  HELPERS
