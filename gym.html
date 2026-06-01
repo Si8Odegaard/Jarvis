@@ -1779,6 +1779,8 @@ function renderAll(){
   await loadModePreference();
   await loadAll();
   renderAll();
+  // Calculate ACWR on page load
+  calculateACWR(sb).catch(() => {});
 })();
 </script>
 </body>

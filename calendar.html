@@ -999,57 +999,37 @@ body:has(.modal-bg.show) { overflow: hidden; }
     }
   }
 
-  // ── ACWR ── (queries DB directly for accurate 4-week scope, not just current view)
+  // ── ACWR ── (reads from app_state, computed by utils.js across all tabs)
   async function renderACWR() {
-    const now = new Date();
-    const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate() - 7);
-    const fourWeeksAgo = new Date(now); fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
-    const weekStart = weekAgo.toISOString().slice(0, 10);
-    const fourWeekStart = fourWeeksAgo.toISOString().slice(0, 10);
-
-    // Query calendar_events directly for the full 4-week range
-    const { data: acwrEvents, error } = await sb.from('calendar_events')
-      .select('*')
-      .gte('date', fourWeekStart)
-      .lte('date', todayStr)
-      .in('event_type', ['gym','field','match']);
-
-    if (error || !acwrEvents) {
-      $('acwrValue').textContent = '--';
-      $('acwrValue').className = 'acwr-value';
-      $('acwrSub').textContent = 'Unable to load training data';
-      return;
+    const val = $('acwrValue');
+    const sub = $('acwrSub');
+    if (!val || !sub) return;
+    try {
+      const { data } = await sb.from('app_state').select('data').eq('key','acwr').maybeSingle();
+      const d = data?.data;
+      if (!d || d.acwr === undefined || d.acwr === null) {
+        val.textContent = '--';
+        val.className = 'acwr-value';
+        sub.textContent = 'Log training sessions to calculate';
+        return;
+      }
+      const acwr = Number(d.acwr) || 0;
+      val.textContent = acwr.toFixed(2);
+      val.className = 'acwr-value ' + (d.acwr_color === 'green' ? 'green' : d.acwr_color === 'yellow' ? 'yellow' : d.acwr_color === 'red' ? 'red' : '');
+      const acute = d.acute_load || 0;
+      const chronic = d.chronic_load || 0;
+      sub.textContent = `Acute: ${acute} load units · Chronic: ${chronic}/week · ${d.acwr_message || ''}`;
+      // Vacation note
+      if (d.vacation_note) {
+        sub.textContent += ` ⚠️ ${d.vacation_note}`;
+      }
+    } catch(e) {
+      val.textContent = '--';
+      val.className = 'acwr-value';
+      sub.textContent = 'ACWR unavailable';
     }
-
-    const allLoadEvents = acwrEvents.filter(e => e.duration_minutes);
-
-    // Acute load: last 7 days
-    const thisWeekEvents = allLoadEvents.filter(e => e.date >= weekStart && e.date <= todayStr);
-    const acuteLoad = thisWeekEvents.reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
-
-    // Chronic load: last 4 weeks average per week
-    const last4WeekEvents = allLoadEvents.filter(e => e.date >= fourWeekStart && e.date <= todayStr);
-    const total4WeekLoad = last4WeekEvents.reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
-    const chronicLoad = total4WeekLoad / 4;
-
-    const acwr = chronicLoad > 0 ? (acuteLoad / chronicLoad) : 0;
-
-    let cls, status;
-    if (acwr === 0) { cls = ''; status = 'No training data yet'; }
-    else if (acwr >= 0.8 && acwr <= 1.3) { cls = 'green'; status = 'Optimal training zone — keep going'; }
-    else if (acwr >= 0.6 && acwr < 0.8) { cls = 'yellow'; status = 'Undertrained — can increase load safely'; }
-    else if (acwr > 1.3 && acwr <= 1.5) { cls = 'yellow'; status = 'Approaching danger zone — monitor closely'; }
-    else if (acwr > 1.5) { cls = 'red'; status = 'Injury risk — mandatory load reduction'; }
-    else { cls = 'yellow'; status = 'Very low training volume'; }
-
-    $('acwrValue').textContent = acwr > 0 ? acwr.toFixed(2) : '--';
-    $('acwrValue').className = 'acwr-value ' + (cls || '');
-    $('acwrSub').textContent = `Acute: ${acuteLoad}min · Chronic: ${Math.round(chronicLoad)}min/week · ${status}`;
-
-    await Promise.all([
-      writeAppState('acwr', acwr.toFixed(2)),
-      writeAppState('days_to_preseason', daysToPreseason())
-    ]);
+    // Write days_to_preseason to app_state for home tab
+    writeAppState('days_to_preseason', daysToPreseason());
   }
 
   function daysToPreseason() {
@@ -1327,6 +1307,7 @@ body:has(.modal-bg.show) { overflow: hidden; }
   async function init() {
     await loadEvents();
     renderAll();
+    calculateACWR(sb).catch(() => {});
   }
   init();
 

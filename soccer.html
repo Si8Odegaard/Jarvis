@@ -1993,6 +1993,7 @@ document.querySelectorAll('.modal-bg').forEach(bg => {
     renderInsights();
     renderTesting();
   }, 60000);
+  calculateACWR(sb).catch(() => {});
 })();
 </script>
 </body>

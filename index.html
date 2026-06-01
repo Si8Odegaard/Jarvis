@@ -1323,6 +1323,7 @@
     const WAKE_HOUR = 8;
     const SLEEP_HOUR = 24;
     const GEMINI_API_KEY = window.ENV_GEMINI_API_KEY || "";
+    const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
     const SUPABASE_URL = 'https://cskbbioyniryonkukamw.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNza2JiaW95bmlyeW9ua3VrYW13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NjE2MTYsImV4cCI6MjA5NDUzNzYxNn0.R3Vx3fA-iAc8LhNL3WPSa9-BxH_087c7VaIbrB3CBJM';
     const APP_KEY = 'dashboard';
@@ -2177,7 +2178,7 @@
         const last7 = new Date(today+'T00:00:00'); last7.setDate(last7.getDate()-6);
         const last7Str = last7.toISOString().slice(0,10);
 
-        const [nutRes, soccerRes, checkinsRes, weightRes, testsRes, sessRes, gymRes, rsaRes, planRes, jarvisHistRes, compHistRes, acwrRes, matchRes, bodyRes] = await Promise.all([
+        const [nutRes, soccerRes, checkinsRes, weightRes, testsRes, sessRes, gymRes, rsaRes, planRes, jarvisHistRes, compHistRes, acwrRes, matchRes, bodyRes, techRes, gymModeRes] = await Promise.all([
           supa.from('app_state').select('data').eq('key','nutrition').maybeSingle(),
           supa.from('app_state').select('data').eq('key','soccer').maybeSingle(),
           supa.from('daily_checkins').select('*').gte('date',last7Str).order('date',{ascending:false}),
@@ -2191,7 +2192,11 @@
           supa.from('app_state').select('data').eq('key',COMPONENT_HISTORY_KEY).maybeSingle(),
           supa.from('app_state').select('data').eq('key','acwr').maybeSingle(),
           supa.from('app_state').select('data').eq('key','match_in_48_hours').maybeSingle(),
-          supa.from('app_state').select('data').eq('key','body').maybeSingle()
+          supa.from('app_state').select('data').eq('key','body').maybeSingle(),
+          supa.from('app_state').select('data').eq('key','weakest_technical_area').maybeSingle(),
+          supa.from('app_state').select('data').eq('key','technical_sessions_this_week').maybeSingle(),
+          supa.from('app_state').select('data').eq('key','gym_mode').maybeSingle(),
+          supa.from('app_state').select('data').eq('key','gym_strength_ratio').maybeSingle()
         ]);
         // Load jarvis history and component history
         if (jarvisHistRes?.data?.data?.scores) jarvisHistory = jarvisHistRes.data.data.scores;
@@ -2299,7 +2304,9 @@
           todayRec, plan, nutData, socData, prevJarvisScore,
           acwr: acwrRes?.data?.data?.value ?? acwrRes?.data?.data ?? null,
           matchIn48: matchRes?.data?.data?.value ?? matchRes?.data?.data ?? null,
-          bodyData: bodyRes?.data?.data ?? null
+          bodyData: bodyRes?.data?.data ?? null,
+          weakestTech: techRes?.data?.data?.value ?? techRes?.data?.data ?? null,
+          gymMode: gymModeRes?.data?.data?.mode ?? gymModeRes?.data?.data ?? null
         };
 
         renderAllBriefing();
