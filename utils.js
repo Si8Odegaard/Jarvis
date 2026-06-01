@@ -58,20 +58,23 @@ async function calculateACWR(sb) {
   const day7Ago  = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
 
   try {
-    // Query all three session tables in parallel
-    const [soccerRes, gymRes, calRes] = await Promise.all([
+    // Query all session tables in parallel
+    const [soccerRes, gymRes, calRes, travelRes] = await Promise.all([
       sb.from('soccer_sessions').select('date,session_type,duration_minutes,intensity')
         .gte('date', day28Ago).order('date', { ascending: false }),
       sb.from('workout_sessions').select('date,completed')
         .gte('date', day28Ago).order('date', { ascending: false }),
       sb.from('calendar_events').select('date,event_type,duration_minutes,equipment_available')
-        .gte('date', day28Ago)
-        .order('date', { ascending: false })
+        .gte('date', day28Ago).in('event_type', ['match','gym','field'])
+        .order('date', { ascending: false }),
+      sb.from('calendar_events').select('date,event_type,equipment_available')
+        .gte('date', day7Ago).in('event_type', ['travel'])
     ]);
 
     const soccerSessions = soccerRes?.data || [];
     const gymSessions = gymRes?.data || [];
     const calendarEvents = calRes?.data || [];
+    const travelEvents = travelRes?.data || [];
 
     // Build daily load map: { 'YYYY-MM-DD': loadScore }
     const dailyLoad = {};
@@ -146,14 +149,14 @@ async function calculateACWR(sb) {
     }
     // Handle exactly at or above the last threshold's max (Infinity — never reached via <)
 
-    // Vacation / moving period detection from calendar_events
+    // Vacation / moving period detection from travel calendar events
     let vacationNote = null;
-    const recentTravelEvents = calendarEvents.filter(e =>
-      e.event_type === 'travel' && e.date >= day7Ago
-    );
-    if (recentTravelEvents.length > 0) {
-      vacationNote = 'Load reduction due to travel is expected — chronic load will recalibrate over 2 weeks. Maintain technical work and conditioning to preserve fitness.';
-      // Don't override the ACWR itself but flag the context
+    const recentTravel = travelEvents.filter(e => e.date >= day7Ago);
+    if (recentTravel.length > 0) {
+      const hasLimitedEquip = recentTravel.some(e => e.equipment_available === 'limited' || e.equipment_available === 'none');
+      vacationNote = hasLimitedEquip
+        ? 'Load reduction due to travel with limited equipment is expected — chronic load will recalibrate over 2 weeks. Maintain bodyweight work and conditioning to preserve fitness.'
+        : 'Load reduction due to travel is expected — chronic load will recalibrate over 2 weeks. Maintain technical work and conditioning to preserve fitness.';
     }
 
     // Write results to app_state
