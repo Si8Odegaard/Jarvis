@@ -789,6 +789,7 @@
   let relativeRatios = [];
   let bodyFatPct = null;
   const GEMINI_API_KEY = window.ENV_GEMINI_API_KEY || '';
+  if (!GEMINI_API_KEY) console.warn('[Jarvis] ENV_GEMINI_API_KEY not set — env.js may be missing. AI features will be unavailable.');
 
   const $ = (id) => document.getElementById(id.startsWith('#') ? id.slice(1) : id);
 
