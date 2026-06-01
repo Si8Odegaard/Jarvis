@@ -90,6 +90,68 @@ input[type="number"].error { border-color:var(--danger); }
 .pill-dim{background:rgba(255,255,255,.05);color:var(--text-tertiary);}
 .chart-wrap{margin-top:10px;padding:10px;background:rgba(0,0,0,.20);border-radius:8px;}
 .chart-svg{display:block;width:100%;height:80px;overflow:visible;}
+
+/* ── Match Day Banners ── */
+.match-banner {
+  padding: 12px 16px; border-radius: 10px;
+  margin-bottom: 12px; font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; gap: 10px;
+}
+.match-banner.carb { background:rgba(107,227,164,.08); border:1px solid rgba(107,227,164,.20); color:var(--success); }
+.match-banner.protein { background:rgba(125,211,252,.08); border:1px solid rgba(125,211,252,.20); color:#7DD3FC; }
+
+/* ── Carb Source Grid ── */
+.carb-sources {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;
+}
+.carb-source-pill {
+  background: rgba(107,227,164,.08); border:1px solid rgba(107,227,164,.18);
+  color:var(--success); padding:4px 10px; border-radius:99px;
+  font-size:11px; font-weight:600;
+}
+
+/* ── Gain Rate Display ── */
+.gain-rate {
+  font-size:12px; text-align:center; margin-top:6px; padding:6px 10px;
+  border-radius:6px; display:inline-block; width:100%;
+}
+.gain-rate.good { color:var(--success); background:rgba(107,227,164,.06); }
+.gain-rate.warn { color:var(--warning); background:rgba(242,192,99,.06); }
+.gain-rate.bad  { color:var(--danger);  background:rgba(255,138,138,.06); }
+
+/* ── Supplement Banner ── */
+.supplement-banner {
+  padding: 10px 14px; border-radius: 10px;
+  margin-bottom: 12px; font-size: 12px;
+  background: rgba(107,227,164,.06);
+  border:1px solid rgba(107,227,164,.15);
+  color: var(--text-secondary);
+  display: flex; align-items: center; gap: 8px;
+}
+
+/* ── Sleep Coaching ── */
+.sleep-coaching {
+  font-size: 12px; text-align: center; padding: 8px 12px;
+  border-radius: 8px; margin-top: 8px;
+  background: rgba(107,227,164,.06);
+  border:1px solid rgba(107,227,164,.15);
+  color: var(--success);
+  line-height: 1.5;
+}
+
+/* Jarvis floating chat button */
+.jarvis-chat-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--success);
+  z-index: 9999;
+  box-shadow: 0 4px 20px rgba(107,227,164,0.4);
+  cursor: pointer;
+}
 </style>
 </head>
 <body>
@@ -100,6 +162,12 @@ input[type="number"].error { border-color:var(--danger); }
   </div>
 
   <div id="reminderBadge" class="reminder-badge hidden">⏰ Check in pending</div>
+
+  <!-- Match Day Banners -->
+  <div id="matchBannerContainer"></div>
+
+  <!-- Supplement Timing Banner -->
+  <div id="supplementBanner"></div>
 
   <!-- Daily Check-in -->
   <div class="card" id="checkinCard">
@@ -166,6 +234,7 @@ input[type="number"].error { border-color:var(--danger); }
     <div style="text-align:center;font-size:13px;color:var(--text-secondary)">
       7-day avg: <span id="recoveryAvg">—</span>
     </div>
+    <div id="sleepCoaching"></div>
     <div class="chart-wrap"><svg class="chart-svg" id="recoveryChartSvg" viewBox="0 0 400 80" preserveAspectRatio="none"></svg></div>
   </div>
 
@@ -177,6 +246,7 @@ input[type="number"].error { border-color:var(--danger); }
       <span id="proteinStreak">0</span> day streak · avg: <span id="proteinAvg">—</span>g
     </div>
     <div style="font-size:12px;color:var(--text-tertiary);text-align:center;margin-top:6px" id="proteinWeightNote"></div>
+    <div id="gainRateDisplay"></div>
     <div id="proteinAlert" class="alert hidden" style="margin-top:12px">
       <div class="alert-title">⚠️ Low Protein Alert</div>
       <div>Under target for 3+ days. Muscle retention at risk.</div>
@@ -192,6 +262,7 @@ input[type="number"].error { border-color:var(--danger); }
     </div>
     <div class="chart-wrap"><svg class="chart-svg" id="weightTrendChartSvg" viewBox="0 0 400 80" preserveAspectRatio="none"></svg></div>
     <div style="font-size:12px;color:var(--text-secondary);text-align:center;margin-top:6px" id="tdeeAdjustment"></div>
+    <div id="carbAdjustment" style="font-size:12px;color:var(--text-secondary);text-align:center;margin-top:4px"></div>
   </div>
 
   <!-- Diagnosis -->
@@ -602,10 +673,19 @@ async function updateProteinTarget() {
     const isTrainingDay = todaySplit() !== 'Rest';
     const multiplier = isTrainingDay ? 0.91 : 0.73;
     const label = isTrainingDay ? 'training day · 2.0g/kg' : 'rest day · 1.6g/kg';
-    const target = Math.round(weightLbs * multiplier);
+    let target = Math.round(weightLbs * multiplier);
+
+    // Match day recovery: +20g protein
+    const in24Recovery = appStateData['match_in_24_hours_recovery'];
+    let matchBoost = '';
+    if (in24Recovery === true || in24Recovery === 'true') {
+      target += 20;
+      matchBoost = ' (+20g match recovery)';
+    }
+
     $('proteinTarget').textContent = target + 'g';
     const noteEl = $('proteinWeightNote');
-    if (noteEl) noteEl.textContent = weightSource + ' — ' + label;
+    if (noteEl) noteEl.textContent = weightSource + ' — ' + label + matchBoost;
 
     const { data: checkins } = await sb.from('daily_checkins').select('protein_grams').order('date',{ascending:false}).limit(7);
     if (checkins && checkins.length) {
@@ -671,6 +751,22 @@ async function updateTDEE() {
     let min = tdee, max = tdee;
     if (profile.phase === 'bulk') { min = tdee + 300; max = tdee + 500; }
     if (profile.phase === 'cut')  { min = tdee - 500; max = tdee - 300; }
+
+    // Match day carb loading: +40% carb target & +15% calorie increase
+    // Post-match recovery: +10% calorie target
+    const in48 = appStateData['match_in_48_hours'];
+    const in24 = appStateData['match_in_24_hours_recovery'];
+    if (in48 === true || in48 === 'true') {
+      tdee = Math.round(tdee * 1.15);
+      min = Math.round(min * 1.15);
+      max = Math.round(max * 1.15);
+    }
+    if (in24 === true || in24 === 'true') {
+      tdee = Math.round(tdee * 1.10);
+      min = Math.round(min * 1.10);
+      max = Math.round(max * 1.10);
+    }
+
     $('tdeeRange').textContent = `Target: ${min} – ${max} kcal`;
 
     const adjEl = $('tdeeAdjustment');
@@ -820,6 +916,187 @@ async function updateDiagnosis(){
 }
 
 // ═══════════════════════════════════════════════
+//  CROSS-TAB APP STATE
+// ═══════════════════════════════════════════════
+let appStateData = {};
+async function loadAppState() {
+  try {
+    const keys = ['match_in_48_hours','match_in_24_hours_recovery','next_match_date',
+      'gym_lower_body_blocked','body','acwr','today_session_count',
+      'current_offseason_phase','equipment_available'];
+    const { data } = await sb.from('app_state').select('key,data').in('key', keys);
+    if (data) data.forEach(row => { appStateData[row.key] = row.data?.value ?? row.data; });
+    return appStateData;
+  } catch(e) { console.error('app_state load:', e); return {}; }
+}
+
+// ═══════════════════════════════════════════════
+//  MATCH DAY NUTRITION PROTOCOL
+// ═══════════════════════════════════════════════
+function renderMatchBanners() {
+  const container = $('matchBannerContainer');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const in48 = appStateData['match_in_48_hours'];
+  const in24 = appStateData['match_in_24_hours_recovery'];
+
+  if (in48 === true || in48 === 'true') {
+    // Calculate carb target: standard 4g/kg (~1.8g/lb), then +40% = 5.6g/kg (~2.5g/lb)
+    const estWeight = profileState?.weight_lbs || 150;
+    const baseCarbs = Math.round(estWeight * 1.8);
+    const boostedCarbs = Math.round(estWeight * 2.5);
+    container.innerHTML += `<div class="match-banner carb">
+      <span style="font-size:20px;">🍝</span>
+      <div>
+        <strong>Match in 48 Hours — Carb Loading Phase</strong>
+        <div style="font-size:11px;opacity:0.85;margin-top:2px;">Carb target increased 40%: <strong>${baseCarbs}g → ${boostedCarbs}g</strong>. Prioritise these affordable sources:</div>
+        <div class="carb-sources">
+          <span class="carb-source-pill">Oats</span>
+          <span class="carb-source-pill">White Rice</span>
+          <span class="carb-source-pill">Pasta</span>
+          <span class="carb-source-pill">Bread</span>
+          <span class="carb-source-pill">Bananas</span>
+          <span class="carb-source-pill">Fruit Juice</span>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  if (in24 === true || in24 === 'true') {
+    container.innerHTML += `<div class="match-banner protein">
+      <span style="font-size:20px;">🥩</span>
+      <div>
+        <strong>Post-Match Recovery — Protein Priority</strong>
+        <div style="font-size:11px;opacity:0.85;margin-top:2px;">Protein target +20g · Calorie target +10% to support tissue repair and glycogen replenishment.</div>
+      </div>
+    </div>`;
+  }
+
+  // Protein/TDEE are updated by init() after all renders — no need to call here
+}
+
+// ═══════════════════════════════════════════════
+//  WEEKLY GAIN RATE INTEGRATION
+// ═══════════════════════════════════════════════
+function renderGainRate() {
+  const el = $('gainRateDisplay');
+  if (!el) return;
+
+  // Read from app_state body data (set by body.html)
+  const bodyData = appStateData['body'];
+  const gainRate = (bodyData && typeof bodyData === 'object') ? bodyData.weekly_gain_rate : null;
+
+  if (gainRate === null || gainRate === undefined) {
+    el.innerHTML = '';
+    return;
+  }
+
+  const rate = parseFloat(gainRate);
+  let cls, status, rec;
+  if (rate >= 0.5 && rate <= 1.0) {
+    cls = 'good'; status = 'Optimal lean mass gain rate'; rec = '';
+  } else if (rate >= 0 && rate < 0.5) {
+    cls = 'warn'; status = 'Too slow — increase calories'; rec = 'Suggest increasing daily calories by 150–200.';
+  } else if (rate > 1.0 && rate <= 1.5) {
+    cls = 'warn'; status = 'Borderline — monitor closely'; rec = '';
+  } else if (rate > 1.5) {
+    cls = 'bad'; status = 'Likely gaining fat — reduce surplus'; rec = 'Suggest reducing daily calories by 150–200.';
+  } else {
+    cls = 'warn'; status = 'Losing weight — increase calories'; rec = 'Suggest increasing daily calories by 150–200.';
+  }
+
+  el.innerHTML = `<div class="gain-rate ${cls}">
+    <strong>Current gain rate: ${rate.toFixed(1)} lbs/week</strong> — Target: 0.5–1.0 lbs for lean mass. ${status}. ${rec}
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════
+//  TRAINING DAY CARB TARGETING
+// ═══════════════════════════════════════════════
+function renderCarbAdjustment() {
+  const el = $('carbAdjustment');
+  if (!el) return;
+
+  const sessionCount = appStateData['today_session_count'];
+  const phase = appStateData['current_offseason_phase'];
+
+  // Detect heavy training days from gym tab context
+  const gymBlocked = appStateData['gym_lower_body_blocked'];
+  const isHeavyDay = (sessionCount && parseInt(sessionCount) >= 1);
+  const isRestDay = (sessionCount === 0 || sessionCount === '0');
+
+  if (isHeavyDay && !isRestDay) {
+    el.innerHTML = `<span style="color:var(--success);">🔥 Heavy training day — carb target +15% to support performance and recovery.</span>`;
+  } else if (isRestDay) {
+    el.innerHTML = `<span style="color:var(--text-tertiary);">😴 Rest day — carb target −10%. Prioritise protein and fats today.</span>`;
+  } else {
+    el.innerHTML = '';
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  SUPPLEMENT TIMING INTELLIGENCE
+// ═══════════════════════════════════════════════
+function renderSupplementTiming() {
+  const el = $('supplementBanner');
+  if (!el) return;
+
+  const sessionType = appStateData['today_session_count']; // presence indicates gym
+  const match48 = appStateData['match_in_48_hours'];
+  const isMatchDay = (match48 === true || match48 === 'true');
+  const isGymDay = sessionType && parseInt(sessionType) >= 1;
+
+  // Check if today is a speed session day (from calendar events or app_state)
+  const phase = appStateData['current_offseason_phase'];
+  const isSpeedDay = phase && typeof phase === 'string' && phase.toLowerCase().includes('speed');
+
+  let html = '';
+
+  if (isMatchDay) {
+    html = `<div class="supplement-banner">
+      <span>⚠️</span>
+      <div><strong>Match Day — Stick to known supplements only.</strong> Avoid trying anything new today. Your regular stack is sufficient.</div>
+    </div>`;
+  } else if (isSpeedDay) {
+    html = `<div class="supplement-banner">
+      <span>☕</span>
+      <div><strong>Caffeine 200–400mg 45–60 min before sprint session</strong> improves speed output by ~3% per research. Ideal window: 7:00–7:30 AM for a 8:15 AM session.</div>
+    </div>`;
+  } else if (isGymDay) {
+    html = `<div class="supplement-banner">
+      <span>💊</span>
+      <div><strong>Take creatine within 30 minutes post-gym</strong> for optimal uptake. Pair with your post-workout protein for best absorption.</div>
+    </div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════
+//  SLEEP COACHING
+// ═══════════════════════════════════════════════
+async function renderSleepCoaching() {
+  const el = $('sleepCoaching');
+  if (!el) return;
+
+  try {
+    const { data: todayCheckin } = await sb.from('daily_checkins')
+      .select('sleep_hours').eq('date', todayKey()).maybeSingle();
+
+    const sleepHours = todayCheckin ? todayCheckin.sleep_hours : null;
+
+    if (sleepHours !== null && parseFloat(sleepHours) < 8) {
+      el.innerHTML = `<div class="sleep-coaching">
+        💤 <strong>9+ hours sleep tonight would directly improve tomorrow's sprint speed and reaction time</strong> per Stanford Sleep Lab research. Prioritise this above any other recovery intervention.
+      </div>`;
+    } else {
+      el.innerHTML = '';
+    }
+  } catch(e) { el.innerHTML = ''; }
+}
+
+// ═══════════════════════════════════════════════
 //  WEEKLY SUMMARY
 // ═══════════════════════════════════════════════
 async function generateWeeklySummary() {
@@ -945,10 +1222,19 @@ async function checkReminderBadge() {
   $('refreshSummary').addEventListener('click', generateWeeklySummary);
   initSettingsModal();
   await Promise.all([
-    loadTodayCheckin(), loadRecoveryScore(), updateProteinTarget(),
-    updateTDEE(), generateWeeklySummary(), checkReminderBadge(), prefillSettingsModal(),
-    loadRecoveryChart(), loadWeightTrend(), updateDiagnosis()
+    loadTodayCheckin(), loadRecoveryScore(),
+    generateWeeklySummary(), checkReminderBadge(), prefillSettingsModal(),
+    loadRecoveryChart(), loadWeightTrend(), updateDiagnosis(), loadAppState()
   ]);
+  // Render cross-tab features after app_state is loaded
+  renderMatchBanners();
+  renderGainRate();
+  renderCarbAdjustment();
+  renderSupplementTiming();
+  await renderSleepCoaching();
+  // Now update protein/TDEE with match-day adjustments from appStateData
+  updateProteinTarget();
+  updateTDEE();
 })();
 </script>
 </body>

@@ -1,0 +1,2000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Body & Performance</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="chat.js"></script>
+  <style>
+    :root {
+      --text-primary: #FAFAFA;
+      --text-secondary: #B8B6B0;
+      --text-tertiary: #76746E;
+      --success: #6BE3A4;
+      --warning: #F2C063;
+      --danger: #FF6B6B;
+      --info: #7DD3FC;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --bg: #050506;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      padding: 16px 20px calc(100px + env(safe-area-inset-bottom));
+      max-width: 700px;
+      margin: 0 auto;
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 16px;
+      padding: 20px 22px;
+      margin-bottom: 14px;
+      backdrop-filter: blur(24px) saturate(1.2);
+      -webkit-backdrop-filter: blur(24px) saturate(1.2);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .card-subtitle {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      font-family: var(--mono);
+      margin-top: 2px;
+    }
+
+    /* ── Section titles ── */
+    .section-title {
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .section-title::before {
+      content: '';
+      width: 18px;
+      height: 1px;
+      background: var(--text-tertiary);
+      opacity: 0.6;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(255,255,255,0.08), transparent);
+    }
+
+    /* ── Weight Hero ── */
+    .wt-hero { text-align: center; padding: 8px 0 4px; }
+    .wt-hero-num {
+      font-size: 64px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+    .wt-hero-change {
+      font-size: 14px;
+      font-weight: 600;
+      margin-top: 6px;
+    }
+    .wt-hero-change.up { color: var(--success); }
+    .wt-hero-change.down { color: var(--danger); }
+    .wt-hero-change.neutral { color: var(--text-tertiary); }
+    .wt-hero-trend {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      font-family: var(--mono);
+      margin-top: 4px;
+    }
+
+    /* ── Weight input row ── */
+    .wt-input-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .wt-input-row input {
+      flex: 1;
+      min-width: 100px;
+      padding: 11px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(0,0,0,0.30);
+      color: var(--text-primary);
+      font-size: 16px;
+      font-family: inherit;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    .wt-input-row input:focus { outline: none; border-color: var(--success); }
+    .wt-input-row input::placeholder { color: var(--text-tertiary); font-weight: 400; }
+    .wt-input-row .btn-save {
+      padding: 11px 22px;
+      border-radius: 12px;
+      border: none;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      background: var(--success);
+      color: #04201A;
+      font-family: inherit;
+    }
+    .btn-save:hover { filter: brightness(1.1); }
+    .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .wt-saved-toast {
+      font-size: 12px;
+      color: var(--success);
+      text-align: center;
+      margin-top: 8px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .wt-saved-toast.show { opacity: 1; }
+
+    /* ── Weekly gain rate ── */
+    .gain-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      margin-top: 12px;
+    }
+    .gain-card.optimal { background: rgba(107,227,164,0.08); border: 1px solid rgba(107,227,164,0.20); }
+    .gain-card.slow { background: rgba(242,192,99,0.08); border: 1px solid rgba(242,192,99,0.20); }
+    .gain-card.warn { background: rgba(242,192,99,0.10); border: 1px solid rgba(242,192,99,0.25); }
+    .gain-card.over { background: rgba(255,107,107,0.08); border: 1px solid rgba(255,107,107,0.20); }
+    .gain-icon { font-size: 22px; flex-shrink: 0; }
+    .gain-info { flex: 1; min-width: 0; }
+    .gain-rate { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .gain-rate.optimal { color: var(--success); }
+    .gain-rate.slow { color: var(--warning); }
+    .gain-rate.warn { color: var(--warning); }
+    .gain-rate.over { color: var(--danger); }
+    .gain-label { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+
+    /* ── Chart ── */
+    .chart-wrap { margin-top: 14px; }
+    .chart-wrap svg { width: 100%; height: 200px; display: block; }
+    .chart-legend {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--text-tertiary);
+    }
+    .chart-legend span { display: inline-flex; align-items: center; gap: 5px; }
+    .chart-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .chart-legend-dot.weight { background: var(--info); }
+    .chart-legend-dot.avg { background: var(--success); }
+    .chart-legend-line { width: 14px; height: 0; border-top: 1.5px dashed; flex-shrink: 0; }
+    .chart-legend-line.target { border-color: var(--warning); }
+
+    /* ── Progress Photos ── */
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .photo-thumb {
+      aspect-ratio: 3/4;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      cursor: pointer;
+      overflow: hidden;
+      position: relative;
+      transition: border-color 0.15s;
+    }
+    .photo-thumb:hover { border-color: var(--success); }
+    .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .photo-thumb .photo-date {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 4px 6px;
+      font-size: 9px;
+      font-family: var(--mono);
+      color: #fff;
+      background: linear-gradient(transparent, rgba(0,0,0,0.7));
+    }
+    .photo-empty {
+      aspect-ratio: 3/4;
+      border-radius: 10px;
+      border: 1.5px dashed rgba(255,255,255,0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text-tertiary);
+      font-size: 11px;
+      text-align: center;
+      transition: border-color 0.15s;
+    }
+    .photo-empty:hover { border-color: var(--success); color: var(--success); }
+
+    /* ── Benchmarks table ── */
+    .bench-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .bench-table thead th {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      padding: 8px 6px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      font-family: var(--mono);
+    }
+    .bench-table thead th:last-child { text-align: right; }
+    .bench-table tbody td {
+      padding: 8px 6px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      vertical-align: middle;
+    }
+    .bench-table tbody td:last-child { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    .bench-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+    .bench-name { font-weight: 600; }
+    .bench-cat {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      font-family: var(--mono);
+    }
+    .bench-val { font-weight: 700; font-variant-numeric: tabular-nums; }
+    .bench-pb { font-size: 10px; color: var(--text-tertiary); }
+    .gap-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 10px;
+      font-weight: 700;
+      font-family: var(--mono);
+    }
+    .gap-badge.green { background: rgba(107,227,164,0.12); color: var(--success); }
+    .gap-badge.yellow { background: rgba(242,192,99,0.12); color: var(--warning); }
+    .gap-badge.red { background: rgba(255,107,107,0.12); color: var(--danger); }
+    .gap-badge.na { background: rgba(255,255,255,0.05); color: var(--text-tertiary); }
+
+    /* ── Estimated weeks ── */
+    .est-card {
+      background: linear-gradient(135deg, rgba(107,227,164,0.04), rgba(125,211,252,0.03));
+      border: 1px solid rgba(107,227,164,0.14);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 8px;
+    }
+    .est-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+    .est-weeks {
+      font-size: 32px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: var(--success);
+      letter-spacing: -0.03em;
+    }
+    .est-body { font-size: 12px; color: var(--text-secondary); margin-top: 4px; line-height: 1.5; }
+
+    /* ── Monthly test button ── */
+    .btn-test {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(107,227,164,0.25);
+      background: rgba(107,227,164,0.08);
+      color: var(--success);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      margin-top: 14px;
+      transition: background 0.15s;
+    }
+    .btn-test:hover { background: rgba(107,227,164,0.16); }
+
+    /* ── Test Modal ── */
+    .modal-bg {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      background: rgba(0,0,0,0.80);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .modal-bg.show { display: flex; }
+    body:has(.modal-bg.show) { overflow: hidden; }
+    .modal {
+      background: #0e0e10;
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 16px 16px 0 0;
+      padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+      width: 100%;
+      max-width: 640px;
+      max-height: 88vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .modal-title { font-size: 17px; font-weight: 700; }
+    .modal-close {
+      background: rgba(255,255,255,0.07);
+      border: none;
+      color: var(--text-secondary);
+      font-size: 18px;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .test-step {
+      padding: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 12px;
+      margin-bottom: 10px;
+    }
+    .test-step.active {
+      border-color: var(--success);
+      background: rgba(107,227,164,0.06);
+    }
+    .test-step-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .test-step-instructions { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.5; }
+    .test-step-input {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .test-step-input input {
+      width: 120px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.30);
+      color: var(--text-primary);
+      font-size: 16px;
+      font-weight: 600;
+      font-family: inherit;
+      font-variant-numeric: tabular-nums;
+    }
+    .test-step-input input:focus { outline: none; border-color: var(--success); }
+    .test-step-input .btn-next {
+      padding: 10px 18px;
+      border-radius: 10px;
+      border: none;
+      background: var(--success);
+      color: #04201A;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .test-step-done {
+      font-size: 13px;
+      color: var(--success);
+      font-weight: 700;
+    }
+    .btn-submit-tests {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      background: var(--success);
+      color: #04201A;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      margin-top: 10px;
+    }
+    .test-results {
+      padding: 14px;
+      background: rgba(107,227,164,0.06);
+      border: 1px solid rgba(107,227,164,0.14);
+      border-radius: 12px;
+      margin-top: 12px;
+    }
+    .test-results-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--success); }
+    .test-compare { font-size: 12px; font-family: var(--mono); color: var(--text-secondary); }
+    .test-compare td { padding: 3px 8px; }
+    .test-compare .improved { color: var(--success); }
+    .test-compare .declined { color: var(--danger); }
+    .test-compare .same { color: var(--text-tertiary); }
+
+  /* Photo viewer side-by-side */
+  .photo-viewer {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 400;
+    background: rgba(0,0,0,0.95);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .photo-viewer.show { display: flex; }
+  .photo-viewer-images {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  .photo-viewer-images.single { justify-content: center; }
+  .photo-viewer-img-wrap {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .photo-viewer-img-wrap img {
+    max-height: 60vh;
+    max-width: min(45vw, 300px);
+    border-radius: 8px;
+    object-fit: contain;
+  }
+  .photo-viewer-img-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 6px;
+    font-family: var(--mono);
+  }
+  .photo-viewer-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(255,255,255,0.1);
+    border: none;
+    color: #fff;
+    font-size: 24px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 10;
+  }
+  .photo-compare-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+    align-items: center;
+  }
+  .photo-compare-row select {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.30);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: inherit;
+  }
+
+    /* ── Timer ── */
+    .test-timer {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-family: var(--mono);
+      font-size: 14px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .test-timer-display {
+      font-size: 24px;
+      color: var(--success);
+      min-width: 48px;
+      text-align: center;
+    }
+    .test-timer-display.running { color: var(--info); }
+    .test-timer-display.stopped { color: var(--text-tertiary); }
+    .test-timer-btn {
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.06);
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .test-timer-btn:hover { background: rgba(255,255,255,0.12); color: var(--text-primary); }
+    .test-timer-btn.start { border-color: rgba(107,227,164,0.3); color: var(--success); }
+    .test-timer-btn.start:hover { background: rgba(107,227,164,0.12); }
+    .test-timer-btn.stop { border-color: rgba(255,107,107,0.3); color: var(--danger); }
+    .test-timer-btn.stop:hover { background: rgba(255,107,107,0.08); }
+
+    /* ── Body fat ── */
+    .bf-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 8px;
+    }
+    .bf-row input {
+      width: 80px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(0,0,0,0.30);
+      color: var(--text-primary);
+      font-size: 13px;
+      font-family: inherit;
+      font-weight: 600;
+    }
+    .bf-row input:focus { outline: none; border-color: var(--success); }
+    .bf-row .btn-save-bf {
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: none;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+      background: var(--success);
+      color: #04201A;
+      font-family: inherit;
+    }
+    .bf-display {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+    .bf-display b { color: var(--success); }
+
+    /* AI assessment */
+    .ai-assessment {
+      margin-top: 14px;
+      padding: 14px;
+      background: linear-gradient(135deg, rgba(107,227,164,0.04), rgba(125,211,252,0.03));
+      border: 1px solid rgba(107,227,164,0.14);
+      border-radius: 12px;
+    }
+    .ai-assessment-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--success);
+      margin-bottom: 8px;
+    }
+    .ai-assessment-body {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+    .ai-assessment-loading {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      font-style: italic;
+    }
+  .toast {
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9998;
+    padding: 10px 20px;
+    border-radius: 10px;
+    background: var(--success);
+    color: #04201A;
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+    .toast.show { opacity: 1; }
+
+    /* ── Jarvis FAB ── */
+    .jarvis-chat-fab {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--success);
+      z-index: 9999;
+      box-shadow: 0 4px 20px rgba(107,227,164,0.4);
+      cursor: pointer;
+    }
+
+    @media (max-width: 480px) {
+      body { padding: 12px 14px calc(100px + env(safe-area-inset-bottom)); }
+      .card { padding: 16px; }
+      .wt-hero-num { font-size: 48px; }
+      .bench-table thead th { font-size: 8px; padding: 6px 3px; }
+      .bench-table tbody td { font-size: 11px; padding: 6px 3px; }
+      .est-weeks { font-size: 26px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- ═══ SECTION 1: WEIGHT & BODY COMPOSITION ═══ -->
+  <div class="section-title">Weight & Body Composition</div>
+
+  <div class="card">
+    <div class="wt-hero">
+      <div class="wt-hero-num" id="wtHeroNum">--</div>
+      <div class="wt-hero-change neutral" id="wtHeroChange">--</div>
+      <div class="wt-hero-trend" id="wtHeroTrend">--</div>
+    </div>
+
+    <div class="wt-input-row">
+      <input type="number" id="wtInput" step="0.1" placeholder="Weight (lbs)" inputmode="decimal">
+      <input type="text" id="wtNoteInput" placeholder="Note (optional)" style="flex:1.5">
+      <button class="btn-save" id="wtSaveBtn">Log</button>
+    </div>
+    <div class="wt-saved-toast" id="wtSavedToast">✓ Logged</div>
+
+    <!-- Body fat % -->
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06)">
+      <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:6px">Body Fat % <span style="font-weight:400;letter-spacing:0">(target 8–12%)</span></div>
+      <div class="bf-row">
+        <input type="number" id="bfInput" step="0.1" placeholder="e.g. 14.5" inputmode="decimal">
+        <button class="btn-save-bf" id="bfSaveBtn">Log BF%</button>
+      </div>
+      <div class="bf-display" id="bfDisplay"></div>
+    </div>
+
+    <div class="gain-card" id="gainCard">
+      <div class="gain-icon" id="gainIcon">--</div>
+      <div class="gain-info">
+        <div class="gain-rate" id="gainRate">--</div>
+        <div class="gain-label" id="gainLabel">--</div>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <svg id="wtChart" viewBox="0 0 600 200" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="chart-legend">
+        <span><span class="chart-legend-dot weight"></span> Daily weight</span>
+        <span><span class="chart-legend-dot avg"></span> 7-day avg</span>
+        <span><span class="chart-legend-line target"></span> Target (150lbs)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Progress Photos -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Progress Photos</div>
+        <div class="card-subtitle">Upload · Compare · Track</div>
+      </div>
+    </div>
+    <div class="photo-grid" id="photoGrid">
+      <div class="photo-empty" id="photoUploadBtn">+ Upload Photo</div>
+    </div>
+    <input type="file" id="photoFileInput" accept="image/*" style="display:none">
+  </div>
+
+  <!-- ═══ SECTION 2: PHYSICAL BENCHMARKS ═══ -->
+  <div class="section-title" style="margin-top:24px">Physical Benchmarks</div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Benchmark Dashboard</div>
+        <div class="card-subtitle">Current vs D1 · Pro · Personal Best</div>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="bench-table">
+        <thead>
+          <tr><th>Test</th><th>Result</th><th>PB</th><th>JUCO</th><th>D1 Std</th><th>Pro Std</th><th>Gap to D1</th><th>Gap to Pro</th></tr>
+        </thead>
+        <tbody id="benchBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Estimated Weeks -->
+  <div class="card">
+    <div class="card-title" style="margin-bottom:12px">Estimated Weeks to D1 Standard</div>
+    <div id="estCards"></div>
+  </div>
+
+  <!-- Monthly Testing -->
+  <div class="card">
+    <div class="card-title" style="margin-bottom:8px">Monthly Testing Protocol</div>
+    <div class="card-subtitle" style="margin-bottom:12px">Standardized battery to track progress every 4 weeks</div>
+    <button class="btn-test" id="btnRunTests">🏃 Run Monthly Tests</button>
+  </div>
+
+  <!-- ═══ TEST MODAL ═══ -->
+  <div class="modal-bg" id="testModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">🏃 Monthly Test Battery</div>
+        <button class="modal-close" id="testClose">×</button>
+      </div>
+      <div id="testSteps"></div>
+      <div class="test-results" id="testResults" style="display:none"></div>
+      <button class="btn-submit-tests" id="btnSubmitTests" style="display:none">Save All Results</button>
+    </div>
+  </div>
+
+  <!-- ═══ PHOTO VIEWER ═══ -->
+  <div class="photo-viewer" id="photoViewer">
+    <button class="photo-viewer-close" id="photoViewerClose">×</button>
+    <div class="photo-viewer-images single" id="photoViewerImages"></div>
+    <div class="photo-compare-row">
+      <span style="font-size:12px;color:var(--text-tertiary)">Compare with:</span>
+      <select id="photoCompareSelect"><option value="">Select date…</option></select>
+      <button class="btn-next" id="photoCompareClear" style="display:none;font-size:11px;padding:6px 12px;">Clear comparison</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+  'use strict';
+
+  const SUPABASE_URL = 'https://cskbbioyniryonkukamw.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNza2JiaW95bmlyeW9ua3VrYW13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NjE2MTYsImV4cCI6MjA5NDUzNzYxNn0.R3Vx3fA-iAc8LhNL3WPSa9-BxH_087c7VaIbrB3CBJM';
+  const START_WEIGHT = 135;
+  const TARGET_WEIGHT = 150;
+  const TARGET_WEEKLY_RATE = 0.007; // 0.7% per week
+
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  initJarvisChat(sb);
+
+  // ── State ──
+  let weights = [];
+  let photos = [];
+  let athleticTests = [];
+  let sprintDecaySessions = [];
+  let gymSets = [];
+  let relativeRatios = [];
+  let bodyFatPct = null;
+  const GEMINI_API_KEY = window.ENV_GEMINI_API_KEY || '';
+
+  const $ = (id) => document.getElementById(id.startsWith('#') ? id.slice(1) : id);
+
+  function todayStr() { return new Date().toISOString().slice(0,10); }
+
+  function showToast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+  }
+
+  // ════════════════════════════ DATA LOADING ════════════════════════════
+  async function loadAll() {
+    try {
+      const [wRes, pRes, tRes, rsRes, sdRes, gRes, rrRes] = await Promise.all([
+        sb.from('weight_logs').select('*').order('date', { ascending: false }).limit(60),
+        sb.from('progress_photos').select('*').order('date', { ascending: false }).limit(20),
+        sb.from('athletic_tests').select('*').order('date', { ascending: false }).limit(60),
+        sb.from('sprint_decay_sessions').select('*').order('date', { ascending: false }).limit(10),
+        sb.from('session_sets').select('*').order('created_at', { ascending: false }).limit(500),
+        sb.from('relative_strength_ratios').select('*').order('date', { ascending: false }).limit(30),
+      ]);
+      if (wRes.data) weights = wRes.data.map(r => ({ ...r, weight: parseFloat(r.weight) }));
+      if (pRes.data) photos = pRes.data;
+      if (tRes.data) athleticTests = tRes.data;
+      if (sdRes.data) sprintDecaySessions = sdRes.data;
+      if (gRes.data) gymSets = gRes.data;
+      if (rrRes.data) relativeRatios = rrRes.data;
+    } catch (e) {
+      console.error('Load error:', e);
+    }
+    renderAll();
+  }
+
+  function renderAll() {
+    renderWeightHero();
+    renderGainRate();
+    renderWeightChart();
+    renderPhotoGrid();
+    renderBenchmarks();
+    renderEstimatedWeeks();
+    renderBodyFat();
+  }
+
+  // ════════════════════════════ WEIGHT ════════════════════════════
+  function renderWeightHero() {
+    const sorted = [...weights].sort((a,b) => b.date.localeCompare(a.date));
+    const latest = sorted[0];
+    const yesterday = sorted.slice(0,2).filter(w => w.date !== todayStr())[0] || sorted[1];
+
+    if (!latest) {
+      $('wtHeroNum').textContent = '--';
+      $('wtHeroChange').textContent = 'Log your weight';
+      $('wtHeroChange').className = 'wt-hero-change neutral';
+      $('wtHeroTrend').textContent = 'Starting weight: ' + START_WEIGHT + 'lbs';
+      return;
+    }
+
+    const wt = latest.weight;
+    $('wtHeroNum').textContent = wt.toFixed(1) + 'lbs';
+    const diff = wt - START_WEIGHT;
+    const sign = diff >= 0 ? '+' : '';
+    $('wtHeroChange').textContent = sign + diff.toFixed(1) + 'lbs from start (' + START_WEIGHT + 'lbs)';
+    $('wtHeroChange').className = 'wt-hero-change ' + (diff > 0 ? 'up' : diff < 0 ? 'down' : 'neutral');
+
+    // Weekly trend direction
+    const weekAgo = new Date(todayStr()+'T00:00:00');
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const weekStr = weekAgo.toISOString().slice(0,10);
+    const weekAgoWeight = sorted.find(w => w.date <= weekStr);
+    if (weekAgoWeight) {
+      const weeklyDiff = wt - weekAgoWeight.weight;
+      const signW = weeklyDiff >= 0 ? '+' : '';
+      const trend = weeklyDiff > 0.1 ? '📈 Trending up' : weeklyDiff < -0.1 ? '📉 Trending down' : '→ Stable';
+      $('wtHeroTrend').textContent = trend + ' · ' + signW + weeklyDiff.toFixed(1) + 'lbs this week';
+    } else {
+      $('wtHeroTrend').textContent = 'Need more data for weekly trend';
+    }
+  }
+
+  function renderGainRate() {
+    const card = $('gainCard');
+    const sorted = [...weights].sort((a,b) => a.date.localeCompare(b.date));
+    if (sorted.length < 2) {
+      card.className = 'gain-card';
+      $('gainIcon').textContent = '⚖️';
+      $('gainRate').textContent = '--';
+      $('gainRate').className = 'gain-rate';
+      $('gainLabel').textContent = 'Log at least 2 entries to see gain rate';
+      return;
+    }
+
+    // Calculate weekly gain rate over the last 7 days
+    const todayW = new Date(todayStr()+'T00:00:00');
+    const weekAgo = new Date(todayW);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const weekStr = weekAgo.toISOString().slice(0,10);
+
+    const recent = sorted.filter(w => w.date >= weekStr);
+    const prevWeek = sorted.filter(w => w.date < weekStr && w.date >= new Date(weekAgo.getTime() - 7*86400000).toISOString().slice(0,10));
+
+    if (recent.length === 0 && prevWeek.length === 0) {
+      // Use all-time trend instead
+      const first = sorted[0];
+      const last = sorted[sorted.length - 1];
+      const days = (new Date(last.date+'T00:00:00') - new Date(first.date+'T00:00:00')) / 86400000;
+      if (days < 3) {
+        card.className = 'gain-card';
+        $('gainIcon').textContent = '⚖️';
+        $('gainRate').textContent = 'Calculating...';
+        $('gainRate').className = 'gain-rate';
+        $('gainLabel').textContent = 'Need more data points';
+        return;
+      }
+      const weeklyRate = ((last.weight - first.weight) / days) * 7;
+      displayGainRate(card, weeklyRate);
+      return;
+    }
+
+    const recentAvg = recent.length ? recent.reduce((s,w) => s + w.weight, 0) / recent.length : null;
+    const prevAvg = prevWeek.length ? prevWeek.reduce((s,w) => s + w.weight, 0) / prevWeek.length : null;
+
+    if (recentAvg === null || prevAvg === null) {
+      card.className = 'gain-card';
+      $('gainIcon').textContent = '⚖️';
+      $('gainRate').textContent = '--';
+      $('gainRate').className = 'gain-rate';
+      $('gainLabel').textContent = 'Need a full week of data';
+      return;
+    }
+
+    const weeklyRate = recentAvg - prevAvg;
+    displayGainRate(card, weeklyRate);
+  }
+
+  function displayGainRate(card, weeklyRate) {
+    const sign = weeklyRate >= 0 ? '+' : '';
+    const absRate = Math.abs(weeklyRate);
+    $('gainRate').textContent = sign + weeklyRate.toFixed(1) + ' lbs/week';
+
+    if (weeklyRate >= 0.5 && weeklyRate <= 1.0) {
+      card.className = 'gain-card optimal';
+      $('gainIcon').textContent = '✅';
+      $('gainRate').className = 'gain-rate optimal';
+      $('gainLabel').textContent = 'Optimal lean mass gain rate (0.5–1.0 lbs/week per sports science)';
+    } else if (weeklyRate >= 0 && weeklyRate < 0.5) {
+      card.className = 'gain-card slow';
+      $('gainIcon').textContent = '🐢';
+      $('gainRate').className = 'gain-rate slow';
+      $('gainLabel').textContent = 'Too slow — increase calories by 200–300/day';
+    } else if (weeklyRate > 1.0 && weeklyRate <= 1.5) {
+      card.className = 'gain-card warn';
+      $('gainIcon').textContent = '⚠️';
+      $('gainRate').className = 'gain-rate warn';
+      $('gainLabel').textContent = 'Borderline — monitor for another week, may need slight surplus reduction';
+    } else if (weeklyRate > 1.5) {
+      card.className = 'gain-card over';
+      $('gainIcon').textContent = '🔴';
+      $('gainRate').className = 'gain-rate over';
+      $('gainLabel').textContent = 'Likely gaining excess fat — reduce surplus by 300–400 cal/day';
+    } else {
+      card.className = 'gain-card slow';
+      $('gainIcon').textContent = '📉';
+      $('gainRate').className = 'gain-rate slow';
+      $('gainLabel').textContent = 'Losing weight — increase calories';
+    }
+  }
+
+  // ════════════════════════════ CHART ════════════════════════════
+  function renderWeightChart() {
+    const svg = $('wtChart');
+    const sorted = [...weights].sort((a,b) => a.date.localeCompare(b.date));
+    if (sorted.length < 2) {
+      svg.innerHTML = '<text x="300" y="100" text-anchor="middle" fill="#76746E" font-size="12" font-family="inherit">Log at least 2 entries to see chart</text>';
+      return;
+    }
+
+    // Get last 30 days of data
+    const today = new Date(todayStr()+'T00:00:00');
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const cutoff = thirtyDaysAgo.toISOString().slice(0,10);
+    const recent = sorted.filter(w => w.date >= cutoff);
+
+    if (recent.length < 2) {
+      svg.innerHTML = '<text x="300" y="100" text-anchor="middle" fill="#76746E" font-size="12" font-family="inherit">Need more recent data</text>';
+      return;
+    }
+
+    // Add target trajectory points
+    const firstWeight = recent[0].weight;
+    const lastWeight = recent[recent.length - 1].weight;
+    const firstDate = new Date(recent[0].date+'T00:00:00');
+    const lastDate = new Date(recent[recent.length - 1].date+'T00:00:00');
+    const totalDays = Math.max(1, (lastDate - firstDate) / 86400000);
+
+    // Y-axis range
+    const allWeights = recent.map(w => w.weight);
+    const targetTrajectoryEnd = lastWeight * Math.pow(1 + TARGET_WEEKLY_RATE, 52); // 52 weeks out
+    const minW = Math.min(START_WEIGHT - 5, ...allWeights) - 2;
+    const maxW = Math.max(TARGET_WEIGHT + 5, targetTrajectoryEnd, ...allWeights) + 2;
+    const range = maxW - minW;
+
+    const W = 600, H = 200;
+    const padL = 40, padR = 20, padT = 15, padB = 25;
+    const plotW = W - padL - padR;
+    const plotH = H - padT - padB;
+
+    function xPos(dateStr) {
+      const d = new Date(dateStr+'T00:00:00');
+      const frac = Math.max(0, Math.min(1, (d - firstDate) / (totalDays * 86400000)));
+      return padL + frac * plotW;
+    }
+    function yPos(w) {
+      return padT + (1 - (w - minW) / range) * plotH;
+    }
+
+    // Build paths
+    const weightPoints = recent.map((w,i) => (i > 0 ? 'L' : 'M') + xPos(w.date).toFixed(1) + ',' + yPos(w.weight).toFixed(1)).join(' ');
+    const weightPoly = recent.map(w => xPos(w.date).toFixed(1) + ',' + yPos(w.weight).toFixed(1)).join(' ');
+
+    // 7-day rolling average
+    const avgPoints = [];
+    for (let i = 0; i < recent.length; i++) {
+      const windowEnd = new Date(recent[i].date+'T00:00:00');
+      const windowStart = new Date(windowEnd);
+      windowStart.setDate(windowStart.getDate() - 6);
+      const windowStr = windowStart.toISOString().slice(0,10);
+      const windowWeights = recent.filter(w => w.date >= windowStr && w.date <= recent[i].date);
+      if (windowWeights.length >= 2) {
+        const avg = windowWeights.reduce((s,w) => s + w.weight, 0) / windowWeights.length;
+        avgPoints.push(xPos(recent[i].date).toFixed(1) + ',' + yPos(avg).toFixed(1));
+      }
+    }
+    const avgPath = avgPoints.length ? 'M' + avgPoints.join(' L') : '';
+
+    // Target trajectory (dotted line from today to 150lbs at 0.7%/week)
+    const targetPoints = [];
+    const currentWeightForTarget = lastWeight;
+    const targetFirstDate = new Date(lastDate);
+    for (let week = 0; week <= 52; week++) {
+      const d = new Date(targetFirstDate.getTime() + week * 7 * 86400000);
+      const projectedWeight = currentWeightForTarget * Math.pow(1 + TARGET_WEEKLY_RATE, week);
+      if (projectedWeight <= TARGET_WEIGHT + 2) {
+        targetPoints.push(xPos(d.toISOString().slice(0,10)).toFixed(1) + ',' + yPos(Math.min(projectedWeight, TARGET_WEIGHT)).toFixed(1));
+      } else {
+        // Cap at target
+        targetPoints.push(xPos(d.toISOString().slice(0,10)).toFixed(1) + ',' + yPos(TARGET_WEIGHT).toFixed(1));
+        break;
+      }
+    }
+
+    // Y-axis labels
+    const yTicks = [];
+    for (let w = Math.ceil(minW); w <= maxW; w += 5) {
+      yTicks.push({ w, y: yPos(w).toFixed(1) });
+    }
+
+    svg.innerHTML = `
+      <!-- Grid lines -->
+      ${yTicks.map(t => `<line x1="${padL}" y1="${t.y}" x2="${W-padR}" y2="${t.y}" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>`).join('')}
+      <!-- Y-axis labels -->
+      ${yTicks.map(t => `<text x="${padL-6}" y="${t.y}" text-anchor="end" fill="#76746E" font-size="9" font-family="ui-monospace,SF Mono,Menlo,monospace" dominant-baseline="middle">${t.w}</text>`).join('')}
+      <text x="${padL-6}" y="${padT}" text-anchor="end" fill="#76746E" font-size="9" font-family="ui-monospace,SF Mono,Menlo,monospace">lbs</text>
+
+      <!-- Target trajectory (dashed) -->
+      <polyline points="${targetPoints.join(' ')}" fill="none" stroke="#F2C063" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.6"/>
+
+      <!-- 7-day rolling average -->
+      ${avgPath ? `<polyline points="${avgPath}" fill="none" stroke="#6BE3A4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>` : ''}
+
+      <!-- Weight line -->
+      <polyline points="${weightPoints}" fill="none" stroke="#7DD3FC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <!-- Data dots -->
+      ${recent.map(w => `<circle cx="${xPos(w.date).toFixed(1)}" cy="${yPos(w.weight).toFixed(1)}" r="3" fill="#7DD3FC" stroke="#050506" stroke-width="1"/>`).join('')}
+
+      <!-- Latest dot highlight -->
+      <circle cx="${xPos(recent[recent.length-1].date).toFixed(1)}" cy="${yPos(lastWeight).toFixed(1)}" r="5" fill="#7DD3FC" stroke="#050506" stroke-width="2"/>
+      <circle cx="${xPos(recent[recent.length-1].date).toFixed(1)}" cy="${yPos(lastWeight).toFixed(1)}" r="9" fill="none" stroke="#7DD3FC" stroke-width="1" opacity="0.3"/>
+
+      <!-- Target label -->
+      <text x="${W-padR-4}" y="${yPos(TARGET_WEIGHT)}" fill="#F2C063" font-size="10" font-family="ui-monospace,SF Mono,Menlo,monospace" text-anchor="end" dominant-baseline="middle">150</text>
+      <line x1="${padL}" y1="${yPos(TARGET_WEIGHT)}" x2="${W-padR-20}" y2="${yPos(TARGET_WEIGHT)}" stroke="#F2C063" stroke-width="0.5" stroke-dasharray="3,3" opacity="0.3"/>
+    `;
+  }
+
+  // ════════════════════════════ PROGRESS PHOTOS ════════════════════════════
+  function renderPhotoGrid() {
+    const grid = $('photoGrid');
+    grid.innerHTML = '';
+
+    photos.forEach(p => {
+      const thumb = document.createElement('div');
+      thumb.className = 'photo-thumb';
+      thumb.innerHTML = `<img src="${p.storage_path}" loading="lazy" onerror="this.style.display='none';this.parentElement.textContent='📷'"><div class="photo-date">${p.date}</div>`;
+      thumb.addEventListener('click', () => openPhotoViewer(p));
+      grid.appendChild(thumb);
+    });
+
+    const uploadBtn = document.createElement('div');
+    uploadBtn.className = 'photo-empty';
+    uploadBtn.textContent = '+ Upload';
+    uploadBtn.addEventListener('click', () => $('photoFileInput').click());
+    grid.appendChild(uploadBtn);
+  }
+
+  function openPhotoViewer(photo) {
+    const container = $('photoViewerImages');
+    container.className = 'photo-viewer-images single';
+    container.innerHTML = `
+      <div class="photo-viewer-img-wrap">
+        <img src="${photo.storage_path}" alt="Progress photo">
+        <div class="photo-viewer-img-label">${photo.date}${photo.weight_lbs ? ' · ' + photo.weight_lbs + 'lbs' : ''}</div>
+      </div>
+    `;
+    $('photoViewer').classList.add('show');
+    $('photoCompareClear').style.display = 'none';
+
+    // Populate compare dropdown
+    const sel = $('photoCompareSelect');
+    sel.innerHTML = '<option value="">Select date to compare…</option>';
+    photos.filter(p => p.date !== photo.date).forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.storage_path;
+      opt.dataset.date = p.date;
+      opt.dataset.weight = p.weight_lbs || '';
+      opt.textContent = p.date + (p.weight_lbs ? ' · ' + p.weight_lbs + 'lbs' : '');
+      sel.appendChild(opt);
+    });
+  }
+
+  $('photoViewerClose').addEventListener('click', () => $('photoViewer').classList.remove('show'));
+  $('photoViewer').addEventListener('click', (e) => { if (e.target === $('photoViewer')) $('photoViewer').classList.remove('show'); });
+
+  $('photoCompareSelect').addEventListener('change', () => {
+    const sel = $('photoCompareSelect');
+    const val = sel.value;
+    if (val) {
+      const opt = sel.selectedOptions[0];
+      const compareDate = opt.dataset.date || '';
+      const compareWeight = opt.dataset.weight || '';
+      // Show side-by-side
+      const mainImg = $('photoViewerImages').querySelector('img').src;
+      const mainLabel = $('photoViewerImages').querySelector('.photo-viewer-img-label').textContent;
+      $('photoViewerImages').className = 'photo-viewer-images';
+      $('photoViewerImages').innerHTML = `
+        <div class="photo-viewer-img-wrap">
+          <img src="${mainImg}" alt="Progress photo">
+          <div class="photo-viewer-img-label">${mainLabel}</div>
+        </div>
+        <div class="photo-viewer-img-wrap">
+          <img src="${val}" alt="Comparison photo">
+          <div class="photo-viewer-img-label">${compareDate}${compareWeight ? ' · ' + compareWeight + 'lbs' : ''}</div>
+        </div>
+      `;
+      $('photoCompareClear').style.display = 'inline-block';
+    }
+  });
+
+  $('photoCompareClear').addEventListener('click', () => {
+    // Reset to single image view
+    const firstWrap = $('photoViewerImages').querySelector('.photo-viewer-img-wrap');
+    if (firstWrap) {
+      $('photoViewerImages').className = 'photo-viewer-images single';
+      $('photoViewerImages').innerHTML = firstWrap.outerHTML;
+    }
+    $('photoCompareSelect').value = '';
+    $('photoCompareClear').style.display = 'none';
+  });
+
+  $('photoFileInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const bucketName = 'progress-photos';
+    const fileName = 'photos/' + todayStr() + '_' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const latestWeight = weights.length ? weights[0].weight : null;
+
+    try {
+      // Try upload to Supabase Storage
+      const { error: uploadError } = await sb.storage.from(bucketName).upload(fileName, file, {
+        upsert: true,
+        contentType: file.type,
+        cacheControl: '3600',
+      });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = sb.storage.from(bucketName).getPublicUrl(fileName);
+      const publicUrl = urlData.publicUrl;
+
+      // Save metadata
+      const { error: dbError } = await sb.from('progress_photos').insert({
+        date: todayStr(),
+        date_upper: todayStr(),
+        weight_lbs: latestWeight,
+        storage_path: publicUrl,
+      });
+
+      if (dbError) throw dbError;
+
+      // Reload
+      const { data: pRes } = await sb.from('progress_photos').select('*').order('date', { ascending: false }).limit(20);
+      if (pRes) photos = pRes;
+      renderPhotoGrid();
+      showToast('✓ Photo uploaded');
+    } catch (err) {
+      showToast('Upload failed: ' + (err.message || 'unknown error'));
+      console.error(err);
+    }
+
+    e.target.value = '';
+  });
+
+  // ════════════════════════════ SAVE WEIGHT ════════════════════════════
+  async function loadBodyFat() {
+    try {
+      const { data } = await sb.from('app_state').select('data').eq('key','body').maybeSingle();
+      if (data?.data?.body_fat_pct !== undefined) bodyFatPct = data.data.body_fat_pct;
+    } catch(e) {}
+  }
+
+  function renderBodyFat() {
+    if (bodyFatPct !== null) {
+      const inRange = bodyFatPct >= 8 && bodyFatPct <= 12;
+      $('bfDisplay').innerHTML = `Last: <b>${bodyFatPct.toFixed(1)}%</b> — ${inRange ? '✅ In target range (8–12%)' : bodyFatPct < 8 ? '⚠️ Below target range' : '⚠️ Above target range — consider slight caloric adjustment'}`;
+    } else {
+      $('bfDisplay').textContent = 'No body fat data yet';
+    }
+  }
+
+  $('bfSaveBtn').addEventListener('click', async () => {
+    const val = parseFloat($('bfInput').value);
+    if (isNaN(val) || val < 2 || val > 50) { showToast('Enter valid BF% (2–50)'); return; }
+    bodyFatPct = val;
+    $('bfInput').value = '';
+    try {
+      // Update body app_state
+      const { data } = await sb.from('app_state').select('data').eq('key','body').maybeSingle();
+      const current = data?.data || {};
+      current.body_fat_pct = val;
+      current.updated_at = new Date().toISOString();
+      await sb.from('app_state').upsert({ key:'body', data:current, updated_at: new Date().toISOString() }, { onConflict:'key' });
+    } catch(e) { console.error(e); }
+    renderBodyFat();
+    showToast('✓ BF% logged');
+  });
+
+  $('wtSaveBtn').addEventListener('click', async () => {
+    const val = parseFloat($('wtInput').value);
+    if (isNaN(val) || val <= 0) { showToast('Enter a valid weight'); return; }
+
+    const btn = $('wtSaveBtn');
+    btn.disabled = true;
+
+    try {
+      const note = $('wtNoteInput').value.trim();
+      const { error } = await sb.from('weight_logs').upsert({
+        date: todayStr(),
+        weight: val,
+        note: note || null,
+      }, { onConflict: 'date' });
+
+      if (error) throw error;
+
+      // Update local state
+      const existing = weights.findIndex(w => w.date === todayStr());
+      if (existing >= 0) weights[existing] = { date: todayStr(), weight: val };
+      else weights.unshift({ date: todayStr(), weight: val });
+
+      // Write to app_state for AI
+      const weeklyRate = calculateWeeklyRate();
+      await sb.from('app_state').upsert({
+        key: 'body',
+        data: {
+          latest_weight: val,
+          weekly_gain_rate: weeklyRate,
+          updated_at: new Date().toISOString(),
+        },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'key' });
+
+      $('wtInput').value = '';
+      $('wtNoteInput').value = '';
+      const toast = $('wtSavedToast');
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+
+      renderAll();
+    } catch (e) {
+      showToast('Save failed: ' + (e.message || 'error'));
+    }
+    btn.disabled = false;
+  });
+
+  function calculateWeeklyRate() {
+    const sorted = [...weights].sort((a,b) => a.date.localeCompare(b.date));
+    if (sorted.length < 2) return null;
+    const recent = sorted.slice(-14);
+    if (recent.length < 3) return null;
+    const days = (new Date(recent[recent.length-1].date+'T00:00:00') - new Date(recent[0].date+'T00:00:00')) / 86400000;
+    if (days < 3) return null;
+    return ((recent[recent.length-1].weight - recent[0].weight) / days) * 7;
+  }
+
+  // ════════════════════════════ BENCHMARKS ════════════════════════════
+  const BENCHMARKS = [
+    // Speed
+    { cat:'Speed', name:'10m Sprint', key:'10m_sprint', unit:'s', lowerBetter:true, juco:1.85, d1:1.75, pro:1.68 },
+    { cat:'Speed', name:'30m Sprint', key:'30m_sprint', unit:'s', lowerBetter:true, juco:4.25, d1:4.10, pro:3.95 },
+    { cat:'Speed', name:'40 Yard Dash', key:'40yd_dash', unit:'s', lowerBetter:true, juco:4.80, d1:4.65, pro:4.45 },
+    // Power
+    { cat:'Power', name:'Vertical Jump', key:'vertical_jump', unit:'in', lowerBetter:false, juco:22, d1:24, pro:28 },
+    { cat:'Power', name:'Broad Jump', key:'broad_jump', unit:'in', lowerBetter:false, juco:82, d1:87, pro:95 },
+    // Strength ratios
+    { cat:'Strength', name:'Smith Squat Ratio', key:'smith_squat', unit:'×BW', lowerBetter:false, juco:1.2, d1:1.5, pro:1.8 },
+    { cat:'Strength', name:'Bulgarian Split Squat Ratio', key:'bulgarian_split_squat', unit:'×BW', lowerBetter:false, juco:0.6, d1:0.8, pro:1.0 },
+    { cat:'Strength', name:'RDL Ratio', key:'rdl', unit:'×BW', lowerBetter:false, juco:0.9, d1:1.2, pro:1.5 },
+    { cat:'Strength', name:'Pull-Ups', key:'pull_ups', unit:'reps', lowerBetter:false, juco:10, d1:15, pro:20 },
+    // Endurance
+    { cat:'Endurance', name:'Yo-Yo IRT Level 1', key:'yoyo_level', unit:'level', lowerBetter:false, juco:16, d1:18, pro:20 },
+    { cat:'Endurance', name:'Repeated Sprint Decay', key:'sprint_decay', unit:'%', lowerBetter:true, juco:10, d1:8, pro:5 },
+  ];
+
+  // ── Timer state ──
+  let testTimerInterval = null;
+  let testTimerSeconds = 0;
+  let testTimerRunning = false;
+
+  function getLatestTest(key) {
+    const tests = athleticTests.filter(t => t.test_type === key).sort((a,b) => b.date.localeCompare(a.date));
+    return tests.length ? tests[0] : null;
+  }
+
+  function getPersonalBest(key, lowerBetter) {
+    const tests = athleticTests.filter(t => t.test_type === key);
+    if (!tests.length) return null;
+    if (lowerBetter) {
+      const best = tests.reduce((a,b) => parseFloat(a.value) < parseFloat(b.value) ? a : b);
+      return { value: parseFloat(best.value), date: best.date };
+    } else {
+      const best = tests.reduce((a,b) => parseFloat(a.value) > parseFloat(b.value) ? a : b);
+      return { value: parseFloat(best.value), date: best.date };
+    }
+  }
+
+  function getLatestWeight() {
+    if (!weights.length) return null;
+    const sorted = [...weights].sort((a,b) => b.date.localeCompare(a.date));
+    return sorted[0].weight;
+  }
+
+  function calculateStrengthRatio(exerciseName) {
+    // Get the latest estimated 1RM for the exercise
+    // First check relative_strength_ratios table
+    const ratioRow = relativeRatios.find(r => r.exercise_name.toLowerCase().includes(exerciseName.toLowerCase()));
+    if (ratioRow && ratioRow.ratio) return { ratio: parseFloat(ratioRow.ratio), date: ratioRow.date, estimated1rm: parseFloat(ratioRow.estimated_1rm || 0), bodyweight: parseFloat(ratioRow.bodyweight_lbs || 0) };
+
+    // Fallback: calculate from session_sets
+    const bw = getLatestWeight();
+    if (!bw) return null;
+
+    const matchSets = gymSets.filter(s => {
+      const en = (s.exercise_name || '').toLowerCase();
+      return en.includes(exerciseName.toLowerCase());
+    });
+
+    if (matchSets.length < 2) return null;
+
+    // Find best set per session (heaviest weight × reps combo)
+    const byDate = {};
+    matchSets.forEach(s => {
+      const d = s.date || s.created_at?.slice(0,10) || '';
+      if (!byDate[d]) byDate[d] = [];
+      byDate[d].push(s);
+    });
+
+    // Latest session with this exercise
+    const dates = Object.keys(byDate).sort().reverse();
+    if (!dates.length) return null;
+    const latestSets = byDate[dates[0]];
+
+    // Find the heaviest set with reps <= 10
+    const validSets = latestSets.filter(s => s.reps && s.reps <= 10 && s.weight);
+    if (!validSets.length) return null;
+
+    // Estimate 1RM using averaged Epley and Brzycki
+    let bestE1RM = 0;
+    validSets.forEach(s => {
+      const w = parseFloat(s.weight);
+      const r = parseInt(s.reps);
+      if (r === 1) { bestE1RM = Math.max(bestE1RM, w); return; }
+      if (r > 10) return;
+      const epley = w * (1 + r / 30);
+      const brzycki = w * (36 / (37 - r));
+      const avg = (epley + brzycki) / 2;
+      bestE1RM = Math.max(bestE1RM, avg);
+    });
+
+    if (bestE1RM <= 0) return null;
+    return { ratio: bestE1RM / bw, date: dates[0], estimated1rm: bestE1RM, bodyweight: bw };
+  }
+
+  function getLatestPullUps() {
+    // Check athletic_tests for pull-up entries
+    const tests = athleticTests.filter(t => t.test_type === 'pull_ups').sort((a,b) => b.date.localeCompare(a.date));
+    if (tests.length && tests[0].value) return { value: parseInt(tests[0].value), date: tests[0].date };
+
+    // Fallback: check session_sets for pull-ups
+    const puSets = gymSets.filter(s => (s.exercise_name || '').toLowerCase().includes('pull-up') || (s.exercise_name || '').toLowerCase().includes('pull up'));
+    if (!puSets.length) return null;
+    const latest = puSets.sort((a,b) => (b.date||'').localeCompare(a.date||''))[0];
+    return { value: latest.reps || 0, date: latest.date };
+  }
+
+  function renderBenchmarks() {
+    const body = $('benchBody');
+    let html = '';
+    let catLast = '';
+
+    BENCHMARKS.forEach(b => {
+      if (b.cat !== catLast) {
+        html += `<tr><td colspan="8" class="bench-cat" style="padding-top:10px">${b.cat}</td></tr>`;
+        catLast = b.cat;
+      }
+
+      let currentVal = null, pbVal = null, pbDate = null;
+      let gapPct = null, gapCls = 'na', gapJucoPct = null, gapJucoCls = 'na';
+
+      if (b.key === 'sprint_decay') {
+        const latest = sprintDecaySessions.length ? sprintDecaySessions.sort((a,b) => b.date.localeCompare(a.date))[0] : null;
+        if (latest) {
+          currentVal = parseFloat(latest.decay_pct);
+        }
+        if (sprintDecaySessions.length) {
+          const best = sprintDecaySessions.reduce((a,b) => parseFloat(a.decay_pct) < parseFloat(b.decay_pct) ? a : b);
+          pbVal = parseFloat(best.decay_pct);
+          pbDate = best.date;
+        }
+      } else if (b.key === 'smith_squat' || b.key === 'bulgarian_split_squat' || b.key === 'rdl') {
+        const ratio = calculateStrengthRatio(b.key.replace('_', ' '));
+        if (ratio) {
+          currentVal = ratio.ratio;
+        }
+      } else if (b.key === 'pull_ups') {
+        const pu = getLatestPullUps();
+        if (pu) { currentVal = pu.value; }
+      } else {
+        const test = getLatestTest(b.key);
+        if (test && test.value !== null && test.value !== undefined) {
+          currentVal = parseFloat(test.value);
+        }
+        const pb = getPersonalBest(b.key, b.lowerBetter);
+        if (pb && pb.value !== null && pb.value !== undefined) {
+          pbVal = pb.value;
+          pbDate = pb.date;
+        }
+      }
+
+      // Calculate gaps to JUCO, D1, and Pro
+      if (currentVal !== null) {
+        function calcGap(val, std, lb) { if (!std) return null; return lb ? ((val - std) / std) * 100 : ((std - val) / std) * 100; }
+        function gapColor(val, std, lb, pct) {
+          if (!std) return 'na';
+          if (val !== null && (lb ? val <= std : val >= std)) return 'green';
+          if (Math.abs(pct) <= 10) return 'green';
+          if (Math.abs(pct) <= 20) return 'yellow';
+          return 'red';
+        }
+        gapPct = calcGap(currentVal, b.d1, b.lowerBetter);
+        gapCls = gapColor(currentVal, b.d1, b.lowerBetter, gapPct);
+        gapJucoPct = calcGap(currentVal, b.juco, b.lowerBetter);
+        gapJucoCls = gapColor(currentVal, b.juco, b.lowerBetter, gapJucoPct);
+        gapProPct = calcGap(currentVal, b.pro, b.lowerBetter);
+        gapProCls = gapColor(currentVal, b.pro, b.lowerBetter, gapProPct);
+      }
+
+      const valStr = currentVal !== null ? currentVal.toFixed(b.key === 'sprint_decay' ? 1 : 2) + ' ' + b.unit : '--';
+      const pbStr = pbVal !== null ? pbVal.toFixed(2) + ' ' + b.unit + (pbDate ? ' · ' + pbDate.slice(5) : '') : '--';
+      const jucoStr = (b.juco || '') + ' ' + b.unit;
+      const d1Str = b.d1 + ' ' + b.unit;
+      const proStr = b.pro + ' ' + b.unit;
+      function gapLabel(cur, std, lb, pct) {
+        if (!std || cur === null) return '--';
+        if (lb ? cur <= std : cur >= std) return '✅ Above';
+        return (pct > 0 ? '+' : '') + pct.toFixed(0) + '%';
+      }
+      const gapStr = gapLabel(currentVal, b.d1, b.lowerBetter, gapPct);
+      const gapJucoStr = gapLabel(currentVal, b.juco, b.lowerBetter, gapJucoPct);
+      const gapProStr = gapLabel(currentVal, b.pro, b.lowerBetter, gapProPct);
+
+      html += `<tr>
+        <td><span class="bench-name">${b.name}</span></td>
+        <td class="bench-val" style="color:${currentVal !== null ? (gapCls === 'green' ? 'var(--success)' : gapCls === 'yellow' ? 'var(--warning)' : gapCls === 'red' ? 'var(--danger)' : 'var(--text-primary)') : 'var(--text-tertiary)'}">${valStr}</td>
+        <td class="bench-pb">${pbStr}</td>
+        <td>${jucoStr}</td>
+        <td>${d1Str}</td>
+        <td>${proStr}</td>
+        <td><span class="gap-badge ${gapCls}">${gapStr}</span></td>
+        <td><span class="gap-badge ${gapProCls}">${gapProStr}</span></td>
+      </tr>`;
+    });
+
+    body.innerHTML = html;
+  }
+
+  // ════════════════════════════ ESTIMATED WEEKS ════════════════════════════
+  function renderEstimatedWeeks() {
+    const container = $('estCards');
+    const top3 = [
+      { key: '10m_sprint', name: '10m Sprint', d1: 1.75, lowerBetter: true, unit: 's' },
+      { key: 'smith_squat', name: 'Smith Squat Relative Strength', d1: 1.5, lowerBetter: false, unit: '×BW' },
+      { key: 'weight', name: 'Weight (150lbs)', d1: 150, lowerBetter: false, unit: 'lbs' },
+    ];
+
+    let html = '';
+    top3.forEach(item => {
+      let currentVal = null;
+      const dataPoints = [];
+
+      if (item.key === 'weight') {
+        const sorted = [...weights].sort((a,b) => a.date.localeCompare(b.date));
+        if (sorted.length >= 2) {
+          currentVal = sorted[sorted.length - 1].weight;
+          // Last 8 weeks of data
+          const eightWeeksAgo = new Date(todayStr()+'T00:00:00');
+          eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
+          const cutoff = eightWeeksAgo.toISOString().slice(0,10);
+          sorted.filter(w => w.date >= cutoff).forEach(w => {
+            dataPoints.push({ date: w.date, value: w.weight });
+          });
+        }
+      } else if (item.key === 'smith_squat') {
+        const ratio = calculateStrengthRatio('smith squat');
+        if (ratio) {
+          currentVal = ratio.ratio;
+          // Use relative_strength_ratios history
+          const hist = relativeRatios.filter(r => r.exercise_name.toLowerCase().includes('smith squat'));
+          hist.forEach(r => dataPoints.push({ date: r.date, value: parseFloat(r.ratio) }));
+        }
+      } else {
+        const tests = athleticTests.filter(t => t.test_type === item.key).sort((a,b) => a.date.localeCompare(b.date));
+        if (tests.length >= 2) {
+          currentVal = parseFloat(tests[tests.length - 1].value);
+          // Last 4 tests
+          tests.slice(-4).forEach(t => dataPoints.push({ date: t.date, value: parseFloat(t.value) }));
+        }
+      }
+
+      let estHtml = '';
+      if (currentVal === null || dataPoints.length < 2) {
+        estHtml = `<div class="est-card">
+          <div class="est-title">${item.name}</div>
+          <div style="font-size:14px;color:var(--text-tertiary)">Not enough data — log at least 2 data points</div>
+        </div>`;
+      } else {
+        // Calculate rate of improvement
+        const first = dataPoints[0];
+        const last = dataPoints[dataPoints.length - 1];
+        const daysDiff = Math.max(1, (new Date(last.date+'T00:00:00') - new Date(first.date+'T00:00:00')) / 86400000);
+        const perDay = (last.value - first.value) / daysDiff;
+
+        let weeks = null;
+        let direction = '';
+        if (item.lowerBetter) {
+          // For sprints, improvement means value going down
+          if (perDay < 0) {
+            weeks = Math.abs((currentVal - item.d1) / perDay) / 7;
+            direction = 'improving';
+          } else {
+            direction = 'declining';
+          }
+        } else {
+          if (perDay > 0) {
+            weeks = Math.abs((item.d1 - currentVal) / perDay) / 7;
+            direction = 'improving';
+          } else {
+            direction = 'declining';
+          }
+        }
+
+        if (item.lowerBetter && currentVal <= item.d1) {
+          estHtml = `<div class="est-card">
+            <div class="est-title">${item.name}</div>
+            <div class="est-weeks" style="color:var(--success)">🏆 At D1</div>
+            <div class="est-body">You've reached the D1 standard. Current: ${currentVal.toFixed(2)}${item.unit}. Maintain or push toward professional standard (${item.key === '10m_sprint' ? '1.68s' : item.key === 'smith_squat' ? '1.8×BW' : item.key === 'weight' ? '150lbs' : ''}).</div>
+          </div>`;
+        } else if (!item.lowerBetter && currentVal >= item.d1) {
+          estHtml = `<div class="est-card">
+            <div class="est-title">${item.name}</div>
+            <div class="est-weeks" style="color:var(--success)">🏆 At D1</div>
+            <div class="est-body">You've reached the D1 standard. Current: ${currentVal.toFixed(2)}${item.unit}.</div>
+          </div>`;
+        } else if (weeks === null || weeks <= 0 || !isFinite(weeks)) {
+          estHtml = `<div class="est-card">
+            <div class="est-title">${item.name}</div>
+            <div style="font-size:14px;color:var(--warning)">Rate is ${direction === 'improving' ? 'positive but' : ''} too slow to estimate</div>
+            <div class="est-body">Current: ${currentVal.toFixed(2)}${item.unit}. D1 standard: ${item.d1}${item.unit}. Keep training consistently.</div>
+          </div>`;
+        } else {
+          let prescription = '';
+          if (item.key === '10m_sprint') {
+            prescription = 'Prioritize heavy Smith squats (hip extension power) and plyometric broad jumps to accelerate sprint improvement.';
+          } else if (item.key === 'smith_squat') {
+            prescription = 'Focus on progressive overload on Smith squats and Bulgarian split squats. Ensure 200g+ daily protein intake.';
+          } else if (item.key === 'weight') {
+            prescription = 'Hit 3000+ calories daily with 200g protein. Track every meal. Aim for 0.5-1.0 lbs/week gain rate.';
+          }
+
+          estHtml = `<div class="est-card">
+            <div class="est-title">${item.name}</div>
+            <div class="est-weeks">~${Math.round(weeks)} weeks</div>
+            <div class="est-body">At current rate (${direction}), ${item.name} reaches D1 standard in approximately <strong>${Math.round(weeks)} weeks</strong>. ${prescription}</div>
+          </div>`;
+        }
+      }
+
+      html += estHtml;
+    });
+
+    container.innerHTML = html;
+  }
+
+  // ════════════════════════════ MONTHLY TESTING ════════════════════════════
+  const TEST_STEPS = [
+    {
+      name: '10m Sprint',
+      instructions: 'Find a flat surface. Mark 10 meters. From a standing start, sprint as fast as possible. Use a phone stopwatch or have someone time you. Do 2 trials, take the best time.',
+      key: '10m_sprint',
+      unit: 'seconds',
+      placeholder: 'e.g. 1.82',
+    },
+    {
+      name: '30m Sprint',
+      instructions: 'Mark 30 meters. From standing start, sprint at max effort. Time with stopwatch. Take best of 2 trials.',
+      key: '30m_sprint',
+      unit: 'seconds',
+      placeholder: 'e.g. 4.25',
+    },
+    {
+      name: '40 Yard Dash',
+      instructions: 'Mark 40 yards (36.6m). Standing start. Full sprint. Best of 2 trials.',
+      key: '40yd_dash',
+      unit: 'seconds',
+      placeholder: 'e.g. 4.85',
+    },
+    {
+      name: 'Vertical Jump',
+      instructions: 'Stand next to a wall. Reach up and mark your standing reach height. Then jump as high as possible and mark the highest point. Difference = vertical jump. Best of 3.',
+      key: 'vertical_jump',
+      unit: 'inches',
+      placeholder: 'e.g. 22.5',
+    },
+    {
+      name: 'Broad Jump',
+      instructions: 'Stand with toes behind a line. Jump forward as far as possible, landing on both feet. Measure from the line to the back of your heels. Best of 3.',
+      key: 'broad_jump',
+      unit: 'inches',
+      placeholder: 'e.g. 82',
+    },
+    {
+      name: 'Pull-Ups',
+      instructions: 'Full dead hang to chin over bar. No kipping. Max reps to failure. One attempt.',
+      key: 'pull_ups',
+      unit: 'reps',
+      placeholder: 'e.g. 12',
+    },
+    {
+      name: 'Yo-Yo IRT Level 1',
+      instructions: 'Use the Yo-Yo IRT Level 1 audio track (available on YouTube). Run between cones 20m apart at the beep pace. Record the level you reach before failing to make the line twice.',
+      key: 'yoyo_level',
+      unit: 'level',
+      placeholder: 'e.g. 16.5',
+    },
+  ];
+
+  let testAnswers = {};
+  let testStepIdx = 0;
+  let testTimerInterval = null;
+  let testTimerSeconds = 0;
+  let testTimerRunning = false;
+
+  function startTestTimer() {
+    if (testTimerRunning) return;
+    testTimerRunning = true;
+    testTimerInterval = setInterval(() => {
+      testTimerSeconds++;
+      const display = document.getElementById('testTimerDisplay');
+      if (display) {
+        const m = Math.floor(testTimerSeconds / 60);
+        const s = testTimerSeconds % 60;
+        display.textContent = m + ':' + String(s).padStart(2, '0');
+        display.className = 'test-timer-display running';
+      }
+    }, 1000);
+  }
+
+  function stopTestTimer() {
+    testTimerRunning = false;
+    clearInterval(testTimerInterval);
+    const display = document.getElementById('testTimerDisplay');
+    if (display) {
+      display.className = 'test-timer-display stopped';
+    }
+  }
+
+  function resetTestTimer() {
+    stopTestTimer();
+    testTimerSeconds = 0;
+    const display = document.getElementById('testTimerDisplay');
+    if (display) {
+      display.textContent = '0:00';
+      display.className = 'test-timer-display';
+    }
+  }
+
+  function openTestModal() {
+    testAnswers = {};
+    testStepIdx = 0;
+    $('testResults').style.display = 'none';
+    $('btnSubmitTests').style.display = 'none';
+    $('testModal').classList.add('show');
+    renderTestSteps();
+  }
+
+  function renderTestSteps() {
+    const container = $('testSteps');
+    let html = '';
+    TEST_STEPS.forEach((step, i) => {
+      const isActive = i === testStepIdx;
+      const isDone = testAnswers[step.key] !== undefined;
+      html += `<div class="test-step ${isActive ? 'active' : ''}">
+        <div class="test-step-name">${i + 1}. ${step.name}</div>
+        <div class="test-step-instructions">${step.instructions}</div>
+        ${isActive ? `<div class="test-timer">
+          <span class="test-timer-display" id="testTimerDisplay">0:00</span>
+          <button class="test-timer-btn start" onclick="startTestTimer()">▶ Start</button>
+          <button class="test-timer-btn stop" onclick="stopTestTimer()">⏹ Stop</button>
+          <button class="test-timer-btn" onclick="resetTestTimer()">↺ Reset</button>
+        </div>` : ''}
+        ${isDone
+          ? `<div class="test-step-done">✓ ${testAnswers[step.key]} ${step.unit}</div>`
+          : isActive
+            ? `<div class="test-step-input">
+                <input type="number" id="testInput_${i}" step="0.01" placeholder="${step.placeholder}" inputmode="decimal">
+                <button class="btn-next" onclick="nextTestStep(${i}, '${step.key}', '${step.unit}')">Next →</button>
+              </div>`
+            : '<div style="font-size:12px;color:var(--text-tertiary)">Pending…</div>'}
+      </div>`;
+    });
+
+    if (Object.keys(testAnswers).length === TEST_STEPS.length) {
+      html += `<div style="text-align:center;padding:16px;color:var(--success);font-weight:700;font-size:15px">✅ All tests completed!</div>`;
+      $('btnSubmitTests').style.display = 'block';
+      renderTestComparison();
+    }
+
+    container.innerHTML = html;
+
+    // Focus first active input
+    setTimeout(() => {
+      const input = document.getElementById('testInput_' + testStepIdx);
+      if (input) input.focus();
+    }, 100);
+  }
+
+  window.startTestTimer = startTestTimer;
+  window.stopTestTimer = stopTestTimer;
+  window.resetTestTimer = resetTestTimer;
+
+  window.nextTestStep = function(idx, key, unit) {
+    resetTestTimer();
+    const input = document.getElementById('testInput_' + idx);
+    if (!input) return;
+    const val = parseFloat(input.value);
+    if (isNaN(val)) { showToast('Enter a valid value'); return; }
+    testAnswers[key] = val;
+    testStepIdx = Math.min(idx + 1, TEST_STEPS.length);
+    renderTestSteps();
+  };
+
+  function renderTestComparison() {
+    const container = $('testResults');
+    container.style.display = 'block';
+
+    let html = '<div class="test-results-title">Previous vs Current</div>';
+    html += '<table class="test-compare"><thead><tr><th>Test</th><th>Previous</th><th>Now</th><th>Change</th></tr></thead><tbody>';
+
+    TEST_STEPS.forEach(step => {
+      const currentVal = testAnswers[step.key];
+      const prevTest = getLatestTest(step.key);
+      const prevVal = prevTest && prevTest.value !== null ? parseFloat(prevTest.value) : null;
+
+      let changeHtml = '--';
+      if (prevVal !== null && currentVal !== undefined) {
+        const diff = currentVal - prevVal;
+        const sign = diff >= 0 ? '+' : '';
+        const isImprovement = BENCHMARKS.find(b => b.key === step.key);
+        const improving = isImprovement && isImprovement.lowerBetter ? diff < 0 : diff > 0;
+        changeHtml = `<span class="${improving ? 'improved' : Math.abs(diff) < 0.01 ? 'same' : 'declined'}">${sign}${diff.toFixed(2)}</span>`;
+      }
+
+      html += `<tr>
+        <td>${step.name}</td>
+        <td>${prevVal !== null ? prevVal.toFixed(2) + ' ' + step.unit : '--'}</td>
+        <td>${currentVal !== undefined ? currentVal.toFixed(2) + ' ' + step.unit : '--'}</td>
+        <td>${changeHtml}</td>
+      </tr>`;
+    });
+
+    html += '</tbody></table>';
+
+    // Add AI assessment section
+    html += `<div class="ai-assessment" id="aiAssessment">
+      <div class="ai-assessment-title">🤖 AI Assessment</div>
+      <div class="ai-assessment-loading" id="aiAssessmentBody">Generating assessment based on your results…</div>
+    </div>`;
+
+    container.innerHTML = html;
+
+    // Trigger AI assessment
+    generateAiAssessment();
+  }
+
+  $('btnSubmitTests').addEventListener('click', async () => {
+    const btn = $('btnSubmitTests');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+
+    try {
+      const inserts = TEST_STEPS.map(step => ({
+        date: todayStr(),
+        test_type: step.key,
+        value: testAnswers[step.key],
+        unit: step.unit,
+        notes: 'Monthly test battery',
+      }));
+
+      const { error } = await sb.from('athletic_tests').insert(inserts);
+      if (error) throw error;
+
+      // Reload
+      const { data: tRes } = await sb.from('athletic_tests').select('*').order('date', { ascending: false }).limit(60);
+      if (tRes) athleticTests = tRes;
+
+      // Write benchmark gaps AND estimated weeks to app_state for AI
+      const gaps = {};
+      BENCHMARKS.forEach(b => {
+        const test = getLatestTest(b.key);
+        if (test && test.value !== null && b.d1) {
+          const val = parseFloat(test.value);
+          gaps[b.key] = {
+            value: val,
+            d1: b.d1,
+            pro: b.pro,
+            gap_pct: b.lowerBetter ? ((val - b.d1) / b.d1) * 100 : ((b.d1 - val) / b.d1) * 100,
+            gap_pro_pct: b.lowerBetter ? ((val - b.pro) / b.pro) * 100 : ((b.pro - val) / b.pro) * 100,
+            at_or_above_d1: b.lowerBetter ? val <= b.d1 : val >= b.d1,
+          };
+        }
+      });
+
+      // Calculate estimated weeks for top 3
+      const estWeeks = {};
+      const top3Keys = ['10m_sprint','smith_squat','weight'];
+      top3Keys.forEach(key => {
+        let currentVal = null;
+        const dataPoints = [];
+        if (key === 'weight') {
+          const sorted = [...weights].sort((a,b) => a.date.localeCompare(b.date));
+          if (sorted.length >= 2) {
+            currentVal = sorted[sorted.length - 1].weight;
+            const eightWeeksAgo = new Date(todayStr()+'T00:00:00');
+            eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
+            const cutoff = eightWeeksAgo.toISOString().slice(0,10);
+            sorted.filter(w => w.date >= cutoff).forEach(w => dataPoints.push({ date: w.date, value: w.weight }));
+          }
+        } else if (key === 'smith_squat') {
+          const ratio = calculateStrengthRatio('smith squat');
+          if (ratio) {
+            currentVal = ratio.ratio;
+            const hist = relativeRatios.filter(r => r.exercise_name.toLowerCase().includes('smith squat'));
+            hist.forEach(r => dataPoints.push({ date: r.date, value: parseFloat(r.ratio) }));
+          }
+        } else {
+          const tests = athleticTests.filter(t => t.test_type === key).sort((a,b) => a.date.localeCompare(b.date));
+          if (tests.length >= 2) {
+            currentVal = parseFloat(tests[tests.length - 1].value);
+            tests.slice(-4).forEach(t => dataPoints.push({ date: t.date, value: parseFloat(t.value) }));
+          }
+        }
+        if (currentVal !== null && dataPoints.length >= 2) {
+          const first = dataPoints[0];
+          const last = dataPoints[dataPoints.length - 1];
+          const daysDiff = Math.max(1, (new Date(last.date+'T00:00:00') - new Date(first.date+'T00:00:00')) / 86400000);
+          const perDay = (last.value - first.value) / daysDiff;
+          const isLowerBetter = key === '10m_sprint';
+          const target = key === 'weight' ? 150 : key === 'smith_squat' ? 1.5 : 1.75;
+          let weeks = null;
+          if (isLowerBetter ? perDay < 0 : perDay > 0) {
+            weeks = Math.abs((isLowerBetter ? (currentVal - target) : (target - currentVal)) / perDay) / 7;
+          }
+          estWeeks[key] = {
+            current: currentVal,
+            target: target,
+            weeks: weeks && isFinite(weeks) && weeks > 0 ? Math.round(weeks) : null,
+            direction: (isLowerBetter ? perDay < 0 : perDay > 0) ? 'improving' : 'declining',
+          };
+        }
+      });
+
+      await sb.from('app_state').upsert({
+        key: 'body_benchmarks',
+        data: { gaps, estimated_weeks: estWeeks, test_date: todayStr(), updated_at: new Date().toISOString() },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'key' });
+
+      showToast('✓ Monthly tests saved');
+      $('testModal').classList.remove('show');
+      renderAll();
+    } catch (e) {
+      showToast('Save failed: ' + (e.message || 'error'));
+    }
+    btn.disabled = false;
+    btn.textContent = 'Save All Results';
+  });
+
+  $('btnRunTests').addEventListener('click', openTestModal);
+  $('testClose').addEventListener('click', () => $('testModal').classList.remove('show'));
+  $('testModal').addEventListener('click', (e) => { if (e.target === $('testModal')) $('testModal').classList.remove('show'); });
+
+  async function generateAiAssessment() {
+    if (!GEMINI_API_KEY) {
+      const body = $('aiAssessmentBody');
+      if (body) body.textContent = 'Set your Gemini API key (ENV_GEMINI_API_KEY) to enable AI-powered assessments connecting your test results to training and nutrition patterns.';
+      return;
+    }
+
+    // Gather context for the AI
+    const improvements = [];
+    const declines = [];
+    TEST_STEPS.forEach(step => {
+      const currentVal = testAnswers[step.key];
+      const prevTest = getLatestTest(step.key);
+      const prevVal = prevTest && prevTest.value !== null ? parseFloat(prevTest.value) : null;
+      if (prevVal !== null && currentVal !== undefined) {
+        const bench = BENCHMARKS.find(b => b.key === step.key);
+        const improving = bench && bench.lowerBetter ? currentVal < prevVal : currentVal > prevVal;
+        if (improving) improvements.push(step.name);
+        else if (Math.abs(currentVal - prevVal) > 0.01) declines.push(step.name);
+      }
+    });
+
+    const prompt = `You are an elite soccer strength & conditioning coach analyzing monthly test results for a player named Silas. Here are the test results:\n\nCurrent results: ${TEST_STEPS.map(s => s.name + ': ' + testAnswers[s.key] + ' ' + s.unit).join(', ')}\n\nImprovements: ${improvements.length ? improvements.join(', ') : 'None'}\nDeclines: ${declines.length ? declines.join(', ') : 'None'}\n\nProvide a concise (2-3 sentence) assessment connecting these results to training and nutrition patterns. Mention which physical quality improved most and how it relates to soccer performance. If anything declined, suggest one specific adjustment. Be encouraging and specific.`;
+
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+      });
+      if (!res.ok) throw new Error('API ' + res.status);
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Could not generate assessment. Review your results manually.';
+      const body = $('aiAssessmentBody');
+      if (body) { body.textContent = text; body.className = 'ai-assessment-body'; }
+    } catch(e) {
+      const body = $('aiAssessmentBody');
+      if (body) body.textContent = 'AI assessment unavailable. Review your results above.';
+    }
+  }
+
+  // Handle Enter key in test modal inputs
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && $('testModal').classList.contains('show')) {
+      const idx = testStepIdx;
+      const step = TEST_STEPS[idx];
+      if (step) {
+        e.preventDefault();
+        const input = document.getElementById('testInput_' + idx);
+        if (input) nextTestStep(idx, step.key, step.unit);
+      }
+    }
+  });
+
+  // ════════════════════════════ INIT ════════════════════════════
+  loadAll();
+  loadBodyFat();
+
+  // Refresh every 30 seconds
+  setInterval(loadAll, 30000);
+  </script>
+</body>
+</html>
