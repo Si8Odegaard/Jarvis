@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Calendar</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="utils.js"></script>
 <script src="chat.js"></script>
 <style>
 :root {
@@ -1209,6 +1210,8 @@ body:has(.modal-bg.show) { overflow: hidden; }
     closeModal();
     await loadEvents();
     renderAll();
+    // Recalculate ACWR and write to app_state
+    calculateACWR(sb).catch(() => {});
     showToast(editingId ? 'Event updated' : 'Event added');
   }
 

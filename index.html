@@ -989,9 +989,36 @@
     .inl-range { width:100%; height:6px; background:rgba(255,255,255,0.08); border-radius:3px; -webkit-appearance:none; appearance:none; outline:none; }
     .inl-range::-webkit-slider-thumb { -webkit-appearance:none; width:22px; height:22px; background:var(--success); border-radius:50%; cursor:pointer; box-shadow:0 0 6px rgba(107,227,164,.5); }
 
-    /* Jarvis trend chart */
-    .jarvis-trend-wrap { margin-top:8px; }
-    .jarvis-trend-svg { display:block; width:100%; height:48px; overflow:visible; }
+    /* ── Preseason countdown ── */
+    @keyframes countPulse {
+      0%,100%{box-shadow:0 0 20px rgba(107,227,164,0.15)}
+      50%{box-shadow:0 0 40px rgba(107,227,164,0.35)}
+    }
+    .countdown-card {
+      background:linear-gradient(135deg,rgba(107,227,164,0.08),rgba(255,255,255,0.02));
+      border:1px solid rgba(107,227,164,0.15);border-radius:14px;
+      padding:16px 20px;margin-bottom:14px;text-align:center;
+      animation:countPulse 3s ease-in-out infinite;
+      backdrop-filter:blur(24px) saturate(1.2);-webkit-backdrop-filter:blur(24px) saturate(1.2);
+    }
+    .countdown-days{font-size:48px;font-weight:800;letter-spacing:-.04em;font-variant-numeric:tabular-nums;line-height:1;margin-bottom:4px}
+    .countdown-label{font-size:12px;font-weight:600;color:var(--success);letter-spacing:.06em;text-transform:uppercase}
+    .countdown-bar-wrap{height:4px;background:rgba(255,255,255,.08);border-radius:2px;margin-top:10px;overflow:hidden}
+    .countdown-bar-fill{height:100%;background:var(--success);border-radius:2px;transition:width .6s cubic-bezier(.22,1,.36,1)}
+
+    /* ACWR traffic light */
+    .acwr-indicator{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:99px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);cursor:pointer;position:relative}
+    .acwr-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+    .acwr-dot.green{background:#6BE3A4;box-shadow:0 0 8px rgba(107,227,164,.5)}
+    .acwr-dot.yellow{background:#F2C063;box-shadow:0 0 8px rgba(242,192,99,.5)}
+    .acwr-dot.red{background:#FF6B6B;box-shadow:0 0 8px rgba(255,107,107,.5)}
+    .acwr-tooltip{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#0e0e10;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px 14px;font-size:11px;color:var(--text-secondary);white-space:nowrap;pointer-events:none;z-index:100;line-height:1.5}
+    .acwr-indicator:hover .acwr-tooltip,.acwr-tooltip.show{display:block}
+
+    /* Component trend charts */
+    .comp-trend{display:none;margin-top:8px;overflow:hidden}
+    .comp-trend.open{display:block}
+    .comp-trend-svg{display:block;width:100%;height:32px;overflow:visible}
 
     @media (max-width: 480px) {
       .jarvis-score { font-size: 56px; }
@@ -1027,11 +1054,24 @@
 
     <h1 class="dash-title">My Dashboard</h1>
 
+    <!-- ═══ PRE-SEASON COUNTDOWN ═══ -->
+    <div class="countdown-card" id="countdownCard">
+      <div class="countdown-label">Days to make history</div>
+      <div class="countdown-days" id="countdownDays">--</div>
+      <div class="countdown-bar-wrap"><div class="countdown-bar-fill" id="countdownBar" style="width:0%"></div></div>
+    </div>
+
     <!-- ═══ MORNING BRIEFING COMMAND CENTER ═══ -->
     <div class="brief-card" id="briefCard">
       <div class="brief-text" id="briefText">Loading your morning brief…</div>
       <div class="brief-action hidden" id="briefAction">
         <button class="brief-btn" id="briefCheckinBtn">Complete Morning Check-in →</button>
+      </div>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:10px;font-size:11px;color:var(--text-tertiary)">
+        <div class="acwr-indicator" id="acwrIndicator" onclick="document.getElementById('acwrTooltip').classList.toggle('show')">
+          <span>ACWR</span><span class="acwr-dot" id="acwrDot"></span><span id="acwrValue" style="font-family:var(--mono);font-weight:700">--</span>
+          <div class="acwr-tooltip" id="acwrTooltip">ACWR compares this week's training load to your 4-week average. 0.8–1.3: optimal. <1.3: approaching danger. >1.5: injury risk.</div>
+        </div>
       </div>
     </div>
 
@@ -1274,6 +1314,7 @@
 
   <script src="tabs.js" defer></script>
   <script src="topbar.js" defer></script>
+  <script src="utils.js"></script>
   <script src="chat.js"></script>
   <script>
   (function () {
@@ -1286,6 +1327,7 @@
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNza2JiaW95bmlyeW9ua3VrYW13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NjE2MTYsImV4cCI6MjA5NDUzNzYxNn0.R3Vx3fA-iAc8LhNL3WPSa9-BxH_087c7VaIbrB3CBJM';
     const APP_KEY = 'dashboard';
     const STREAK_KEY = 'goal_streak_v1';
+    const COMPONENT_HISTORY_KEY = 'component_history';
     const RING_C = 2 * Math.PI * 52;
 
     const SUN_STOPS = [
@@ -1313,7 +1355,7 @@
     /* ── Morning Briefing State ── */
     let briefingData = null;
     const BRIEFING_START = '2026-06-01';
-    const BRIEFING_PRESEASON = '2026-07-20';
+    const BRIEFING_PRESEASON = '2026-08-01';
     const START_WEIGHT = 135;
     const BLOCKS = [
       { name:'Foundation Block', weeks:2, goal:'Build muscle base & establish movement quality.' },
@@ -1332,6 +1374,8 @@
 
     // Jarvis score history (loaded inline in loadMorningBriefing from app_state key: jarvis_history)
     let jarvisHistory = [];
+    // Component score history for trend charts under each Jarvis component
+    let componentHistory = {};
 
     async function saveJarvisHistory() {
       if (!supa) return;
@@ -1348,7 +1392,7 @@
       if(now >= preseason) return { mode:'preseason', name:'Pre-Season', week:1, totalWeeks:1, daysLeft:0, dayOfOffseason:0, goal:'Individual work when recovery allows.' };
       const start = new Date(BRIEFING_START+'T00:00:00');
       let dayOffset = Math.floor((now - start) / 86400000);
-      const dayOfOffseason = Math.max(1, dayOffset + 1);
+      let dayOfOffseason = Math.max(1, dayOffset + 1);
       if(dayOffset < 0) dayOffset = 0;
       let weekAccum = 0;
       for(const block of BLOCKS) {
@@ -1360,7 +1404,11 @@
         }
         weekAccum += block.weeks;
       }
-      return { mode:'preseason', name:'Pre-Season', week:1, totalWeeks:1, daysLeft:0, dayOfOffseason:0, goal:'Individual work when recovery allows.' };
+      // Gap between end of off-season blocks and actual pre-season date
+      const daysLeft = Math.max(0, Math.ceil((preseason - now) / 86400000));
+      const totalOffseasonDays = Math.ceil((preseason - start) / 86400000);
+      dayOfOffseason = Math.max(1, totalOffseasonDays - daysLeft);
+      return { mode:'preseason', name:'Pre-Season', week:1, totalWeeks:1, daysLeft, dayOfOffseason, goal:'Individual work when recovery allows.' };
     }
 
     const $ = (id) => document.getElementById(id.startsWith('#') ? id.slice(1) : id);
@@ -2129,7 +2177,7 @@
         const last7 = new Date(today+'T00:00:00'); last7.setDate(last7.getDate()-6);
         const last7Str = last7.toISOString().slice(0,10);
 
-        const [nutRes, soccerRes, checkinsRes, weightRes, testsRes, sessRes, gymRes, rsaRes, planRes, jarvisHistRes] = await Promise.all([
+        const [nutRes, soccerRes, checkinsRes, weightRes, testsRes, sessRes, gymRes, rsaRes, planRes, jarvisHistRes, compHistRes, acwrRes, matchRes, bodyRes] = await Promise.all([
           supa.from('app_state').select('data').eq('key','nutrition').maybeSingle(),
           supa.from('app_state').select('data').eq('key','soccer').maybeSingle(),
           supa.from('daily_checkins').select('*').gte('date',last7Str).order('date',{ascending:false}),
@@ -2139,10 +2187,15 @@
           supa.from('workout_sessions').select('*').gte('date',last7Str).order('date',{ascending:false}),
           supa.from('sprint_decay_sessions').select('*').order('date',{ascending:false}).limit(3),
           supa.from('offseason_plan').select('*').order('last_updated',{ascending:false}).limit(1).maybeSingle(),
-          supa.from('app_state').select('data').eq('key','jarvis_history').maybeSingle()
+          supa.from('app_state').select('data').eq('key','jarvis_history').maybeSingle(),
+          supa.from('app_state').select('data').eq('key',COMPONENT_HISTORY_KEY).maybeSingle(),
+          supa.from('app_state').select('data').eq('key','acwr').maybeSingle(),
+          supa.from('app_state').select('data').eq('key','match_in_48_hours').maybeSingle(),
+          supa.from('app_state').select('data').eq('key','body').maybeSingle()
         ]);
-        // Load jarvis history
+        // Load jarvis history and component history
         if (jarvisHistRes?.data?.data?.scores) jarvisHistory = jarvisHistRes.data.data.scores;
+        if (compHistRes?.data?.data) componentHistory = compHistRes.data.data;
 
         const nutData = nutRes?.data?.data || {};
         const socData = soccerRes?.data?.data || {};
@@ -2243,10 +2296,15 @@
           proteinDays, proteinStreak, todayCheckin, checkins,
           tests, sessions, weekSessions, gymCount, ballCount, speedCount,
           athleticTrend, latestRSA, rsaSessions,
-          todayRec, plan, nutData, socData, prevJarvisScore
+          todayRec, plan, nutData, socData, prevJarvisScore,
+          acwr: acwrRes?.data?.data?.value ?? acwrRes?.data?.data ?? null,
+          matchIn48: matchRes?.data?.data?.value ?? matchRes?.data?.data ?? null,
+          bodyData: bodyRes?.data?.data ?? null
         };
 
         renderAllBriefing();
+        // Calculate ACWR in background and write to app_state for home tab + AI
+        calculateACWR(supa).catch(() => {});
       } catch(e) {
         console.error('Briefing load error:', e);
       }
@@ -2254,17 +2312,45 @@
 
     function renderAllBriefing() {
       if (!briefingData) return;
+      renderCountdown();
       renderDailyBrief();
       renderJarvisScore();
       renderStatusGrid();
       renderAlerts();
       renderWeeklySnapshot();
+      renderACWR();
+    }
+
+    function renderCountdown() {
+      const ps = new Date(BRIEFING_PRESEASON+'T00:00:00');
+      const now = new Date();
+      const daysRemaining = Math.max(0, Math.ceil((ps - now) / 86400000));
+      const totalOffseason = Math.ceil((ps - new Date(BRIEFING_START+'T00:00:00')) / 86400000);
+      const daysElapsed = Math.max(0, totalOffseason - daysRemaining);
+      const pct = totalOffseason > 0 ? Math.min(100, Math.round((daysElapsed / totalOffseason) * 100)) : 0;
+
+      $('countdownDays').textContent = daysRemaining;
+      $('countdownDays').style.color = daysRemaining <= 7 ? 'var(--warning)' : 'var(--success)';
+      $('countdownBar').style.width = pct + '%';
+      const label = daysRemaining === 0 ? 'Pre-season is here' : daysRemaining === 1 ? '1 day to pre-season' : `${daysRemaining} days to pre-season`;
+      $('countdownCard').querySelector('.countdown-label').textContent = daysRemaining === 0 ? 'IT BEGINS NOW' : 'Days to make history';
     }
 
     function renderDailyBrief() {
       const d = briefingData;
       const phase = d.phase;
       const name = 'Silas';
+      const now = new Date();
+      const currentHour = now.getHours();
+      const ps = new Date(BRIEFING_PRESEASON+'T00:00:00');
+      const daysToPS = Math.max(0, Math.ceil((ps - now) / 86400000));
+
+      // Before 6am: rest message
+      if (currentHour < 6) {
+        $('briefText').innerHTML = `<span class="brief-highlight">Rest up — recovery is training too.</span> Morning brief available at 6 AM.`;
+        $('briefAction').classList.add('hidden');
+        return;
+      }
 
       if (!d.todayCheckin) {
         $('briefText').textContent = `Complete your morning check-in to personalize today's brief.`;
@@ -2273,24 +2359,45 @@
       }
       $('briefAction').classList.add('hidden');
 
+      // Build the brief in the specified format
       let brief = `Good morning ${name}. `;
+
+      // Phase + days to pre-season
       if (phase.mode === 'preseason') {
-        brief += `Pre-season active. Individual work when recovery allows. `;
+        brief += `<span class="brief-highlight">Pre-Season</span> — `;
       } else {
-        brief += `<span class="brief-highlight">${phase.name}</span> — Day ${phase.dayOfOffseason} of off-season (${phase.daysLeft} days to pre-season). `;
+        brief += `<span class="brief-highlight">${phase.name}</span> — `;
       }
-      brief += `<span class="brief-highlight">${d.todayRec}</span>. `;
-      brief += `Recovery: <span class="brief-highlight">${d.recoveryToday ?? '--'}/100</span>. `;
+      brief += `<span class="brief-highlight">${daysToPS} days to pre-season</span>. `;
+
+      // Today's recommendation
+      brief += `${d.todayRec}. `;
+
+      // Recovery score with one-word status
+      const recScore = d.recoveryToday ?? '--';
+      const recWord = d.recoveryToday >= 75 ? 'Fresh' : d.recoveryToday >= 60 ? 'Okay' : d.recoveryToday >= 45 ? 'Fatigued' : d.recoveryToday > 0 ? 'Low' : 'Unknown';
+      brief += `Recovery <span class="brief-highlight">${recScore}/100</span>: ${recWord}. `;
+
+      // Weight
       const wt = d.latestWeight || START_WEIGHT;
       const wtDiff = wt - START_WEIGHT;
       const wtSign = wtDiff >= 0 ? '+' : '';
-      brief += `Weight: <span class="brief-highlight">${wt}lbs</span> (${wtSign}${wtDiff.toFixed(1)} from ${START_WEIGHT}lbs).`;
+      brief += `Weight <span class="brief-highlight">${wt}lbs</span> (${wtSign}${wtDiff.toFixed(1)} from ${START_WEIGHT}lbs). `;
 
-      // One specific action item based on most important alert
+      // Match-specific: if match in 48 hours
+      if (d.matchIn48 === true || d.matchIn48 === 'true') {
+        brief += `<br><span class="brief-highlight">⚡ Match prep day</span> — Carb load: aim for 3-4g carbs per lb bodyweight. Prioritise oats, rice, pasta, bread, fruit juice.`;
+      }
+
+      // Most important single action
       if (d.recoveryToday !== null && d.recoveryToday < 55) {
-        brief += ` Recovery is low — prioritize sleep and hydration today.`;
+        brief += ` Today's priority: <span class="brief-highlight">prioritize sleep and hydration</span> — recovery is your limiting factor.`;
       } else if (d.proteinDays < 4) {
-        brief += ` Protein has been below target — hit your goal today.`;
+        brief += ` Today's priority: <span class="brief-highlight">hit your protein target</span> — muscle building is compromised.`;
+      } else if (d.gymCount < 2 && phase.mode === 'offseason') {
+        brief += ` Today's priority: <span class="brief-highlight">get a gym session in</span> — you need 4 per week.`;
+      } else {
+        brief += ` Today's priority: <span class="brief-highlight">stay consistent</span> — you're on track.`;
       }
 
       $('briefText').innerHTML = brief;
@@ -2298,35 +2405,81 @@
 
     function renderJarvisScore() {
       const d = briefingData;
+      const now = new Date();
+      const hour = now.getHours();
 
-      // Recovery component (30%)
-      const recRaw = d.recovery7DayAvg || d.recoveryToday || 50;
-      const recScore = Math.min(100, Math.max(0, recRaw));
+      // Recovery component (30%) — from recovery_score_7day_avg in app_state
+      const recRaw = d.recovery7DayAvg || d.recoveryToday || null;
+      let recScore = null, recMissing = !recRaw;
+      if (!recMissing) recScore = Math.min(100, Math.max(0, Math.round(recRaw)));
 
-      // Nutrition / protein component (20%)
-      const nutScore = Math.round((d.proteinDays / 7) * 100);
-
-      // Training Load Balance (25%)
-      const loadRaw = d.socData?.weekly_load_score || 0;
-      // Normalize: higher than 1500 = overtraining, below 300 = undertraining
-      let loadScore = 50;
-      if (loadRaw > 0) {
-        if (loadRaw <= 1500) loadScore = Math.round((loadRaw / 1500) * 50 + 25);
-        else loadScore = Math.max(0, Math.round(75 - ((loadRaw - 1500) / 500) * 25));
+      // Nutrition component (20%) — from last 7 daily_checkins protein adherence
+      let nutScore = null, nutMissing = d.checkins.length === 0;
+      if (!nutMissing) {
+        const checkinsWithProtein = d.checkins.filter(c => c.protein_grams > 0);
+        if (checkinsWithProtein.length > 0) {
+          const proteinTarget = 140;
+          const hits = checkinsWithProtein.filter(c => c.protein_grams >= proteinTarget).length;
+          nutScore = Math.round((hits / checkinsWithProtein.length) * 100);
+        }
       }
-      loadScore = Math.min(100, Math.max(0, loadScore));
 
-      // Athletic Trend (25%) - now -1..1 range, map to 0..100
-      let athScore = 50;
-      if (d.athleticTrend !== null) {
-        athScore = Math.round(50 + d.athleticTrend * 25);
+      // Load Balance (25%) — from ACWR in app_state (optimal 1.0 = 100, decreasing as ACWR moves away)
+      let loadScore = null, loadMissing = d.acwr === null || d.acwr === undefined || d.acwr === '';
+      if (!loadMissing) {
+        const acwrVal = parseFloat(d.acwr);
+        if (!isNaN(acwrVal) && acwrVal > 0) {
+          // Score decreases as ACWR moves away from 1.0 in either direction
+          const deviation = Math.abs(acwrVal - 1.0);
+          loadScore = Math.max(0, Math.round(100 - deviation * 50));
+        } else if (!isNaN(acwrVal) && acwrVal === 0) {
+          loadMissing = true;
+        }
       }
-      athScore = Math.min(100, Math.max(0, athScore));
 
-      // Composite
-      const composite = Math.round(recScore * 0.30 + nutScore * 0.20 + loadScore * 0.25 + athScore * 0.25);
+      // Athletic Trend (25%) — from last 2 athletic_tests
+      let athScore = null, athMissing = d.tests.length < 2;
+      if (!athMissing) {
+        let improving = 0, declining = 0;
+        const lowerBetter = ['10m_sprint','30m_sprint','40yd_dash','505_shuttle','t_test','ladder_10yd'];
+        const higherBetter = ['vertical_jump','broad_jump','yoyo_level'];
+        [...lowerBetter, ...higherBetter].forEach(type => {
+          const t = d.tests.filter(tt => tt.test_type === type).slice(0,2);
+          if (t.length >= 2) {
+            const diff = t[1].value - t[0].value;
+            if (lowerBetter.includes(type) ? diff < 0 : diff > 0) improving++;
+            else declining++;
+          }
+        });
+        const total = improving + declining;
+        if (total > 0) {
+          athScore = Math.round(50 + ((improving - declining) / total) * 25);
+          athScore = Math.min(100, Math.max(0, athScore));
+        }
+      }
 
-      // Directional arrow vs last week
+      // Compute composite with available components, re-weighting when missing
+      const comps = [
+        { score: recScore, weight: 0.30, missing: recMissing, label: 'Recovery' },
+        { score: nutScore, weight: 0.20, missing: nutMissing, label: 'Nutrition' },
+        { score: loadScore, weight: 0.25, missing: loadMissing, label: 'Load' },
+        { score: athScore, weight: 0.25, missing: athMissing, label: 'Athletic' }
+      ];
+      const available = comps.filter(c => !c.missing);
+      let composite = 50;
+      if (available.length > 0) {
+        const totalWeight = available.reduce((s, c) => s + c.weight, 0);
+        composite = Math.round(available.reduce((s, c) => s + c.score * c.weight, 0) / totalWeight);
+      }
+
+      if (available.length === 0) {
+        $('jarvisScore').textContent = '--';
+        $('jarvisScore').className = 'jarvis-score';
+        $('jarvisBreakdown').innerHTML = '<div class="jarvis-item" style="font-size:12px;color:var(--text-tertiary)">Complete your first morning check-in, training session, or monthly test to activate this score.</div>';
+        return;
+      }
+
+      // Arrow
       let arrowHtml = '';
       if (d.prevJarvisScore !== null && d.prevJarvisScore !== undefined) {
         const diff = composite - d.prevJarvisScore;
@@ -2339,22 +2492,26 @@
       scoreEl.innerHTML = composite + arrowHtml;
       scoreEl.className = 'jarvis-score ' + (composite >= 75 ? 'green' : composite >= 55 ? 'yellow' : 'red');
 
-      function statusWord(s) {
-        if (s >= 75) return 'Good';
-        if (s >= 55) return 'Okay';
-        if (s >= 35) return 'Low';
-        return 'Poor';
-      }
+      function statusWord(s) { return s >= 75 ? 'Good' : s >= 55 ? 'Okay' : s >= 35 ? 'Low' : 'Poor'; }
       function cls(s) { return s >= 75 ? 'good' : s >= 55 ? 'warn' : 'bad'; }
 
+      const recCls = recMissing ? '' : cls(recScore);
+      const nutCls = nutMissing ? '' : cls(nutScore);
+      const loadCls = loadMissing ? '' : cls(loadScore);
+      const athCls = athMissing ? '' : cls(athScore);
+
+      const recDisplay = recMissing ? '<span style="color:var(--text-tertiary);font-size:10px">Complete check-in</span>' : `<span class="jarvis-item-num ${recCls}">${recScore}</span>Recovery ${statusWord(recScore)}`;
+      const nutDisplay = nutMissing ? '<span style="color:var(--text-tertiary);font-size:10px">Complete check-in</span>' : `<span class="jarvis-item-num ${nutCls}">${nutScore}</span>Nutrition ${statusWord(nutScore)}`;
+      const loadDisplay = loadMissing ? '<span style="color:var(--text-tertiary);font-size:10px">Log training</span>' : `<span class="jarvis-item-num ${loadCls}">${loadScore}</span>Load ${statusWord(loadScore)}`;
+      const athDisplay = athMissing ? '<span style="color:var(--text-tertiary);font-size:10px">Complete monthly test</span>' : `<span class="jarvis-item-num ${athCls}">${athScore}</span>Athletic ${statusWord(athScore)}`;
+
       $('jarvisBreakdown').innerHTML = `
-        <div class="jarvis-item"><span class="jarvis-item-num ${cls(recScore)}">${recScore}</span>Recovery ${statusWord(recScore)}</div>
-        <div class="jarvis-item"><span class="jarvis-item-num ${cls(nutScore)}">${nutScore}</span>Nutrition ${statusWord(nutScore)}</div>
-        <div class="jarvis-item"><span class="jarvis-item-num ${cls(loadScore)}">${loadScore}</span>Load ${statusWord(loadScore)}</div>
-        <div class="jarvis-item"><span class="jarvis-item-num ${cls(athScore)}">${athScore}</span>Athletic ${statusWord(athScore)}</div>
+        <div class="jarvis-item" id="compRecovery" onclick="event.stopPropagation();document.getElementById('trendRecovery').classList.toggle('open')">${recDisplay}<div class="comp-trend" id="trendRecovery"><svg class="comp-trend-svg" id="trendRecoverySvg" viewBox="0 0 280 32" preserveAspectRatio="none"></svg></div></div>
+        <div class="jarvis-item" id="compNutrition" onclick="event.stopPropagation();document.getElementById('trendNutrition').classList.toggle('open')">${nutDisplay}<div class="comp-trend" id="trendNutrition"><svg class="comp-trend-svg" id="trendNutritionSvg" viewBox="0 0 280 32" preserveAspectRatio="none"></svg></div></div>
+        <div class="jarvis-item" id="compLoad" onclick="event.stopPropagation();document.getElementById('trendLoad').classList.toggle('open')">${loadDisplay}<div class="comp-trend" id="trendLoad"><svg class="comp-trend-svg" id="trendLoadSvg" viewBox="0 0 280 32" preserveAspectRatio="none"></svg></div></div>
+        <div class="jarvis-item" id="compAthletic" onclick="event.stopPropagation();document.getElementById('trendAthletic').classList.toggle('open')">${athDisplay}<div class="comp-trend" id="trendAthletic"><svg class="comp-trend-svg" id="trendAthleticSvg" viewBox="0 0 280 32" preserveAspectRatio="none"></svg></div></div>
       `;
 
-      // Persist score for next comparison
       if (supa) {
         Promise.resolve(supa.from('app_state').upsert({
           key:'jarvis_score', data:{ score: composite },
@@ -2362,26 +2519,141 @@
         }, { onConflict:'key' })).catch(()=>{});
       }
 
-      // ── Jarvis Trend Chart ──
       const today = briefingToday();
-      // Only append if today isn't already the last entry
       const lastEntry = jarvisHistory.length ? jarvisHistory[jarvisHistory.length - 1] : null;
       if (!lastEntry || lastEntry.date !== today) {
         jarvisHistory.push({ date: today, score: composite });
-        // Keep last 14 days
         if (jarvisHistory.length > 14) jarvisHistory = jarvisHistory.slice(-14);
         saveJarvisHistory();
-      } else {
-        // Update today's score if it changed by 3+ points
-        if (Math.abs(lastEntry.score - composite) >= 3) {
-          lastEntry.score = composite;
-          saveJarvisHistory();
-        }
+      } else if (Math.abs(lastEntry.score - composite) >= 3) {
+        lastEntry.score = composite;
+        saveJarvisHistory();
+      }
+      if (jarvisHistory.length >= 2) renderJarvisSparkline(composite);
+
+      // Save component scores for trend charts
+      const compToday = briefingToday();
+      if (!componentHistory[compToday]) componentHistory[compToday] = {};
+      if (!recMissing) componentHistory[compToday].recovery = recScore;
+      if (!nutMissing) componentHistory[compToday].nutrition = nutScore;
+      if (!loadMissing) componentHistory[compToday].load = loadScore;
+      if (!athMissing) componentHistory[compToday].athletic = athScore;
+      // Keep only last 30 days
+      const keys = Object.keys(componentHistory).sort();
+      while (keys.length > 30) { delete componentHistory[keys.shift()]; }
+      // Persist to Supabase
+      if (supa) {
+        Promise.resolve(supa.from('app_state').upsert({
+          key: COMPONENT_HISTORY_KEY,
+          data: componentHistory,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'key' })).catch(() => {});
+      }
+      // Render component trend sparklines
+      renderCompTrends();
+    }
+
+    function renderCompSparkline(svgId, data, color) {
+      const svg = document.getElementById(svgId);
+      if (!svg || !data || data.length < 2) return;
+      const values = data.map(d => d.v);
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const range = max - min || 1;
+      const pad = range * 0.15;
+      const yMin = Math.max(0, min - pad);
+      const yMax = Math.min(100, max + pad);
+      const yRange = yMax - yMin || 1;
+
+      const W = 280, H = 32;
+      const offX = 2, offY = 3;
+      const plotW = W - offX * 2;
+      const plotH = H - offY * 2;
+
+      // Main line points
+      const pts = values.map((v, i) => {
+        const x = offX + (i / Math.max(1, values.length - 1)) * plotW;
+        const y = offY + (1 - (v - yMin) / yRange) * plotH;
+        return `${x},${y}`;
+      });
+
+      // 7-day moving average (lighter line)
+      let maPts = [];
+      for (let i = 0; i < values.length; i++) {
+        const start = Math.max(0, i - 3);
+        const end = Math.min(values.length - 1, i + 3);
+        const slice = values.slice(start, end + 1);
+        const avg = slice.reduce((s, v) => s + v, 0) / slice.length;
+        const x = offX + (i / Math.max(1, values.length - 1)) * plotW;
+        const y = offY + (1 - (avg - yMin) / yRange) * plotH;
+        maPts.push(`${x},${y}`);
       }
 
-      if (jarvisHistory.length >= 2) {
-        renderJarvisSparkline(composite);
+      const gradId = `grad${svgId}`;
+      svg.innerHTML = `
+        <defs>
+          <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="${color}" stop-opacity="0.2"/>
+            <stop offset="100%" stop-color="${color}" stop-opacity="0.02"/>
+          </linearGradient>
+        </defs>
+        <polygon points="${offX},${offY+plotH} ${pts.join(' ')} ${offX+plotW},${offY+plotH}" fill="url(#${gradId})" stroke="none"/>
+        <polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="1"/>
+        <polyline points="${maPts.join(' ')}" fill="none" stroke="${color}" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" opacity="0.4" stroke-dasharray="3,3"/>
+        <circle cx="${pts[pts.length-1].split(',')[0]}" cy="${pts[pts.length-1].split(',')[1]}" r="2.5" fill="${color}" stroke="#050506" stroke-width="1.2"/>
+      `;
+    }
+
+    function renderCompTrends() {
+      const keys = Object.keys(componentHistory).sort();
+      if (keys.length < 2) return;
+
+      // Build arrays for each component
+      const recData = [], nutData = [], loadData = [], athData = [];
+      keys.forEach(k => {
+        const d = componentHistory[k];
+        const date = k;
+        if (d.recovery !== undefined) recData.push({ d: date, v: d.recovery });
+        if (d.nutrition !== undefined) nutData.push({ d: date, v: d.nutrition });
+        if (d.load !== undefined) loadData.push({ d: date, v: d.load });
+        if (d.athletic !== undefined) athData.push({ d: date, v: d.athletic });
+      });
+
+      renderCompSparkline('trendRecoverySvg', recData, '#6BE3A4');
+      renderCompSparkline('trendNutritionSvg', nutData, '#6BE3A4');
+      renderCompSparkline('trendLoadSvg', loadData, '#6BE3A4');
+      renderCompSparkline('trendAthleticSvg', athData, '#6BE3A4');
+    }
+
+    function renderACWR() {
+      const d = briefingData;
+      const acwrVal = d.acwr !== null && d.acwr !== undefined ? parseFloat(d.acwr) : null;
+      const dot = $('acwrDot');
+      const val = $('acwrValue');
+      const tooltip = $('acwrTooltip');
+
+      if (acwrVal === null || isNaN(acwrVal) || acwrVal === 0) {
+        val.textContent = '--';
+        dot.className = 'acwr-dot';
+        tooltip.textContent = 'No ACWR data yet. Log training sessions to calculate your acute-to-chronic workload ratio.';
+        return;
       }
+
+      val.textContent = acwrVal.toFixed(2);
+      let color, msg;
+      if (acwrVal >= 0.8 && acwrVal <= 1.3) {
+        color = 'green'; msg = 'Optimal zone. Training load is well-balanced — continue.';
+      } else if (acwrVal >= 0.6 && acwrVal < 0.8) {
+        color = 'yellow'; msg = 'Undertrained. You can safely increase training load this week.';
+      } else if (acwrVal > 1.3 && acwrVal <= 1.5) {
+        color = 'yellow'; msg = 'Approaching danger. Monitor closely and consider reducing intensity.';
+      } else if (acwrVal > 1.5) {
+        color = 'red'; msg = 'Injury risk. Mandatory load reduction — drop volume today.';
+      } else {
+        color = 'yellow'; msg = 'Very low training volume. Gradually increase load.';
+      }
+      dot.className = 'acwr-dot ' + color;
+      tooltip.textContent = `ACWR ${acwrVal.toFixed(2)}: ${msg} Ratio compares this week's load to your 4-week average. 0.8–1.3 is optimal. >1.5 means injury risk.`;
     }
 
     function renderJarvisSparkline(currentScore) {

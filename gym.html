@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#050506">
 <title>Gym Coach — Soccer Strength</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="utils.js"></script>
 <script src="chat.js"></script>
 <style>
 :root {
@@ -1632,6 +1633,8 @@ $('markDoneBtn').addEventListener('click', async ()=>{
     sess = data;
   } else {
     await sb.from('workout_sessions').update({ completed:true }).eq('id',sess.id);
+    // Recalculate ACWR after session change
+    calculateACWR(sb).catch(() => {});
     sess.completed = true;
   }
   $('markDoneBtn').textContent = '✓ Workout Logged!';

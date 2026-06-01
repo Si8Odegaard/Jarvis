@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#050506">
 <title>Soccer Training</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="utils.js"></script>
 <script src="chat.js"></script>
 <style>
 :root {
@@ -1405,6 +1406,8 @@ $('saveSessionBtn').addEventListener('click', async () => {
     renderSessions();
     // Update app_state for cross-tab
     await updateAppState();
+    // Recalculate ACWR and write to app_state
+    calculateACWR(sb).catch(() => {});
     $('#sessionModal').classList.remove('show');
     // Reset form
     $('#sessionDuration').value=''; $('#sessionNote').value=''; $('#matchMinutes').value=''; $('#matchRating').value='';
