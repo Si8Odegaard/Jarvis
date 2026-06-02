@@ -280,7 +280,7 @@
   // ──────────────── SUPABASE CONTEXT LOADER ────────────────
   async function loadSupabaseContext() {
     if (!supa) return null;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = (()=>{ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })();
     const last7 = new Date(today + 'T00:00:00');
     last7.setDate(last7.getDate() - 6);
     const last7Str = last7.toISOString().slice(0, 10);
@@ -414,7 +414,7 @@ When ${athleteName} asks what to do today, you tell him exactly what to do with 
   // ──────────────── NATURAL LANGUAGE DATA LOGGING ────────────────
   async function detectAndLog(userText) {
     if (!supa) return null;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = (()=>{ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })();
     const logs = [];
 
     // Water: "drank X liters", "had X bottles", "X ml of water"

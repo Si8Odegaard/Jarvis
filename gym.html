@@ -646,7 +646,7 @@ const sb = window.supabase.createClient(SB_URL, SB_KEY);
 // ════════════════════════════════════════════════════════════
 const $ = id => document.getElementById(id);
 function esc(s){ return String(s||'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;','\'':'&#39;'}[c])); }
-function today(){ return new Date().toISOString().slice(0,10); }
+function today(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 
 // 1RM estimate — average of Epley + Brzycki, capped at 10 reps
 function calc1RM(weight, reps){
