@@ -523,7 +523,7 @@ async function handleSubmit() {
     const { data: last7 } = await sb.from('recovery_scores').select('score').order('date', { ascending: false }).limit(7);
     const avg7 = last7 && last7.length ? Math.round(last7.reduce((s, r) => s + r.score, 0) / last7.length) : recoveryScore;
     await sb.from('app_state').upsert(
-      { key: APP_KEY, data: { recovery_score_today: recoveryScore, recovery_score_7day_avg: avg7, checkin_date: todayKey() }, updated_at: new Date().toISOString() },
+      { key: APP_KEY, data: { recovery_score_today: recoveryScore, recovery_score_7day_avg: avg7, checkin_date: todayKey(), protein_target: +($('proteinTarget').textContent.replace('g','')) || null }, updated_at: new Date().toISOString() },
       { onConflict: 'key' }
     );
     showSummary(checkin, recoveryScore);

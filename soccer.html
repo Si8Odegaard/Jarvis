@@ -694,6 +694,7 @@ const APP_KEY = 'soccer';
 const $ = id => document.getElementById(id.replace(/^#/, ''));
 function esc(s){ const str=String(s||''); return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function today(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+  function toLocalDateStr(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 
 // ==================================================
 //  ATHLETE CONTEXT (baked into all coaching logic)
@@ -789,7 +790,7 @@ async function loadLatestWeight(){
 async function loadGymWorkouts(){
   try {
     const yesterday = new Date(today()+'T00:00:00'); yesterday.setDate(yesterday.getDate()-1);
-    const yestStr = yesterday.toISOString().slice(0,10);
+    const yestStr = toLocalDateStr(yesterday);
 
     const { data: gymSessions } = await sb.from('workout_sessions')
       .select('id, date, completed')
@@ -1244,7 +1245,7 @@ function getSessionLabel(sesh){
 function renderSessions(){
   // Weekly summary
   const weekAgo = new Date(today()+'T00:00:00'); weekAgo.setDate(weekAgo.getDate()-6);
-  const weekStart = weekAgo.toISOString().slice(0,10);
+  const weekStart = toLocalDateStr(weekAgo);
   const weekSessions = soccerSessions.filter(s => s.date >= weekStart && s.date <= today());
 
   const ballMin = weekSessions.filter(s=>s.session_type==='ball').reduce((s,ss)=>s+(ss.duration_minutes||0),0);
@@ -1284,7 +1285,7 @@ function renderSessions(){
       const d = new Date(s.date+'T00:00:00');
       const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
       const mons = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      const dateLabel = s.date === today() ? 'Today' : s.date === new Date(Date.now()-86400000).toISOString().slice(0,10) ? 'Yesterday' : days[d.getDay()]+' '+mons[d.getMonth()]+' '+d.getDate();
+      const dateLabel = s.date === today() ? 'Today' : s.date === new toLocalDateStr(Date(Date.now()-86400000)) ? 'Yesterday' : days[d.getDay()]+' '+mons[d.getMonth()]+' '+d.getDate();
       return `<div class="sesh-card">
         <div class="sesh-icon">${getSessionIcon(s.session_type)}</div>
         <div class="sesh-info">
@@ -1471,7 +1472,7 @@ function checkPhaseReadiness(daysLeft){
   // Check if user logged fewer than 4 sessions in the previous week
   const weekAgo = new Date(today()+'T00:00:00');
   weekAgo.setDate(weekAgo.getDate() - 7);
-  const weekStart = weekAgo.toISOString().slice(0,10);
+  const weekStart = toLocalDateStr(weekAgo);
   const prevWeekSessions = soccerSessions.filter(s => s.date >= weekStart && s.date < today());
   if(prevWeekSessions.length < 4){
     warnings.push({ icon:'📋', msg:`Only ${prevWeekSessions.length} sessions logged in the last 7 days (excluding today). Phase target of 4+ sessions not met.` });
@@ -1494,7 +1495,7 @@ function getWeeklyTemplate(phase){
 function getDailyRecommendation(phase){
   const dow = new Date().getDay(); // 0=Sun
   const yesterday = new Date(today()+'T00:00:00'); yesterday.setDate(yesterday.getDate()-1);
-  const yestStr = yesterday.toISOString().slice(0,10);
+  const yestStr = toLocalDateStr(yesterday);
   const yestSessions = soccerSessions.filter(s => s.date === yestStr);
   const hadSpeedYesterday = yestSessions.some(s => s.session_type==='speed');
   const gymTag = todayGymType || 'Gym';
@@ -1787,7 +1788,7 @@ async function renderInsights(){
 
   // Technical volume warning
   const weekAgo = new Date(today()+'T00:00:00'); weekAgo.setDate(weekAgo.getDate()-6);
-  const ballSessions = soccerSessions.filter(s => s.date >= weekAgo.toISOString().slice(0,10) && s.session_type==='ball');
+  const ballSessions = soccerSessions.filter(s => s.date >= toLocalDateStr(weekAgo) && s.session_type==='ball');
   if(ballSessions.length < 3){
     alerts.push({ cls:'warn', title:'⚽ Ball Work Below D1 Threshold', body:`Only ${ballSessions.length} ball work sessions in the last 7 days. You need 4+ sessions minimum per week. Even 20 minutes of wall work counts.` });
   }
@@ -1818,7 +1819,7 @@ async function renderInsights(){
     }
 
     // Load spike warning — match sessions count double for conditioning load
-    const loadScore = soccerSessions.filter(s => s.date >= weekAgo.toISOString().slice(0,10)).reduce((s,ss)=>{
+    const loadScore = soccerSessions.filter(s => s.date >= toLocalDateStr(weekAgo)).reduce((s,ss)=>{
       let mult = ss.intensity==='Hard'?3:ss.intensity==='Medium'?2:1;
       if(ss.session_type==='match') mult *= 1.5; // matches count as conditioning + match
       return s + (ss.duration_minutes||0) * mult;
@@ -1827,7 +1828,7 @@ async function renderInsights(){
   for(let w=4; w>=1; w--){
     const ws = new Date(today()+'T00:00:00'); ws.setDate(ws.getDate()-w*7);
     const we = new Date(ws); we.setDate(we.getDate()+6);
-    const wSessions = soccerSessions.filter(s => s.date >= ws.toISOString().slice(0,10) && s.date <= we.toISOString().slice(0,10));
+    const wSessions = soccerSessions.filter(s => s.date >= toLocalDateStr(ws) && s.date <= toLocalDateStr(we));
     allWeeks.push(wSessions.reduce((s,ss)=>s+(ss.duration_minutes||0)*(ss.intensity==='Hard'?3:ss.intensity==='Medium'?2:1),0));
   }
   const avgLoad = allWeeks.length ? allWeeks.reduce((s,v)=>s+v,0)/allWeeks.length : loadScore;
@@ -1903,7 +1904,7 @@ async function renderInsights(){
 // ==================================================
 async function updateAppState(){
   const weekAgo = new Date(today()+'T00:00:00'); weekAgo.setDate(weekAgo.getDate()-6);
-  const weekSessions = soccerSessions.filter(s => s.date >= weekAgo.toISOString().slice(0,10));
+  const weekSessions = soccerSessions.filter(s => s.date >= toLocalDateStr(weekAgo));
   const ballMin = weekSessions.filter(s=>s.session_type==='ball').reduce((s,ss)=>s+(ss.duration_minutes||0),0);
   const speedCount = weekSessions.filter(s=>s.session_type==='speed').length;
   const loadScore = weekSessions.reduce((s,ss)=>s+(ss.duration_minutes||0)*(ss.intensity==='Hard'?3:ss.intensity==='Medium'?2:1),0);

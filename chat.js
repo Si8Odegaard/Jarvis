@@ -278,18 +278,17 @@
   function $(id) { return document.getElementById(id); }
 
   // ──────────────── SUPABASE CONTEXT LOADER ────────────────
+  const toLocal = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
   async function loadSupabaseContext() {
     if (!supa) return null;
-    const today = (()=>{ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })();
-    const last7 = new Date(today + 'T00:00:00');
-    last7.setDate(last7.getDate() - 6);
-    const last7Str = last7.toISOString().slice(0, 10);
-    const last14 = new Date(today + 'T00:00:00');
-    last14.setDate(last14.getDate() - 13);
-    const last14Str = last14.toISOString().slice(0, 10);
-    const next14 = new Date(today + 'T00:00:00');
-    next14.setDate(next14.getDate() + 14);
-    const next14Str = next14.toISOString().slice(0, 10);
+    const today = toLocal(new Date());
+    const last7 = new Date(); last7.setDate(last7.getDate() - 6);
+    const last7Str = toLocal(last7);
+    const last14 = new Date(); last14.setDate(last14.getDate() - 13);
+    const last14Str = toLocal(last14);
+    const next14 = new Date(); next14.setDate(next14.getDate() + 14);
+    const next14Str = toLocal(next14);
 
     const safeQuery = (qb) => Promise.resolve(qb).catch(() => ({ data: [] }));
     const safeMaybe = (qb) => Promise.resolve(qb).catch(() => ({ data: null }));
@@ -411,6 +410,62 @@ When ${athleteName} asks what to do today, you tell him exactly what to do with 
     return JSON.parse(text);
   }
 
+  // ──────────────── AI EXERCISE PARSING ────────────────
+  async function parseWorkoutSets(userText) {
+    const knownExercises = [
+      "Smith Machine Back Squat", "Dumbbell Romanian Deadlift", "Dumbbell Single-Leg RDL", "Box Jump (max effort)", "Broad Jump (max distance)", "Nordic Curl Negatives",
+      "Smith Machine Bench Press", "Dumbbell Incline Press", "Cable Rows (seated)", "Dumbbell Row", "Pull-Ups", "Cable Face Pull", "Dumbbell Overhead Press", "Dumbbell Curl", "Cable Tricep Pushdown",
+      "DB Bulgarian Split Squat", "Lateral Lunge with Dumbbell", "Leg Press", "Hip Abduction Machine", "Leg Curl", "Banded Lateral Walk", "Calf Raise (Smith or DB)",
+      "Plyo Push-Up (max intent)", "Cable Woodchop (high→low)", "DB Farmer Carry (40m)", "DB Power Shrug (hang clean)", "DB Lateral Raise", "Face Pull"
+    ];
+
+    const prompt = `Extract all weightlifting sets, reps, and weights from this text: "${userText}".
+Match the exercises as closely as possible to this list of canonical names:
+${knownExercises.join(", ")}
+
+Return ONLY a valid JSON array of objects. Each object must have these exact keys:
+- "exercise_name" (string, canonical name from the list)
+- "set_number" (integer, e.g. 1, 2, 3...)
+- "reps" (integer)
+- "weight" (number, in lbs. Use 0 for bodyweight exercises if not specified)
+
+If no specific sets/reps are found, return an empty array [].
+
+Example text: "squatted 185 for 3 sets of 8, then nordic curls 3x5"
+Example JSON:
+[
+  { "exercise_name": "Smith Machine Back Squat", "set_number": 1, "reps": 8, "weight": 185 },
+  { "exercise_name": "Smith Machine Back Squat", "set_number": 2, "reps": 8, "weight": 185 },
+  { "exercise_name": "Smith Machine Back Squat", "set_number": 3, "reps": 8, "weight": 185 },
+  { "exercise_name": "Nordic Curl Negatives", "set_number": 1, "reps": 5, "weight": 0 }
+]
+
+Return only the JSON array, no formatting wrappers like \`\`\`json.`;
+
+    const body = {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 1024 }
+    };
+
+    try {
+      const res = await fetchWithTimeout(GEMINI_URL + '?key=' + GEMINI_API_KEY, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      }, GEMINI_TIMEOUT_MS);
+
+      if (!res.ok) return null;
+      const data = await res.json();
+      let text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+      text = text.trim().replace(/^```json?\s*/i, '').replace(/```\s*$/i, '').trim();
+      const parsed = JSON.parse(text);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   // ──────────────── NATURAL LANGUAGE DATA LOGGING ────────────────
   async function detectAndLog(userText) {
     if (!supa) return null;
@@ -475,20 +530,45 @@ When ${athleteName} asks what to do today, you tell him exactly what to do with 
       } catch (_) { logs.push('\u26BD Soccer session logged (offline).'); }
     }
 
-    // Gym: "did gym", "lifted", "did push day", "did pull day", "did leg day"
+    // Gym: "did gym", "lifted", "did push day", or explicit exercises
     const gymMatch = userText.match(/(?:did|hit|went\s+to)\s+(?:the\s+)?gym|lifted|workout/i) ||
-                     userText.match(/(?:did|completed|finished)\s+(?:push|pull|leg|upper|lower|full\s+body)\s*(?:day|session|workout)?/i);
-    if (gymMatch && !userText.match(/ball|soccer|field|pitch/i)) {
+                     userText.match(/(?:did|completed|finished)\s+(?:push|pull|leg|upper|lower|full\s+body)\s*(?:day|session|workout)?/i) ||
+                     userText.match(/squat|bench|incline|rows?|curl|deadlift|rdl|press|pull-?ups/i);
+    if (gymMatch && !userText.match(/ball|soccer|field|pitch\s+session/i)) {
       let splitType = 'full_body';
-      if (userText.match(/push/i)) splitType = 'push';
-      else if (userText.match(/pull/i)) splitType = 'pull';
-      else if (userText.match(/leg|lower/i)) splitType = 'legs';
+      if (userText.match(/leg|lower|squat|rdl|deadlift/i)) splitType = 'legs';
+      else if (userText.match(/push|bench|press/i)) splitType = 'push';
+      else if (userText.match(/pull|row|curl/i)) splitType = 'pull';
       else if (userText.match(/upper/i)) splitType = 'upper';
       try {
-        await supa.from('workout_sessions').insert({
-          date: today, split_type: splitType, completed: true, note: null
-        });
+        let sessId;
+        const { data: existingSess } = await supa.from('workout_sessions').select('id').eq('date', today).maybeSingle();
+        if (existingSess) {
+          sessId = existingSess.id;
+          await supa.from('workout_sessions').update({ split_type: splitType }).eq('id', sessId);
+        } else {
+          const { data: newSess } = await supa.from('workout_sessions').insert({
+            date: today, split_type: splitType, completed: true, note: null
+          }).select().single();
+          sessId = newSess?.id;
+        }
         logs.push(`\uD83C\uDFCB\uFE0F Logged gym session: ${splitType}. ${splitType === 'legs' ? 'Hip extension strength is the #1 predictor of your sprint speed — every leg day matters.' : 'Building the functional mass that makes you harder to knock off the ball.'}`);
+        // Parse and log individual sets
+        if (sessId) {
+          const parsedSets = await parseWorkoutSets(userText);
+          if (parsedSets) {
+            const insertRows = parsedSets.map(s => ({
+              session_id: sessId,
+              exercise_name: s.exercise_name,
+              set_number: s.set_number,
+              reps: s.reps,
+              weight: s.weight
+            }));
+            await supa.from('session_sets').insert(insertRows);
+            const exNames = [...new Set(insertRows.map(s => s.exercise_name))];
+            logs.push(`\uD83D\uDCAA Extracted and logged ${insertRows.length} sets across ${exNames.length} exercises.`);
+          }
+        }
       } catch (_) { logs.push('\uD83C\uDFCB\uFE0F Gym session logged (offline).'); }
     }
 
@@ -656,13 +736,14 @@ When ${athleteName} asks what to do today, you tell him exactly what to do with 
         // Try to update today's checkin with protein
         if (supa && protein_grams > 0) {
           try {
-            const { data: existing } = await supa.from('daily_checkins').select('id,protein_grams').eq('date', new Date().toISOString().slice(0, 10)).maybeSingle();
+            const todayStr = toLocal(new Date());
+            const { data: existing } = await supa.from('daily_checkins').select('id,protein_grams').eq('date', todayStr).maybeSingle();
             const newProtein = (existing?.protein_grams || 0) + protein_grams;
             if (existing) {
               await supa.from('daily_checkins').update({ protein_grams: newProtein, estimated_calories: calories }).eq('id', existing.id);
             } else {
               await supa.from('daily_checkins').insert({
-                date: new Date().toISOString().slice(0, 10),
+                date: todayStr,
                 protein_grams: newProtein,
                 estimated_calories: calories
               });
