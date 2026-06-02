@@ -588,6 +588,7 @@ body:has(.modal-bg.show) { overflow: hidden; }
   let currentSeason = 'offseason';
   const today = new Date();
   const todayStr = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+  const toLocalDateStr = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
   viewYear = today.getFullYear();
   viewMonth = today.getMonth() + 1;
@@ -891,7 +892,7 @@ body:has(.modal-bg.show) { overflow: hidden; }
     const now = new Date();
     const twoDaysFromNow = new Date(now.getTime() + 48 * 60 * 60 * 1000);
     const twoDaysStr = toLocalDateStr(twoDaysFromNow);
-    const yesterdayStr = new Date(now.getTime() - 24 * 60 * 60 * toLocalDateStr(1000));
+    const yesterdayStr = toLocalDateStr(new Date(now.getTime() - 24 * 60 * 60 * 1000));
 
     const { data: nearbyMatches } = await sb.from('calendar_events')
       .select('*').eq('event_type', 'match')

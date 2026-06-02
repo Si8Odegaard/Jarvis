@@ -891,7 +891,7 @@
     const weekStr = toLocalDateStr(weekAgo);
 
     const recent = sorted.filter(w => w.date >= weekStr);
-    const prevWeek = sorted.filter(w => w.date < weekStr && w.date >= new Date(weekAgo.getTime() - toLocalDateStr(7*86400000)));
+    const prevWeek = sorted.filter(w => w.date < weekStr && w.date >= toLocalDateStr(new Date(weekAgo.getTime() - 7*86400000)));
 
     if (recent.length === 0 && prevWeek.length === 0) {
       // Use all-time trend instead
@@ -1036,10 +1036,10 @@
       const d = new Date(targetFirstDate.getTime() + week * 7 * 86400000);
       const projectedWeight = currentWeightForTarget * Math.pow(1 + TARGET_WEEKLY_RATE, week);
       if (projectedWeight <= TARGET_WEIGHT + 2) {
-        toLocalDateStr(targetPoints.push(xPos(d)).toFixed(1) + ',' + yPos(Math.min(projectedWeight, TARGET_WEIGHT)).toFixed(1));
+        targetPoints.push(xPos(d).toFixed(1) + ',' + yPos(Math.min(projectedWeight, TARGET_WEIGHT)).toFixed(1));
       } else {
         // Cap at target
-        toLocalDateStr(targetPoints.push(xPos(d)).toFixed(1) + ',' + yPos(TARGET_WEIGHT).toFixed(1));
+        targetPoints.push(xPos(d).toFixed(1) + ',' + yPos(TARGET_WEIGHT).toFixed(1));
         break;
       }
     }
