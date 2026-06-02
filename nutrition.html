@@ -241,6 +241,24 @@ input[type="number"].error { border-color:var(--danger); }
     </div>
   </div>
 
+  <!-- Calories & Protein History -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Calories & Protein History</h2>
+      <span id="calProteinRange" style="font-size:11px;color:var(--text-tertiary);font-family:var(--mono)">30 days</span>
+    </div>
+    <div class="chart-wrap"><svg class="chart-svg" id="proteinHistorySvg" viewBox="0 0 400 80" preserveAspectRatio="none"><text x="200" y="40" text-anchor="middle" fill="#76746E" font-size="12">Loading…</text></svg></div>
+    <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px">
+      <span style="color:var(--success);font-family:var(--mono)">Protein (g)</span>
+      <span style="color:var(--text-tertiary);font-family:var(--mono)" id="proteinHistoryAvg">—</span>
+    </div>
+    <div class="chart-wrap" style="margin-top:8px"><svg class="chart-svg" id="calorieHistorySvg" viewBox="0 0 400 80" preserveAspectRatio="none"><text x="200" y="40" text-anchor="middle" fill="#76746E" font-size="12">Loading…</text></svg></div>
+    <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px">
+      <span style="color:#F2C063;font-family:var(--mono)">Est. Calories</span>
+      <span style="color:var(--text-tertiary);font-family:var(--mono)" id="calorieHistoryAvg">—</span>
+    </div>
+  </div>
+
   <!-- TDEE -->
   <div class="card">
     <h2>Adaptive TDEE</h2>
@@ -836,6 +854,52 @@ async function loadWeightTrend(){
 }
 
 // ═══════════════════════════════════════════════
+//  CALORIES & PROTEIN HISTORY SPARKLINES
+// ═══════════════════════════════════════════════
+async function loadCalorieProteinHistory(){
+  try {
+    const { data } = await sb.from('daily_checkins')
+      .select('date,protein_grams,estimated_calories')
+      .order('date',{ascending:false}).limit(30);
+    if(!data || data.length < 2){
+      const svgP = document.getElementById('proteinHistorySvg');
+      const svgC = document.getElementById('calorieHistorySvg');
+      if(svgP) svgP.innerHTML = '<text x="200" y="40" text-anchor="middle" fill="#76746E" font-size="12">Log 2+ days of protein to see trend</text>';
+      if(svgC) svgC.innerHTML = '<text x="200" y="40" text-anchor="middle" fill="#76746E" font-size="12">Tell Jarvis what you ate to see calorie estimates</text>';
+      return;
+    }
+    const reversed = data.reverse(); // oldest → newest
+    const proteins = reversed.map(r => r.protein_grams || 0);
+    const calories = reversed.map(r => r.estimated_calories || 0);
+
+    // Protein sparkline
+    const svgP = document.getElementById('proteinHistorySvg');
+    if(svgP) drawSparkline(svgP, proteins, '#6BE3A4');
+
+    // Calorie sparkline (only if there's actual calorie data)
+    const svgC = document.getElementById('calorieHistorySvg');
+    const hasCalories = calories.some(c => c > 0);
+    if(svgC && hasCalories){
+      drawSparkline(svgC, calories, '#F2C063');
+    } else if(svgC){
+      svgC.innerHTML = '<text x="200" y="40" text-anchor="middle" fill="#76746E" font-size="12">Tell Jarvis what you ate to log calories</text>';
+    }
+
+    // Averages
+    const avgP = Math.round(proteins.reduce((s,v)=>s+v,0) / proteins.length);
+    const elP = document.getElementById('proteinHistoryAvg');
+    if(elP) elP.textContent = `avg ${avgP}g`;
+
+    if(hasCalories){
+      const calWithData = calories.filter(c => c > 0);
+      const avgC = Math.round(calWithData.reduce((s,v)=>s+v,0) / calWithData.length);
+      const elC = document.getElementById('calorieHistoryAvg');
+      if(elC) elC.textContent = `avg ${avgC} kcal (${calWithData.length} days)`;
+    }
+  } catch(e){}
+}
+
+// ═══════════════════════════════════════════════
 //  NUTRITION-AWARE COMPOSITION DIAGNOSIS
 // ═══════════════════════════════════════════════
 async function updateDiagnosis(){
@@ -1211,7 +1275,8 @@ async function checkReminderBadge() {
   await Promise.all([
     loadTodayCheckin(), loadRecoveryScore(),
     generateWeeklySummary(), checkReminderBadge(), prefillSettingsModal(),
-    loadRecoveryChart(), loadWeightTrend(), updateDiagnosis(), loadAppState()
+    loadRecoveryChart(), loadWeightTrend(), loadCalorieProteinHistory(),
+    updateDiagnosis(), loadAppState()
   ]);
   // Render cross-tab features after app_state is loaded
   renderMatchBanners();
