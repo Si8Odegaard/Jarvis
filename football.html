@@ -420,7 +420,7 @@ let techSessions=[],matchPerformances=[];
 async function loadAll(){
   try {
     const thirtyDaysAgo=new Date();thirtyDaysAgo.setDate(thirtyDaysAgo.getDate()-30);
-    const thirtyAgoStr=thirtyDaysAgo.toISOString().slice(0,10);
+    const toLocalDateStr(thirtyAgoStr=thirtyDaysAgo);
     const[tRes,mRes]=await Promise.all([
       sb.from('technical_sessions').select('*').gte('date',thirtyAgoStr).order('date',{ascending:false}),
       sb.from('match_performances').select('*').order('date',{ascending:false}).limit(10)
@@ -463,7 +463,7 @@ function renderTechList(){
 // ── Weakness Analysis ──
 function renderWeakness(){
   const thirtyDaysAgo=new Date();thirtyDaysAgo.setDate(thirtyDaysAgo.getDate()-30);
-  const thirtyAgoStr=thirtyDaysAgo.toISOString().slice(0,10);
+  const toLocalDateStr(thirtyAgoStr=thirtyDaysAgo);
   const recent=techSessions.filter(s=>s.date>=thirtyAgoStr);
 
   // Aggregate time per focus area (weight high intensity ×1.5)
@@ -506,7 +506,7 @@ function renderWeakness(){
       </div>
     </div>`;
     writeAppState('weakest_technical_area',w1.label);
-    writeAppState('technical_sessions_this_week',recent.filter(s=>s.date>=new Date(Date.now()-7*86400000).toISOString().slice(0,10)).length);
+    writeAppState('technical_sessions_this_week',recent.filter(s=>s.date>=new toLocalDateStr(Date(Date.now()-7*86400000))).length);
   } else {
     $('priorityWeakness').innerHTML=`<div class="priority-weakness" style="background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08)">
       <div style="color:var(--text-tertiary);font-size:12px;text-align:center">Log technical sessions to see your time distribution and priority weaknesses</div>

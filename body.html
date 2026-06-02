@@ -794,6 +794,7 @@
   const $ = (id) => document.getElementById(id.startsWith('#') ? id.slice(1) : id);
 
   function todayStr() { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+  function toLocalDateStr(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 
   function showToast(msg) {
     const t = $('toast');
@@ -859,7 +860,7 @@
     // Weekly trend direction
     const weekAgo = new Date(todayStr()+'T00:00:00');
     weekAgo.setDate(weekAgo.getDate() - 7);
-    const weekStr = weekAgo.toISOString().slice(0,10);
+    const weekStr = toLocalDateStr(weekAgo);
     const weekAgoWeight = sorted.find(w => w.date <= weekStr);
     if (weekAgoWeight) {
       const weeklyDiff = wt - weekAgoWeight.weight;
@@ -887,10 +888,10 @@
     const todayW = new Date(todayStr()+'T00:00:00');
     const weekAgo = new Date(todayW);
     weekAgo.setDate(weekAgo.getDate() - 7);
-    const weekStr = weekAgo.toISOString().slice(0,10);
+    const weekStr = toLocalDateStr(weekAgo);
 
     const recent = sorted.filter(w => w.date >= weekStr);
-    const prevWeek = sorted.filter(w => w.date < weekStr && w.date >= new Date(weekAgo.getTime() - 7*86400000).toISOString().slice(0,10));
+    const prevWeek = sorted.filter(w => w.date < weekStr && w.date >= new Date(weekAgo.getTime() - toLocalDateStr(7*86400000)));
 
     if (recent.length === 0 && prevWeek.length === 0) {
       // Use all-time trend instead
@@ -972,7 +973,7 @@
     const today = new Date(todayStr()+'T00:00:00');
     const thirtyDaysAgo = new Date(today);
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const cutoff = thirtyDaysAgo.toISOString().slice(0,10);
+    const cutoff = toLocalDateStr(thirtyDaysAgo);
     const recent = sorted.filter(w => w.date >= cutoff);
 
     if (recent.length < 2) {
@@ -1018,7 +1019,7 @@
       const windowEnd = new Date(recent[i].date+'T00:00:00');
       const windowStart = new Date(windowEnd);
       windowStart.setDate(windowStart.getDate() - 6);
-      const windowStr = windowStart.toISOString().slice(0,10);
+      const windowStr = toLocalDateStr(windowStart);
       const windowWeights = recent.filter(w => w.date >= windowStr && w.date <= recent[i].date);
       if (windowWeights.length >= 2) {
         const avg = windowWeights.reduce((s,w) => s + w.weight, 0) / windowWeights.length;
@@ -1035,10 +1036,10 @@
       const d = new Date(targetFirstDate.getTime() + week * 7 * 86400000);
       const projectedWeight = currentWeightForTarget * Math.pow(1 + TARGET_WEEKLY_RATE, week);
       if (projectedWeight <= TARGET_WEIGHT + 2) {
-        targetPoints.push(xPos(d.toISOString().slice(0,10)).toFixed(1) + ',' + yPos(Math.min(projectedWeight, TARGET_WEIGHT)).toFixed(1));
+        toLocalDateStr(targetPoints.push(xPos(d)).toFixed(1) + ',' + yPos(Math.min(projectedWeight, TARGET_WEIGHT)).toFixed(1));
       } else {
         // Cap at target
-        targetPoints.push(xPos(d.toISOString().slice(0,10)).toFixed(1) + ',' + yPos(TARGET_WEIGHT).toFixed(1));
+        toLocalDateStr(targetPoints.push(xPos(d)).toFixed(1) + ',' + yPos(TARGET_WEIGHT).toFixed(1));
         break;
       }
     }
@@ -1520,7 +1521,7 @@
           // Last 8 weeks of data
           const eightWeeksAgo = new Date(todayStr()+'T00:00:00');
           eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
-          const cutoff = eightWeeksAgo.toISOString().slice(0,10);
+          const cutoff = toLocalDateStr(eightWeeksAgo);
           sorted.filter(w => w.date >= cutoff).forEach(w => {
             dataPoints.push({ date: w.date, value: w.weight });
           });
@@ -1867,7 +1868,7 @@
             currentVal = sorted[sorted.length - 1].weight;
             const eightWeeksAgo = new Date(todayStr()+'T00:00:00');
             eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
-            const cutoff = eightWeeksAgo.toISOString().slice(0,10);
+            const cutoff = toLocalDateStr(eightWeeksAgo);
             sorted.filter(w => w.date >= cutoff).forEach(w => dataPoints.push({ date: w.date, value: w.weight }));
           }
         } else if (key === 'smith_squat') {

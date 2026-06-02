@@ -890,8 +890,8 @@ body:has(.modal-bg.show) { overflow: hidden; }
     // Check if any match is within 48 hours — query DB directly for cross-month accuracy
     const now = new Date();
     const twoDaysFromNow = new Date(now.getTime() + 48 * 60 * 60 * 1000);
-    const twoDaysStr = twoDaysFromNow.toISOString().slice(0, 10);
-    const yesterdayStr = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const twoDaysStr = toLocalDateStr(twoDaysFromNow);
+    const yesterdayStr = new Date(now.getTime() - 24 * 60 * 60 * toLocalDateStr(1000));
 
     const { data: nearbyMatches } = await sb.from('calendar_events')
       .select('*').eq('event_type', 'match')

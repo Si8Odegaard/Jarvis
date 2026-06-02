@@ -1073,7 +1073,7 @@ html, body {
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'water-coach-data-' + new Date().toISOString().slice(0,10) + '.json';
+    a.href = url; a.download = 'water-coach-data-' + new toLocalDateStr(Date()) + '.json';
     a.click(); URL.revokeObjectURL(url);
   });
   $('setImport').addEventListener('click', () => $('setImportFile').click());

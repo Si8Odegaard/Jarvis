@@ -1094,6 +1094,7 @@
     <div class="weekly-snapshot" id="weeklySnapshot">
       <div class="snapshot-item"><div class="snapshot-num neutral">--</div><div class="snapshot-label">Gym Sessions</div></div>
       <div class="snapshot-item"><div class="snapshot-num neutral">--</div><div class="snapshot-label">Ball Work</div></div>
+      <div class="snapshot-item"><div class="snapshot-num neutral">--</div><div class="snapshot-label">Tech Sessions</div></div>
       <div class="snapshot-item"><div class="snapshot-num neutral">--</div><div class="snapshot-label">Speed Sessions</div></div>
       <div class="snapshot-item"><div class="snapshot-num neutral">--</div><div class="snapshot-label">Protein Days</div></div>
       <div class="snapshot-item"><div class="snapshot-num neutral">--</div><div class="snapshot-label">Avg Recovery</div></div>
@@ -1309,8 +1310,8 @@
   (function () {
     'use strict';
 
-    const WAKE_HOUR = 8;
-    const SLEEP_HOUR = 24;
+    let WAKE_HOUR = 8;
+    let SLEEP_HOUR = 24;
     const GEMINI_API_KEY = window.ENV_GEMINI_API_KEY || "";
     if (!GEMINI_API_KEY) console.warn('[Jarvis] ENV_GEMINI_API_KEY not set — env.js may be missing. AI features will be unavailable.');
     const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
@@ -1355,7 +1356,8 @@
       { name:'Taper Week', weeks:1, goal:'Drop volume 35%. Arrive fresh and sharp for pre-season.' }
     ];
 
-    function briefingToday() { return new Date().toISOString().slice(0,10); }
+
+    function toLocalDateStr(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 
     function briefingYesterday() {
       const d = new Date();
@@ -2161,12 +2163,18 @@
 
     async function loadMorningBriefing() {
       if (!supa) return;
+      // Load sleep schedule from app_state (set by Jarvis recommendations)
+      try {
+        const { data: sd } = await supa.from('app_state').select('data').eq('key','sleep_schedule').maybeSingle();
+        if (sd?.data?.wake_hour) WAKE_HOUR = sd.data.wake_hour;
+        if (sd?.data?.sleep_hour) SLEEP_HOUR = sd.data.sleep_hour;
+      } catch(_) {}
       try {
         const today = briefingToday();
         const weekAgo = new Date(today+'T00:00:00'); weekAgo.setDate(weekAgo.getDate()-6);
-        const weekStart = weekAgo.toISOString().slice(0,10);
+        const weekStart = toLocalDateStr(weekAgo);
         const last7 = new Date(today+'T00:00:00'); last7.setDate(last7.getDate()-6);
-        const last7Str = last7.toISOString().slice(0,10);
+        const last7Str = toLocalDateStr(last7);
 
         const [nutRes, soccerRes, checkinsRes, weightRes, testsRes, sessRes, gymRes, rsaRes, planRes, jarvisHistRes, compHistRes, acwrRes, matchRes, bodyRes, techRes, gymModeRes] = await Promise.all([
           supa.from('app_state').select('data').eq('key','nutrition').maybeSingle(),
@@ -2217,6 +2225,7 @@
         const gymCount = gymSessions.filter(s => s.date >= weekStart && s.completed).length;
         const ballCount = weekSessions.filter(s => s.session_type === 'ball').length;
         const speedCount = weekSessions.filter(s => s.session_type === 'speed').length;
+        const techCount = parseInt(techRes?.data?.data?.value ?? techRes?.data?.data ?? '0') || 0;
 
         // Check if check-in logged today
         const todayCheckin = checkins.find(c => c.date === today);
@@ -2289,7 +2298,7 @@
           today, phase, recoveryToday, recovery7DayAvg, avgRecovery,
           latestWeight, weightDelta, weightWeekAgo: prevWeekWeight,
           proteinDays, proteinStreak, todayCheckin, checkins,
-          tests, sessions, weekSessions, gymCount, ballCount, speedCount,
+          tests, sessions, weekSessions, gymCount, ballCount, speedCount, techCount,
           athleticTrend, latestRSA, rsaSessions,
           todayRec, plan, nutData, socData, prevJarvisScore,
           acwr: acwrRes?.data?.data?.value ?? acwrRes?.data?.data ?? null,
@@ -2391,6 +2400,8 @@
         brief += ` Today's priority: <span class="brief-highlight">prioritize sleep and hydration</span> — recovery is your limiting factor.`;
       } else if (d.proteinDays < 4) {
         brief += ` Today's priority: <span class="brief-highlight">hit your protein target</span> — muscle building is compromised.`;
+      } else if (d.techCount !== undefined && d.techCount < 3 && phase.mode === 'offseason') {
+        brief += ` Today's priority: <span class="brief-highlight">get your technical work in</span> — you need 5 sessions per week.`;
       } else if (d.gymCount < 2 && phase.mode === 'offseason') {
         brief += ` Today's priority: <span class="brief-highlight">get a gym session in</span> — you need 4 per week.`;
       } else {
@@ -2724,7 +2735,7 @@
       const proteinStreak = d.proteinStreak || 0;
       const proteinTarget = 140; // grams per day target
       const yesterday = new Date(briefingToday()+'T00:00:00'); yesterday.setDate(yesterday.getDate()-1);
-      const yestStr = yesterday.toISOString().slice(0,10);
+      const yestStr = toLocalDateStr(yesterday);
       const yesterdayCheckin = (d.checkins || []).find(c => c.date === yestStr);
       const yesterdayProtein = yesterdayCheckin?.protein_grams || null;
 

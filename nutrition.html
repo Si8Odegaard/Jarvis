@@ -193,7 +193,7 @@ input[type="number"].error { border-color:var(--danger); }
       </div>
     </div>
     <div class="form-group">
-      <label>Protein (g) yesterday</label>
+      <label>Protein (g) yesterday <span style="font-size:10px;color:var(--text-tertiary)">(auto-filled if Jarvis logged it)</span></label>
       <input type="number" id="proteinGrams" placeholder="e.g., 150" inputmode="numeric">
     </div>
     <div class="form-group">
@@ -579,7 +579,7 @@ function resetForm(prefill) {
     <div class="form-group"><label>Sleep Quality</label><div class="star-rating" id="sleepQuality"><button type="button" data-rating="1">★</button><button type="button" data-rating="2">★</button><button type="button" data-rating="3">★</button><button type="button" data-rating="4">★</button><button type="button" data-rating="5">★</button></div></div>
     <div class="form-group"><label>Energy Level: <strong id="energyValue">${prefill?prefill.energy_score:7}</strong>/10</label><input type="range" id="energyScore" min="1" max="10" step="1" value="${prefill?prefill.energy_score:7}"></div>
     <div class="form-group"><label>Muscle Soreness</label><div class="btn-group" id="sorenessGroup"><button type="button" data-value="none">None</button><button type="button" data-value="mild">Mild</button><button type="button" data-value="moderate">Moderate</button><button type="button" data-value="severe">Severe</button></div></div>
-    <div class="form-group"><label>Protein (g) yesterday</label><input type="number" id="proteinGrams" placeholder="e.g., 150" inputmode="numeric" value="${prefill?prefill.protein_grams:''}"></div>
+    <div class="form-group"><label>Protein (g) yesterday <span style="font-size:10px;color:var(--text-tertiary)">(auto-filled if Jarvis logged it)</span></label><input type="number" id="proteinGrams" placeholder="e.g., 150" inputmode="numeric" value="${prefill?prefill.protein_grams:''}"></div>
     <div class="form-group"><label>Hydration</label><div class="btn-group" id="hydrationGroup"><button type="button" data-value="good">Good</button><button type="button" data-value="okay">Okay</button><button type="button" data-value="poor">Poor</button></div></div>
     <div class="form-group"><label>Hit Calorie Target?</label><div class="btn-group" id="calorieGroup"><button type="button" data-value="yes">Yes</button><button type="button" data-value="roughly">Roughly</button><button type="button" data-value="no">No</button></div></div>
     <button class="submit-btn" id="submitCheckin">Update Check-in</button>`;
@@ -616,6 +616,22 @@ async function loadTodayCheckin() {
     } else {
       const el = $('checkinStatus');
       if (el) el.textContent = 'Not completed today';
+      // Auto-fill protein from AI-logged data (Jarvis food logging)
+      // Jarvis logs to today's daily_checkins, but check-in asks about "yesterday"
+      // Query yesterday's daily_checkins for AI estimates
+      try {
+        const yest = new Date(); yest.setDate(yest.getDate() - 1);
+        const yestKey = `${yest.getFullYear()}-${String(yest.getMonth()+1).padStart(2,'0')}-${String(yest.getDate()).padStart(2,'0')}`;
+        const { data: yestData } = await sb.from('daily_checkins').select('protein_grams,estimated_calories').eq('date', yestKey).maybeSingle();
+        if (yestData && yestData.protein_grams > 0) {
+          const pEl = $('proteinGrams');
+          if (pEl && !pEl.value) {
+            pEl.value = yestData.protein_grams;
+            pEl.placeholder = 'Auto-filled from Jarvis: ' + yestData.protein_grams + 'g';
+            checkInState.protein_grams = yestData.protein_grams;
+          }
+        }
+      } catch(_) {}
     }
   } catch(e) { console.error(e); }
 }
