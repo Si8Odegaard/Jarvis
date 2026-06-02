@@ -418,13 +418,15 @@ function getMatchRating(key){const sc=document.getElementById('stars_'+key);retu
 let techSessions=[],matchPerformances=[];
 
 async function loadAll(){
-  const thirtyDaysAgo=new Date();thirtyDaysAgo.setDate(thirtyDaysAgo.getDate()-30);
-  const thirtyAgoStr=thirtyDaysAgo.toISOString().slice(0,10);
-  const[tRes,mRes]=await Promise.all([
-    sb.from('technical_sessions').select('*').gte('date',thirtyAgoStr).order('date',{ascending:false}),
-    sb.from('match_performances').select('*').order('date',{ascending:false}).limit(10)
-  ]);
-  techSessions=tRes.data||[];matchPerformances=mRes.data||[];
+  try {
+    const thirtyDaysAgo=new Date();thirtyDaysAgo.setDate(thirtyDaysAgo.getDate()-30);
+    const thirtyAgoStr=thirtyDaysAgo.toISOString().slice(0,10);
+    const[tRes,mRes]=await Promise.all([
+      sb.from('technical_sessions').select('*').gte('date',thirtyAgoStr).order('date',{ascending:false}),
+      sb.from('match_performances').select('*').order('date',{ascending:false}).limit(10)
+    ]);
+    techSessions=tRes.data||[];matchPerformances=mRes.data||[];
+  } catch(e){ techSessions=[]; matchPerformances=[]; }
   renderAll();
 }
 
@@ -728,7 +730,7 @@ $('logTechBtn').addEventListener('click',openTechModal);
 $('logMatchBtn').addEventListener('click',openMatchModal);
 
 // ── Init ──
-loadAll();
+loadAll().catch(e=>console.error('Football init error:',e));
 })();
 </script>
 </body>

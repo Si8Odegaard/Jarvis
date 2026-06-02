@@ -881,26 +881,32 @@ async function loadAll(){
 }
 
 async function loadSessions(){
-  const { data: sess } = await sb.from('workout_sessions').select('*').order('date',{ascending:false}).limit(60);
-  sessions = sess || [];
-  const ids = sessions.map(s=>s.id);
-  if(ids.length){
-    const { data: sets } = await sb.from('session_sets').select('*').in('session_id',ids);
-    allSets = sets || [];
-  } else { allSets = []; }
+  try {
+    const { data: sess } = await sb.from('workout_sessions').select('*').order('date',{ascending:false}).limit(60);
+    sessions = sess || [];
+    const ids = sessions.map(s=>s.id);
+    if(ids.length){
+      const { data: sets } = await sb.from('session_sets').select('*').in('session_id',ids);
+      allSets = sets || [];
+    } else { allSets = []; }
+  } catch(e){ sessions = []; allSets = []; }
 }
 
 async function loadMeso(){
-  const { data } = await sb.from('mesocycles').select('*').order('created_at',{ascending:false}).limit(1).maybeSingle();
-  meso = data;
+  try {
+    const { data } = await sb.from('mesocycles').select('*').order('created_at',{ascending:false}).limit(1).maybeSingle();
+    meso = data;
+  } catch(e){ meso = null; }
 }
 
 async function loadStalls(){
-  const { data } = await sb.from('stall_tracking').select('*');
-  stalls = {};
-  (data||[]).forEach(s=>{
-    if(s.exercise_name) stalls[s.exercise_name] = s.sessions_stalled;
-  });
+  try {
+    const { data } = await sb.from('stall_tracking').select('*');
+    stalls = {};
+    (data||[]).forEach(s=>{
+      if(s.exercise_name) stalls[s.exercise_name] = s.sessions_stalled;
+    });
+  } catch(e){ stalls = {}; }
 }
 
 async function loadRecovery(){
@@ -1614,18 +1620,20 @@ window.applyIntervention = async function(exName, type){
 //  MARK WORKOUT DONE
 // ════════════════════════════════════════════════════════════
 $('markDoneBtn').addEventListener('click', async ()=>{
-  let sess = sessions.find(s=>s.date===today());
-  if(!sess){
-    const { data } = await sb.from('workout_sessions').insert({ date:today(), completed:true }).select().single();
-    sess = data;
-  } else {
-    await sb.from('workout_sessions').update({ completed:true }).eq('id',sess.id);
-    // Recalculate ACWR after session change
-    calculateACWR(sb).catch(() => {});
-    sess.completed = true;
-  }
-  $('markDoneBtn').textContent = '✓ Workout Logged!';
-  $('markDoneBtn').className = 'btn btn-done btn-full mt12';
+  try {
+    let sess = sessions.find(s=>s.date===today());
+    if(!sess){
+      const { data } = await sb.from('workout_sessions').insert({ date:today(), completed:true }).select().single();
+      sess = data;
+    } else {
+      await sb.from('workout_sessions').update({ completed:true }).eq('id',sess.id);
+      // Recalculate ACWR after session change
+      calculateACWR(sb).catch(() => {});
+      sess.completed = true;
+    }
+    $('markDoneBtn').textContent = '✓ Workout Logged!';
+    $('markDoneBtn').className = 'btn btn-done btn-full mt12';
+  } catch(e){ alert('Failed to mark workout done: ' + (e.message||e)); }
 });
 
 // ════════════════════════════════════════════════════════════
@@ -1642,16 +1650,18 @@ $('mesoNewBtn').addEventListener('click', ()=>{
 });
 $('mesoModalClose').addEventListener('click', ()=>$('mesoModal').classList.remove('show'));
 $('mesoSaveBtn').addEventListener('click', async ()=>{
-  const payload = {
-    start_date:   $('mesoStart').value,
-    length_weeks: 4,
-    current_week: 1,
-    phase:        'accumulation'
-  };
-  if(meso){ await sb.from('mesocycles').update(payload).eq('id',meso.id); }
-  else     { await sb.from('mesocycles').insert(payload); }
-  await loadMeso(); renderMeso();
-  $('mesoModal').classList.remove('show');
+  try {
+    const payload = {
+      start_date:   $('mesoStart').value,
+      length_weeks: 4,
+      current_week: 1,
+      phase:        'accumulation'
+    };
+    if(meso){ await sb.from('mesocycles').update(payload).eq('id',meso.id); }
+    else     { await sb.from('mesocycles').insert(payload); }
+    await loadMeso(); renderMeso();
+    $('mesoModal').classList.remove('show');
+  } catch(e){ alert('Save failed: ' + (e.message||e)); }
 });
 
 // ════════════════════════════════════════════════════════════
@@ -1763,8 +1773,10 @@ function renderAll(){
 //  INIT
 // ════════════════════════════════════════════════════════════
 (async function init(){
-  await loadModePreference();
-  await loadAll();
+  try {
+    await loadModePreference();
+    await loadAll();
+  } catch(e){ console.error('Gym init error:', e); }
   renderAll();
   // Calculate ACWR on page load
   calculateACWR(sb).catch(() => {});

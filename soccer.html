@@ -744,24 +744,33 @@ let phaseOverrideDays = 0;
 //  DATA LOADING
 // ==================================================
 async function loadAll(){
-  await Promise.all([loadTests(), loadRSASessions(), loadSessions(), loadPlan(), loadRecovery(), loadLatestWeight(), loadGymWorkouts(), loadPhaseOverride()]);
+  // Use allSettled so one failing table doesn't block everything
+  await Promise.allSettled([loadTests(), loadRSASessions(), loadSessions(), loadPlan(), loadRecovery(), loadLatestWeight(), loadGymWorkouts(), loadPhaseOverride()]);
 }
 
 async function loadTests(){
-  const { data } = await sb.from('athletic_tests').select('*').order('date',{ascending:false}).limit(200);
-  athleticTests = data || [];
+  try {
+    const { data } = await sb.from('athletic_tests').select('*').order('date',{ascending:false}).limit(200);
+    athleticTests = data || [];
+  } catch(e){ athleticTests = []; }
 }
 async function loadRSASessions(){
-  const { data } = await sb.from('sprint_decay_sessions').select('*').order('date',{ascending:false}).limit(20);
-  rsaSessions = data || [];
+  try {
+    const { data } = await sb.from('sprint_decay_sessions').select('*').order('date',{ascending:false}).limit(20);
+    rsaSessions = data || [];
+  } catch(e){ rsaSessions = []; }
 }
 async function loadSessions(){
-  const { data } = await sb.from('soccer_sessions').select('*').order('date',{ascending:false}).limit(100);
-  soccerSessions = data || [];
+  try {
+    const { data } = await sb.from('soccer_sessions').select('*').order('date',{ascending:false}).limit(100);
+    soccerSessions = data || [];
+  } catch(e){ soccerSessions = []; }
 }
 async function loadPlan(){
-  const { data } = await sb.from('offseason_plan').select('*').order('last_updated',{ascending:false}).limit(1).maybeSingle();
-  if(data) planConfig = data;
+  try {
+    const { data } = await sb.from('offseason_plan').select('*').order('last_updated',{ascending:false}).limit(1).maybeSingle();
+    if(data) planConfig = data;
+  } catch(e){ planConfig = null; }
 }
 async function loadRecovery(){
   try {
@@ -1951,21 +1960,25 @@ document.querySelectorAll('.modal-bg').forEach(bg => {
 //  INIT
 // ==================================================
 (async function init(){
-  await loadAll();
+  try {
+    await loadAll();
+  } catch(e){ console.error('Soccer init error:', e); }
   renderTesting();
   renderLibrary();
   await renderInsights();
 
   // If no plan config, seed with defaults
   if(!planConfig){
-    const { data: newPlan } = await sb.from('offseason_plan').insert({
-      start_date: OFFSEASON_PLAN.startDate,
-      end_date: PRESEASON_START,
-      current_phase: 'foundation',
-      phase_week: 1,
-      mode: 'offseason'
-    }).select().single();
-    planConfig = newPlan || { start_date:OFFSEASON_PLAN.startDate, mode:'offseason', id:0 };
+    try {
+      const { data: newPlan } = await sb.from('offseason_plan').insert({
+        start_date: OFFSEASON_PLAN.startDate,
+        end_date: PRESEASON_START,
+        current_phase: 'foundation',
+        phase_week: 1,
+        mode: 'offseason'
+      }).select().single();
+      planConfig = newPlan || { start_date:OFFSEASON_PLAN.startDate, mode:'offseason', id:0 };
+    } catch(e){ planConfig = { start_date:OFFSEASON_PLAN.startDate, mode:'offseason', id:0 }; }
   }
   renderPlan();
 
