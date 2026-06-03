@@ -2778,7 +2778,6 @@
       let nutScore = usePrecomputed && jc.nutrition !== null ? jc.nutrition : null;
       let nutMissing = !nutScore && d.checkins.length === 0;
       if (!nutScore && !nutMissing) {
-      if (!nutMissing) {
         const checkinsWithProtein = d.checkins.filter(c => c.protein_grams > 0);
         if (checkinsWithProtein.length > 0) {
           const proteinTarget = 140;
@@ -2792,7 +2791,6 @@
       let loadScore = usePrecomputed && jc.load !== null ? jc.load : null;
       let loadMissing = !loadScore && (d.acwr === null || d.acwr === undefined || d.acwr === '');
       if (!loadScore && !loadMissing) {
-      if (!loadMissing) {
         const acwrVal = parseFloat(d.acwr);
         if (!isNaN(acwrVal) && acwrVal > 0) {
           // Score decreases as ACWR moves away from 1.0 in either direction
@@ -2807,7 +2805,6 @@
       let athScore = usePrecomputed && jc.athletic !== null ? jc.athletic : null;
       let athMissing = !athScore && d.tests.length < 2;
       if (!athScore && !athMissing) {
-      if (!athMissing) {
         let improving = 0, declining = 0;
         const lowerBetter = ['10m_sprint','30m_sprint','40yd_dash','505_shuttle','t_test','ladder_10yd'];
         const higherBetter = ['vertical_jump','broad_jump','yoyo_level'];
