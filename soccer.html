@@ -1390,6 +1390,13 @@ $('saveSessionBtn').addEventListener('click', async () => {
     renderSessions();
     // Update app_state for cross-tab
     await updateAppState();
+    // Write last_soccer_session to app_state for cross-tab awareness
+    var hasSprintWork = type === 'speed' || type === 'match' || (type === 'group' && subType === 'Full Training');
+    await sb.from('app_state').upsert({
+      key: 'last_soccer_session',
+      data: { date: today(), sessionType: type, hasSprintWork: hasSprintWork, durationMinutes: duration, completedAt: new Date().toISOString(), intensityRating: intensity },
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'key' }).catch(function() {});
     // Recalculate ACWR and write to app_state
     calculateACWR(sb).catch(() => {});
     $('#sessionModal').classList.remove('show');
@@ -1489,7 +1496,19 @@ function getWeeklyTemplate(phase){
   return templates[pName] || 'Follow your training plan.';
 }
 
-function getDailyRecommendation(phase){
+function getDailyRecommendation(phase, lastGym, recState){
+  // Cross-tab awareness: use gym and recommendation state
+  var hoursSinceGym = lastGym ? (Date.now() - new Date(lastGym.completedAt).getTime()) / 36e5 : 999;
+  var isLowerBodyDay = lastGym?.isLowerBody === true;
+  var gymRecent = hoursSinceGym < 20;
+  var noHeavyLower = isLowerBodyDay && gymRecent;
+  var reducedVolume = recState?.restrictions?.some(function(r) { return r.indexOf('ACWR') >= 0; }) ?? false;
+  var recoveryToday = null;
+  // Try to get recovery from recState or app_state
+  try {
+    recoveryToday = recoveryScore;
+  } catch(e) {}
+
   const dow = new Date().getDay(); // 0=Sun
   const yesterday = new Date(today()+'T00:00:00'); yesterday.setDate(yesterday.getDate()-1);
   const yestStr = toLocalDateStr(yesterday);
@@ -1502,15 +1521,32 @@ function getDailyRecommendation(phase){
   // Prevent same-type gym on consecutive days
   const sameGymTypeYesterday = yesterdayGymCompleted && yesterdayGymType && todayGymCompleted && todayGymType && todayGymType === yesterdayGymType;
 
-  // Recovery check
-  if(recoveryScore !== null && recoveryScore < 55){
+  // Recovery check — prefer global recoveryScore loaded by loadRecovery()
+  var effectiveRecovery = recoveryScore;
+
+  // Rule 1: Recovery < 55 = Active Recovery Only
+  if(effectiveRecovery !== null && effectiveRecovery < 55){
     return {
-      type:'Active Recovery Only',
-      focus:'Light walk or foam rolling',
-      duration:'20–30 min',
-      equipment:'None',
-      why:'Recovery score is '+recoveryScore+' — below 55. Your body needs rest more than training right now.'
+      type:'Active Recovery — Light Technical Only',
+      focus:'Juggling & first touch only, no pressure or fatigue element',
+      duration:'20 min max',
+      equipment:'Ball',
+      why:'Recovery score is '+effectiveRecovery+' — below 55. Your body needs rest more than training right now.'
     };
+  }
+
+  // Rule 2: noHeavyLower + sprint work → downgrade
+  if (noHeavyLower) {
+    var hrs = Math.round(hoursSinceGym);
+    if (dow === 2 || dow === 4 || dow === 6) {
+      return {
+        type: 'Technical — Passing and Receiving',
+        focus: 'Light wall passing, first touch, juggling',
+        duration: '30 min',
+        equipment: 'Ball, wall',
+        why: 'Lower body gym session ' + hrs + 'hrs ago — sprint work moved to tomorrow'
+      };
+    }
   }
 
   // Yesterday match?
@@ -1643,10 +1679,35 @@ async function renderPlan(){
     $('#switchToPreseason').classList.remove('hidden');
   }
 
+  // Cross-tab: read gym app_state before computing recommendation
+  var lastGym = null, recState = null;
+  try {
+    var _a = await Promise.all([
+      sb.from('app_state').select('data').eq('key','last_gym_session').single(),
+      sb.from('app_state').select('data').eq('key','recommended_session_today').single()
+    ]);
+    lastGym = _a[0]?.data?.data || null;
+    recState = _a[1]?.data?.data || null;
+  } catch(e) {}
+
   // Daily recommendation
-  const rec = getDailyRecommendation(phase);
-  $('#dailyRecBody').innerHTML = `<strong>${rec.type}</strong> — ${rec.focus}<br><span style="color:var(--text-3);font-size:12px">Duration: ${rec.duration} · Equipment: ${rec.equipment}</span>`;
-  $('#dailyRecWhy').textContent = rec.why;
+  const rec = getDailyRecommendation(phase, lastGym, recState);
+  
+  // Rule 3: reducedVolume → cut duration 20%
+  var effectiveDuration = rec.duration;
+  var acwrNote = '';
+  if (reducedVolume && rec.duration !== '—') {
+    var durMatch = rec.duration.match(/(\d+)/);
+    if (durMatch) {
+      var origMin = parseInt(durMatch[1]);
+      var cutMin = Math.round(origMin * 0.8);
+      effectiveDuration = rec.duration.replace(durMatch[1], String(cutMin));
+      acwrNote = ' · ACWR elevated — session shortened to ' + cutMin + ' min';
+    }
+  }
+  
+  $('#dailyRecBody').innerHTML = `<strong>${rec.type}</strong> — ${rec.focus}<br><span style="color:var(--text-3);font-size:12px">Duration: ${effectiveDuration} · Equipment: ${rec.equipment}</span>`;
+  $('#dailyRecWhy').textContent = rec.why + acwrNote;
 
   // Weekly template
   $('#weeklyTemplate').innerHTML = getWeeklyTemplate(phase);

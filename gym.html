@@ -162,6 +162,7 @@ label.field-label{display:block;font-size:11px;font-weight:700;letter-spacing:.0
   <!-- ═══ RESTRICTION BANNERS ═══ -->
   <div class="restrict-banner red hidden" id="bannerHeavy">⚠️ Heavy lower flagged — reduce main lift weight 15%, skip box jumps</div>
   <div class="restrict-banner orange hidden" id="bannerACWR">⚠️ High training load — drop one accessory exercise per group</div>
+  <div class="restrict-banner orange hidden" id="bannerSoccer"></div>
 
   <!-- ═══ SECTION 2: SPLIT SELECTOR ═══ -->
   <div class="section-title">Today's Split</div>
@@ -383,8 +384,9 @@ async function loadBodyweight(){
 async function loadWeightLogs(){try{const{data}=await sb.from('weight_logs').select('*').order('date',{ascending:false}).limit(90);weightLogs=(data||[]).reverse();}catch(e){weightLogs=[];}}
 
 // ════════════════════════════════════════════════════════════
-//  SPLIT ROTATION LOGIC
+//  SPLIT ROTATION LOGIC (with soccer cross-tab awareness)
 // ════════════════════════════════════════════════════════════
+let soccerBannerMsg = null;
 function pickDefaultSplit(){
   const splitNames=Object.keys(SPLITS);
   const lastDone={};
@@ -399,7 +401,33 @@ function pickDefaultSplit(){
   splitNames.forEach(n=>{if(lastDone[n]>bestIdx){best=n;bestIdx=lastDone[n];}});
   // Override with recommendation if provided
   if(recommendation?.gymSplit&&SPLITS[recommendation.gymSplit])return recommendation.gymSplit;
+
+  // Read last_soccer_session for cross-tab awareness (async, cannot change sync return)
+  // The init function will call applySoccerAwareness() after pickDefaultSplit()
+
   return best;
+}
+
+async function applySoccerAwareness(){
+  try {
+    var res = await sb.from('app_state').select('data').eq('key','last_soccer_session').single();
+    var lastSoccer = res?.data?.data || null;
+    if (lastSoccer) {
+      var hoursSinceSoccer = (Date.now() - new Date(lastSoccer.completedAt).getTime()) / 36e5;
+      var soccerHadSprints = lastSoccer.hasSprintWork === true;
+      if (soccerHadSprints && hoursSinceSoccer < 16) {
+        selectedSplit = 'Upper Hypertrophy';
+        soccerBannerMsg = 'Speed/match session ' + Math.round(hoursSinceSoccer) + 'hrs ago — upper body recommended today';
+      } else if (hoursSinceSoccer < 8) {
+        soccerBannerMsg = 'Recent soccer session — consider rest or upper body only';
+        if (selectedSplit.includes('Lower')) selectedSplit = 'Upper Power & Full Body';
+      }
+    }
+  } catch(e) {}
+  if (soccerBannerMsg) renderSoccerBanner();
+  // Re-highlight the selected split pill
+  document.querySelectorAll('.split-pill').forEach(function(b){ b.classList.toggle('active', b.dataset.split === selectedSplit); });
+  renderExercises();
 }
 
 // ════════════════════════════════════════════════════════════
@@ -443,6 +471,12 @@ function renderBanners(){
   const r=recommendation;
   $('bannerHeavy').classList.toggle('hidden',!r?.restrictions?.some(s=>s.includes('No heavy lower')));
   $('bannerACWR').classList.toggle('hidden',!r?.restrictions?.some(s=>s.includes('ACWR')));
+}
+
+function renderSoccerBanner(){
+  if(!soccerBannerMsg){$('bannerSoccer').classList.add('hidden');return;}
+  $('bannerSoccer').textContent='⚠️ '+soccerBannerMsg;
+  $('bannerSoccer').classList.remove('hidden');
 }
 
 // ════════════════════════════════════════════════════════════
@@ -713,6 +747,14 @@ $('markDoneBtn').addEventListener('click',async()=>{
     await loadSessions();
     const todaySets=allSets.filter(s=>{const ss=sessions.find(ss2=>ss2.id===s.session_id);return ss&&ss.date===today();});
     const totalSetsDone=todaySets.length;
+
+    // Write last_gym_session to app_state for cross-tab awareness
+    const isLowerBody = selectedSplit.includes('Lower');
+    await sb.from('app_state').upsert({
+      key: 'last_gym_session',
+      data: { date: today(), split: selectedSplit, isLowerBody: isLowerBody, completedAt: new Date().toISOString(), phase: phaseName, setsCompleted: totalSetsDone },
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'key' }).catch(() => {});
     $('completionCard').classList.add('show');
     $('completionNum').textContent=totalSetsDone+' sets';
     const sessionCount=phaseConfig?.sessionCount||4;const daysBetween=Math.round(7/sessionCount);$('completionText').textContent=`Session logged. ${totalSetsDone} sets completed. Next session: ${selectedSplit} in approximately ${daysBetween} day${daysBetween!==1?'s':''}.`;
@@ -738,6 +780,8 @@ function renderAll(){renderPhaseHeader();renderBanners();renderExercises();}
 (async function init(){
   await Promise.all([loadPhaseData(),loadSessions(),loadBodyweight()]);
   selectedSplit=pickDefaultSplit();
+  // Apply soccer cross-tab awareness BEFORE initial render (may override selectedSplit)
+  await applySoccerAwareness();
   // Highlight the selected split pill
   document.querySelectorAll('.split-pill').forEach(b=>b.classList.toggle('active',b.dataset.split===selectedSplit));
   renderAll();

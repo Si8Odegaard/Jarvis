@@ -1557,10 +1557,22 @@
 
         // ── 5. Session Recommendation Engine ──
         const yesterday = briefingYesterday();
-        let hasRecentLowerGym = false;
-        for (const w of gymSessions) {
-          if (w.date === yesterday && w.completed) hasRecentLowerGym = true;
-        }
+
+        // Read last_gym_session and last_soccer_session from app_state for timestamp-based check
+        let lastGym = null, lastSoccer = null;
+        try {
+          const _a = await Promise.all([
+            sb.from('app_state').select('data').eq('key','last_gym_session').maybeSingle(),
+            sb.from('app_state').select('data').eq('key','last_soccer_session').maybeSingle()
+          ]);
+          lastGym = _a[0]?.data?.data || null;
+          lastSoccer = _a[1]?.data?.data || null;
+        } catch(_) {}
+
+        const hoursSinceGym = lastGym?.completedAt
+          ? (Date.now() - new Date(lastGym.completedAt).getTime()) / 36e5
+          : 999;
+        const hasRecentLowerGym = hoursSinceGym < 20 && lastGym?.isLowerBody === true;
 
         const { data: matchData } = await sb.from('app_state').select('data').eq('key','match_in_48_hours').maybeSingle();
         const matchIn48 = matchData?.data?.value === true || matchData?.data === true;
@@ -1601,7 +1613,7 @@
           }
         }
 
-        if (hasRecentLowerGym) rec.restrictions.push('No heavy lower — gym session in last 20 hours');
+        if (hasRecentLowerGym) rec.restrictions.push('No heavy lower — lower body gym session ' + Math.round(hoursSinceGym) + 'hrs ago');
         if (acwr > 1.3 && acwr <= 1.5) rec.restrictions.push('ACWR '+acwr+' — reduce volume 20%');
 
         await sb.from('app_state').upsert({
