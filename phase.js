@@ -17,48 +17,62 @@ const PHASE_CONFIG = {
 
 const GYM_PHASE_CONFIG = {
   'Foundation': {
-    goal: 'Building the mass base that Power-Speed will convert to explosiveness',
-    compoundReps: [8, 12], accessoryReps: [10, 15],
-    compoundSets: 4, accessorySets: 3,
-    sessionsPerWeek: 4, volumeMultiplier: 1.0
+    phaseGoal: 'Building the mass base that Power-Speed will convert to explosiveness',
+    repScheme: { min: 8, max: 12 },
+    accessoryRepScheme: { min: 10, max: 15 },
+    sets: 3, accessorySets: 3,
+    intensityPct: { min: 65, max: 75 },
+    plyo_pairings: [],
+    sessionCount: 4
   },
   'Strength-Speed': {
-    goal: 'Converting mass to relative strength — heavier reps, more sets',
-    compoundReps: [4, 6], accessoryReps: [8, 10],
-    compoundSets: 5, accessorySets: 3,
-    sessionsPerWeek: 4, volumeMultiplier: 0.9
+    phaseGoal: 'Converting mass to relative strength — heavier reps, more sets',
+    repScheme: { min: 4, max: 6 },
+    accessoryRepScheme: { min: 8, max: 10 },
+    sets: 4, accessorySets: 3,
+    intensityPct: { min: 80, max: 87 },
+    plyo_pairings: [],
+    sessionCount: 4
   },
   'Power-Speed': {
-    goal: 'Expressing strength as explosive power — max intent on every rep',
-    compoundReps: [3, 5], accessoryReps: [6, 8],
-    compoundSets: 4, accessorySets: 3,
-    sessionsPerWeek: 3, volumeMultiplier: 0.75,
-    plyoPairings: {
-      'Smith Machine Back Squat': { name: 'Broad Jump', sets: 5, reps: 3, note: 'Max intent after each squat set' },
-      'DB Bulgarian Split Squat': { name: 'Single-Leg Bound', sets: 4, reps: 4, note: 'Each leg, max distance' },
-      'Smith Machine Bench Press': { name: 'Plyo Push-Up', sets: 4, reps: 6, note: 'Clap push-ups if able' }
-    }
+    phaseGoal: 'Expressing strength as explosive power — max intent on every rep',
+    repScheme: { min: 3, max: 5 },
+    accessoryRepScheme: { min: 8, max: 10 },
+    sets: 4, accessorySets: 3,
+    intensityPct: { min: 85, max: 92 },
+    plyo_pairings: [
+      { lift: 'Smith Squat', plyo: 'Broad Jump', reps: 3 },
+      { lift: 'Bulgarian Split Squat', plyo: 'Single-Leg Bound', reps: 3 },
+      { lift: 'Smith Bench', plyo: 'Plyo Push-Up', reps: 5 }
+    ],
+    sessionCount: 3
   },
   'Taper': {
-    goal: 'Neural freshness — maintain adaptations, reduce fatigue',
-    compoundReps: [3, 5], accessoryReps: [6, 8],
-    compoundSets: 3, accessorySets: 2,
-    sessionsPerWeek: 2, volumeMultiplier: 0.6,
-    weightMultiplier: 0.8
+    phaseGoal: 'Neural freshness — maintain adaptations, reduce fatigue',
+    repScheme: { min: 3, max: 5 },
+    accessoryRepScheme: { min: 6, max: 8 },
+    sets: 2, accessorySets: 2,
+    intensityPct: { min: 75, max: 80 },
+    plyo_pairings: [],
+    sessionCount: 2
   },
   'Pre-Season': {
-    goal: 'Maintenance mode — recovery and freshness over progression',
-    compoundReps: [3, 5], accessoryReps: [6, 8],
-    compoundSets: 3, accessorySets: 2,
-    sessionsPerWeek: 2, volumeMultiplier: 0.5,
-    weightMultiplier: 0.875
+    phaseGoal: 'Maintenance mode — recovery and freshness over progression',
+    repScheme: { min: 4, max: 6 },
+    accessoryRepScheme: { min: 8, max: 10 },
+    sets: 2, accessorySets: 2,
+    intensityPct: { min: 75, max: 80 },
+    plyo_pairings: [],
+    sessionCount: 2
   },
   'In-Season': {
-    goal: 'Maintenance — protect freshness for matches',
-    compoundReps: [3, 5], accessoryReps: [6, 8],
-    compoundSets: 3, accessorySets: 2,
-    sessionsPerWeek: 2, volumeMultiplier: 0.5,
-    weightMultiplier: 0.875
+    phaseGoal: 'Maintenance — protect freshness for matches',
+    repScheme: { min: 4, max: 6 },
+    accessoryRepScheme: { min: 8, max: 10 },
+    sets: 2, accessorySets: 2,
+    intensityPct: { min: 75, max: 80 },
+    plyo_pairings: [],
+    sessionCount: 2
   }
 };
 
