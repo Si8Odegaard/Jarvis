@@ -1032,6 +1032,83 @@
     }
 
     /* Jarvis floating chat button */
+
+    /* ── Today's Restrictions Card ── */
+    .restrictions-card {
+      background: rgba(242,192,99,0.06);
+      border: 1px solid rgba(242,192,99,0.22);
+      border-radius: 14px; padding: 14px 18px;
+      margin-bottom: 14px; display: none;
+      backdrop-filter: blur(24px) saturate(1.2);
+      -webkit-backdrop-filter: blur(24px) saturate(1.2);
+    }
+    .restrictions-card.visible { display: block; }
+    .restrictions-title {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--warning);
+      margin-bottom: 10px;
+    }
+    .restrictions-chips {
+      display: flex; flex-wrap: wrap; gap: 6px;
+    }
+    .restriction-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 10px; border-radius: 99px;
+      background: rgba(242,192,99,0.12);
+      border: 1px solid rgba(242,192,99,0.28);
+      color: var(--warning); font-size: 11px; font-weight: 600;
+      white-space: nowrap;
+    }
+
+    /* ── D1 Gap Summary ── */
+    .d1-gap-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px; padding: 14px 18px;
+      margin-bottom: 14px; display: none;
+      backdrop-filter: blur(24px) saturate(1.2);
+      -webkit-backdrop-filter: blur(24px) saturate(1.2);
+    }
+    .d1-gap-card.visible { display: block; }
+    .d1-gap-title {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--text-tertiary);
+      margin-bottom: 12px;
+    }
+    .d1-gap-row {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    }
+    .d1-gap-metric {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 10px; border-radius: 8px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+      font-size: 10px; font-family: var(--mono);
+    }
+    .d1-gap-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+    .d1-gap-dot.on-track { background: var(--success); box-shadow: 0 0 6px rgba(107,227,164,0.5); }
+    .d1-gap-dot.off-track { background: var(--danger); box-shadow: 0 0 6px rgba(255,107,107,0.5); }
+    .d1-gap-metric-name { color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; }
+    .d1-gap-metric-val { color: var(--text-primary); font-weight: 700; }
+    .d1-gap-metric-target { color: var(--text-tertiary); font-size: 9px; }
+
+    /* ── Session Recommendation Pill ── */
+    .session-rec-pill {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 14px; border-radius: 99px;
+      background: rgba(107,227,164,0.08);
+      border: 1px solid rgba(107,227,164,0.22);
+      color: var(--success); font-size: 12px; font-weight: 700;
+      margin-top: 8px;
+    }
+
+    /* ── Brief Headline ── */
+    .brief-headline {
+      font-size: 15px; font-weight: 700; color: var(--text-primary);
+      margin-bottom: 8px; line-height: 1.4;
+    }
   </style>
 </head>
 <body class="has-topbar has-dash-tabs dashboard-page">
@@ -1061,6 +1138,18 @@
           <div class="acwr-tooltip" id="acwrTooltip">ACWR compares this week's training load to your 4-week average. 0.8–1.3: optimal. <1.3: approaching danger. >1.5: injury risk.</div>
         </div>
       </div>
+    </div>
+
+    <!-- ═══ TODAY'S RESTRICTIONS ═══ -->
+    <div class="restrictions-card" id="restrictionsCard">
+      <div class="restrictions-title">⚠️ Today's Restrictions</div>
+      <div class="restrictions-chips" id="restrictionsChips"></div>
+    </div>
+
+    <!-- ═══ D1 GAP SUMMARY ═══ -->
+    <div class="d1-gap-card" id="d1GapCard">
+      <div class="d1-gap-title">D1 Readiness</div>
+      <div class="d1-gap-row" id="d1GapRow"></div>
     </div>
 
     <div class="jarvis-section" id="jarvisSection">
@@ -1350,6 +1439,248 @@
     const START_WEIGHT = 135;
     // Phase authority: all phase logic lives in phase.js
     // Use window.getCurrentPhase(sb) for phase data
+
+    /* ── Master Computation Hub ── */
+    async function computeDailyState(sb) {
+      if (!sb) return null;
+      const today = briefingToday();
+      const weekAgo = new Date(today+'T00:00:00'); weekAgo.setDate(weekAgo.getDate()-6);
+      const weekStart = toLocalDateStr(weekAgo);
+      const last7 = new Date(today+'T00:00:00'); last7.setDate(last7.getDate()-6);
+      const last7Str = toLocalDateStr(last7);
+      const last28 = new Date(today+'T00:00:00'); last28.setDate(last28.getDate()-27);
+      const last28Str = toLocalDateStr(last28);
+      const intensityMap = { 'Light': 0.5, 'Medium': 1.0, 'Hard': 1.5 };
+      const sorenessMap = { none: 100, mild: 75, moderate: 50, severe: 25 };
+
+      try {
+        // ── 1. Phase (phase.js writes to app_state, just call it) ──
+        const phaseData = await window.getCurrentPhase(sb);
+
+        // ── 2. Recovery Score from daily_checkins (last 7 days) ──
+        const { data: checkins } = await sb.from('daily_checkins').select('*').order('date',{ascending:false}).limit(7);
+        let recoveryToday = null, recovery7DayAvg = null;
+        if (checkins && checkins.length > 0) {
+          const todayCheckin = checkins.find(c => c.date === today);
+          if (todayCheckin && todayCheckin.sleep_hours != null) {
+            const sleepScore = Math.min(100, (todayCheckin.sleep_hours / 8) * 100);
+            const qualityScore = todayCheckin.sleep_quality ? (todayCheckin.sleep_quality / 5) * 100 : 60;
+            const energyScore = todayCheckin.energy_score ? todayCheckin.energy_score * 10 : 50;
+            const sorenessScore = sorenessMap[todayCheckin.soreness] || 50;
+            recoveryToday = Math.round(sleepScore * 0.40 + qualityScore * 0.20 + energyScore * 0.25 + sorenessScore * 0.15);
+          }
+          const recScores = [];
+          for (const c of checkins) {
+            if (c.sleep_hours == null) continue;
+            const ss = Math.min(100, (c.sleep_hours / 8) * 100);
+            const qs = c.sleep_quality ? (c.sleep_quality / 5) * 100 : 60;
+            const es = c.energy_score ? c.energy_score * 10 : 50;
+            const sr = sorenessMap[c.soreness] || 50;
+            recScores.push(Math.round(ss * 0.40 + qs * 0.20 + es * 0.25 + sr * 0.15));
+          }
+          if (recScores.length > 0) {
+            recovery7DayAvg = Math.round(recScores.reduce((s,v) => s+v, 0) / recScores.length);
+          }
+        }
+
+        // Write recovery scores to app_state
+        await sb.from('app_state').upsert([
+          { key:'recovery_score_today', data:{ score: recoveryToday }, updated_at: new Date().toISOString() },
+          { key:'recovery_score_7day_avg', data:{ score: recovery7DayAvg }, updated_at: new Date().toISOString() },
+          { key:'nutrition', data:{ recovery_score_today: recoveryToday, recovery_score_7day_avg: recovery7DayAvg }, updated_at: new Date().toISOString() }
+        ], { onConflict: 'key' }).catch(()=>{});
+
+        // ── 3. Training Load / ACWR ──
+        const [{ data: sSess }, { data: wSess }] = await Promise.all([
+          sb.from('soccer_sessions').select('*').gte('date',last28Str).order('date',{ascending:false}),
+          sb.from('workout_sessions').select('*').gte('date',last28Str).order('date',{ascending:false})
+        ]);
+
+        let acuteLoad = 0, chronicLoad = 0;
+        const sessions = sSess || [];
+        const gymSessions = wSess || [];
+
+        for (const s of sessions) {
+          const dur = s.duration_minutes || 45;
+          const intensity = intensityMap[s.intensity] || 1.0;
+          const load = dur * intensity;
+          if (s.date >= last7Str) acuteLoad += load;
+          chronicLoad += load;
+        }
+        for (const w of gymSessions) {
+          if (!w.completed) continue;
+          const load = 60;
+          if (w.date >= last7Str) acuteLoad += load;
+          chronicLoad += load;
+        }
+
+        chronicLoad = Math.max(1, chronicLoad / 4);
+        const acwr = Math.round((acuteLoad / chronicLoad) * 100) / 100;
+        let acwrStatus = 'optimal';
+        if (acwr < 0.8) acwrStatus = 'undertraining';
+        else if (acwr <= 1.3) acwrStatus = 'optimal';
+        else if (acwr <= 1.5) acwrStatus = 'caution';
+        else acwrStatus = 'danger';
+
+        await sb.from('app_state').upsert({
+          key:'acwr', data:{ value:acwr, status:acwrStatus, acute:Math.round(acuteLoad), chronic:Math.round(chronicLoad) }, updated_at: new Date().toISOString()
+        }, { onConflict:'key' }).catch(()=>{});
+
+        // ── 4. Weight + Gain Rate ──
+        const { data: weights } = await sb.from('weight_logs').select('*').order('date',{ascending:false}).limit(14);
+        let latestWeight = null, weeklyGainRate = null;
+        if (weights && weights.length > 0) {
+          latestWeight = parseFloat(weights[0].weight);
+          const twoWeeksAgoStr = toLocalDateStr(new Date(today+'T00:00:00'));
+          const twoWeeksBack = new Date(today+'T00:00:00'); twoWeeksBack.setDate(twoWeeksBack.getDate()-13);
+          const t2Str = toLocalDateStr(twoWeeksBack);
+          const thisWeek = weights.filter(w => w.date >= weekStart);
+          const lastWeek = weights.filter(w => w.date >= t2Str && w.date < weekStart);
+          const aw = thisWeek.length ? thisWeek.reduce((s,w)=>s+parseFloat(w.weight),0)/thisWeek.length : null;
+          const lw = lastWeek.length ? lastWeek.reduce((s,w)=>s+parseFloat(w.weight),0)/lastWeek.length : null;
+          if (aw && lw) weeklyGainRate = Math.round((aw - lw)*10)/10;
+        }
+
+        await sb.from('app_state').upsert({
+          key:'latest_weight', data:{ weight:latestWeight, gain_rate:weeklyGainRate }, updated_at: new Date().toISOString()
+        }, { onConflict:'key' }).catch(()=>{});
+
+        // ── 5. Session Recommendation Engine ──
+        const yesterday = briefingYesterday();
+        let hasRecentLowerGym = false;
+        for (const w of gymSessions) {
+          if (w.date === yesterday && w.completed) hasRecentLowerGym = true;
+        }
+
+        const { data: matchData } = await sb.from('app_state').select('data').eq('key','match_in_48_hours').maybeSingle();
+        const matchIn48 = matchData?.data?.value === true || matchData?.data === true;
+
+        let rec = { primarySession:'Rest', gymSplit:null, secondarySession:null, reasoning:'', restrictions:[] };
+        const phaseName = phaseData?.phase || 'Foundation';
+        const recScore = recoveryToday;
+
+        if (matchIn48) {
+          rec = { primarySession:'Technical', gymSplit:null, secondarySession:null,
+            reasoning:'Match in 48 hours — carb focus + light technical only',
+            restrictions:['No heavy gym — match prep','Carb load: 3-4g per lb bodyweight'] };
+        } else if (recScore !== null && recScore < 40) {
+          rec = { primarySession:'Rest', gymSplit:null, secondarySession:null,
+            reasoning:'Recovery '+recScore+'/100 — full rest day for adaptation',
+            restrictions:['No training — recovery priority'] };
+        } else if (recScore !== null && recScore < 55) {
+          rec = { primarySession:'Active Recovery', gymSplit:null, secondarySession:null,
+            reasoning:'Recovery '+recScore+'/100 — light mobility only',
+            restrictions:['No intensity — active recovery only'] };
+        } else if (acwr > 1.5) {
+          rec = { primarySession:'Active Recovery', gymSplit:null, secondarySession:null,
+            reasoning:'ACWR '+acwr+' — injury risk, override to active recovery',
+            restrictions:['ACWR > 1.5 — no training today'] };
+        } else if (recScore !== null && recScore < 70) {
+          rec = { primarySession:'Technical', gymSplit:null, secondarySession:null,
+            reasoning:'Recovery '+recScore+'/100 — reduced volume, technical focus',
+            restrictions: acwr > 1.3 ? ['ACWR elevated — reduce volume 20%'] : [] };
+        } else {
+          if (phaseName === 'Power-Speed' || phaseName === 'Strength-Speed') {
+            rec = { primarySession:'Gym', gymSplit:'Lower Power', secondarySession:'Speed+Agility',
+              reasoning:'Recovery '+recScore+'/100, '+phaseName+' Phase — gym AM, speed PM',
+              restrictions:[] };
+          } else {
+            rec = { primarySession:'Gym', gymSplit:null, secondarySession:null,
+              reasoning:'Recovery '+recScore+'/100 — full session, check plan tab',
+              restrictions:[] };
+          }
+        }
+
+        if (hasRecentLowerGym) rec.restrictions.push('No heavy lower — gym session in last 20 hours');
+        if (acwr > 1.3 && acwr <= 1.5) rec.restrictions.push('ACWR '+acwr+' — reduce volume 20%');
+
+        await sb.from('app_state').upsert({
+          key:'recommended_session_today', data:rec, updated_at: new Date().toISOString()
+        }, { onConflict:'key' }).catch(()=>{});
+
+        // ── 6. Jarvis Score ──
+        const recComp = recoveryToday !== null ? Math.min(100,Math.max(0,recoveryToday)) : null;
+
+        let nutComp = null;
+        if (checkins && checkins.length > 0) {
+          const wp = checkins.filter(c => (c.protein_grams||0) > 0);
+          if (wp.length > 0) nutComp = Math.round((wp.filter(c => c.protein_grams >= 140).length / wp.length) * 100);
+        }
+
+        let loadComp = null;
+        if (acwr > 0) loadComp = Math.max(0, Math.round(100 - Math.abs(acwr - 1.0) * 50));
+
+        let athComp = null;
+        const { data: tests } = await sb.from('athletic_tests').select('*').order('date',{ascending:false}).limit(20);
+        if (tests && tests.length >= 2) {
+          let imp=0, dec=0;
+          const lb = ['10m_sprint','30m_sprint','40yd_dash','505_shuttle','t_test','ladder_10yd'];
+          const hb = ['vertical_jump','broad_jump','yoyo_level'];
+          [...lb,...hb].forEach(type => {
+            const t = tests.filter(tt => tt.test_type===type).slice(0,2);
+            if (t.length>=2){if((lb.includes(type)?t[1].value<t[0].value:t[1].value>t[0].value))imp++;else dec++;}
+          });
+          if(imp+dec>0) athComp = Math.min(100,Math.max(0,Math.round(50+((imp-dec)/(imp+dec))*25)));
+        }
+
+        let prevJS = null;
+        try {
+          const { data:js } = await sb.from('app_state').select('data').eq('key','jarvis_score').maybeSingle();
+          if (js?.data?.score !== undefined) prevJS = js.data.score;
+        } catch(_){}
+
+        const comps = [{ s:recComp, w:0.30 }, { s:nutComp, w:0.20 }, { s:loadComp, w:0.25 }, { s:athComp, w:0.25 }];
+        const av = comps.filter(c => c.s !== null);
+        let jarvisScore = 50;
+        if (av.length > 0) {
+          const tw = av.reduce((s,c)=>s+c.w,0);
+          jarvisScore = Math.round(av.reduce((s,c)=>s+c.s*c.w,0)/tw);
+        }
+
+        jarvisHistory.push({ date:today, score:jarvisScore });
+        if (jarvisHistory.length > 30) jarvisHistory = jarvisHistory.slice(-30);
+
+        await Promise.all([
+          sb.from('app_state').upsert({ key:'jarvis_score', data:{ score:jarvisScore, components:{ recovery:recComp, nutrition:nutComp, load:loadComp, athletic:athComp }, prevScore:prevJS }, updated_at:new Date().toISOString() }, { onConflict:'key' }),
+          sb.from('app_state').upsert({ key:'jarvis_history', data:{ scores:jarvisHistory }, updated_at:new Date().toISOString() }, { onConflict:'key' })
+        ].map(p => p.catch(()=>{})));
+
+        // ── 7. D1 Gap Analysis ──
+        const d1Targets = {
+          '10m_sprint': { t:1.75, lo:true, l:'10m Sprint', u:'s' },
+          '40yd_dash': { t:4.65, lo:true, l:'40yd Dash', u:'s' },
+          'vertical_jump': { t:24, lo:false, l:'Vert Jump', u:'in' },
+          'broad_jump': { t:87, lo:false, l:'Broad Jump', u:'in' },
+          'yoyo_level': { t:1120, lo:false, l:'Yo-Yo IRT', u:'m' }
+        };
+
+        const d1Gaps = [];
+        if (tests && tests.length > 0) {
+          for (const [type, cfg] of Object.entries(d1Targets)) {
+            const latest = tests.filter(t => t.test_type===type)[0];
+            if (latest) {
+              const cur = latest.value;
+              const onTrack = cfg.lo ? (cur <= cfg.t) : (cur >= cfg.t);
+              const gap = cfg.lo ? (cur - cfg.t) : (cfg.t - cur);
+              d1Gaps.push({ metric:cfg.l, current:cur, target:cfg.t, gap:Math.round(gap*100)/100, onTrack, unit:cfg.u });
+            }
+          }
+          const sq = tests.filter(t => t.test_type==='smith_squat_ratio')[0];
+          if (sq) d1Gaps.push({ metric:'Squat Ratio', current:sq.value, target:1.5, gap:Math.round((1.5-sq.value)*100)/100, onTrack:sq.value>=1.5, unit:'xBW' });
+        }
+
+        await sb.from('app_state').upsert({
+          key:'d1_gap_summary', data:{ metrics:d1Gaps }, updated_at:new Date().toISOString()
+        }, { onConflict:'key' }).catch(()=>{});
+
+        return { phase:phaseData, recoveryToday, recovery7DayAvg, acwr, acwrStatus, latestWeight, weeklyGainRate, recommendation:rec, jarvisScore, jarvisComponents:{ recovery:recComp, nutrition:nutComp, load:loadComp, athletic:athComp }, prevJarvisScore:prevJS, d1Gaps };
+      } catch(e) {
+        console.error('computeDailyState error:', e);
+        return null;
+      }
+    }
+
+    /* ── Morning Briefing Loader ── */
 
 
     function toLocalDateStr(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
@@ -2135,6 +2466,9 @@
 
     async function loadMorningBriefing() {
       if (!supa) return;
+      // ── Run master computation hub first ──
+      const dailyState = await computeDailyState(supa).catch(() => null);
+
       // Load sleep schedule from app_state (set by Jarvis recommendations)
       try {
         const { data: sd } = await supa.from('app_state').select('data').eq('key','sleep_schedule').maybeSingle();
@@ -2148,7 +2482,8 @@
         const last7 = new Date(today+'T00:00:00'); last7.setDate(last7.getDate()-6);
         const last7Str = toLocalDateStr(last7);
 
-        const [nutRes, soccerRes, checkinsRes, weightRes, testsRes, sessRes, gymRes, rsaRes, planRes, jarvisHistRes, compHistRes, acwrRes, matchRes, bodyRes, techRes, gymModeRes] = await Promise.all([
+        // Read from app_state keys written by computeDailyState (fall back to direct queries if needed)
+        const [nutRes, soccerRes, checkinsRes, weightRes, testsRes, sessRes, gymRes, rsaRes, planRes, jarvisHistRes, compHistRes, acwrRes, matchRes, bodyRes, techRes, gymModeRes, d1Res, weightStateRes] = await Promise.all([
           supa.from('app_state').select('data').eq('key','nutrition').maybeSingle(),
           supa.from('app_state').select('data').eq('key','soccer').maybeSingle(),
           supa.from('daily_checkins').select('*').gte('date',last7Str).order('date',{ascending:false}),
@@ -2164,9 +2499,9 @@
           supa.from('app_state').select('data').eq('key','match_in_48_hours').maybeSingle(),
           supa.from('app_state').select('data').eq('key','body').maybeSingle(),
           supa.from('app_state').select('data').eq('key','weakest_technical_area').maybeSingle(),
-          supa.from('app_state').select('data').eq('key','technical_sessions_this_week').maybeSingle(),
           supa.from('app_state').select('data').eq('key','gym_mode').maybeSingle(),
-          supa.from('app_state').select('data').eq('key','gym_strength_ratio').maybeSingle()
+          supa.from('app_state').select('data').eq('key','d1_gap_summary').maybeSingle(),
+          supa.from('app_state').select('data').eq('key','latest_weight').maybeSingle()
         ]);
         // Load jarvis history and component history
         if (jarvisHistRes?.data?.data?.scores) jarvisHistory = jarvisHistRes.data.data.scores;
@@ -2280,11 +2615,11 @@
         }
 
         // Gym day rotation (synchronized with gym.html via utils.js)
-        const gymDay = (window.getGymDayName ? window.getGymDayName(d.gymMode || 'offseason') : 'Rest');
+        const gymDay = (window.getGymDayName ? window.getGymDayName(gymModeRes?.data?.data?.mode || gymModeRes?.data?.data || 'offseason') : 'Rest');
 
         briefingData = {
           today, phase, recoveryToday, recovery7DayAvg, avgRecovery,
-          latestWeight, weightDelta, weightWeekAgo: prevWeekWeight,
+          latestWeight: weightStateRes?.data?.data?.weight || dailyState?.latestWeight || latestWeight, weightDelta, weightWeekAgo: prevWeekWeight,
           proteinDays, proteinStreak, todayCheckin, checkins,
           tests, sessions, weekSessions, gymCount, ballCount, speedCount, techCount,
           athleticTrend, latestRSA, rsaSessions,
@@ -2295,12 +2630,15 @@
           weakestTech: techRes?.data?.data?.value ?? techRes?.data?.data ?? null,
           gymMode: gymModeRes?.data?.data?.mode ?? gymModeRes?.data?.data ?? null,
           gymDay: gymDay,
-          gymExCount: (window.getGymExerciseCount ? window.getGymExerciseCount(gymDay) : 0)
+          gymExCount: (window.getGymExerciseCount ? window.getGymExerciseCount(gymDay) : 0),
+          recommendation: dailyState?.recommendation || null,
+          d1Gaps: d1Res?.data?.data?.metrics || dailyState?.d1Gaps || [],
+          jarvisComponents: dailyState?.jarvisComponents || { recovery:null, nutrition:null, load:null, athletic:null },
+          gainRate: weightStateRes?.data?.data?.gain_rate || dailyState?.weeklyGainRate
         };
 
         renderAllBriefing();
-        // Calculate ACWR in background and write to app_state for home tab + AI
-        calculateACWR(supa).catch(() => {});
+        // ACWR now computed by computeDailyState above
       } catch(e) {
         console.error('Briefing load error:', e);
       }
@@ -2312,6 +2650,8 @@
       renderDailyBrief();
       renderJarvisScore();
       renderStatusGrid();
+      renderRestrictions();
+      renderD1Gaps();
       renderAlerts();
       renderWeeklySnapshot();
       renderACWR();
@@ -2346,14 +2686,22 @@
       }
 
       if (!d.todayCheckin) {
-        $('briefText').textContent = `Complete your morning check-in to personalize today's brief.`;
+        $('briefText').textContent = 'Complete your morning check-in to personalize today’s brief.';
         $('briefAction').classList.remove('hidden');
         return;
       }
       $('briefAction').classList.add('hidden');
 
       // Build the brief in the specified format
-      let brief = `Good morning ${name}. `;
+      let brief = '';
+
+      // Headline: session recommendation reasoning
+      if (d.recommendation && d.recommendation.reasoning) {
+        brief += `<div class="brief-headline">📋 ${d.recommendation.reasoning}</div>`;
+        brief += `<div class="session-rec-pill">${d.recommendation.primarySession}</div>`;
+      }
+
+      brief += `<br>Good morning ${name}. `;
 
       // Phase + days to pre-season      // Phase name mapping for display
       const phaseDisplayName = {
@@ -2417,13 +2765,19 @@
       const now = new Date();
       const hour = now.getHours();
 
+      // Use pre-computed components from computeDailyState if available
+      const jc = d.jarvisComponents;
+      const usePrecomputed = jc && (jc.recovery !== null || jc.nutrition !== null || jc.load !== null || jc.athletic !== null);
+
       // Recovery component (30%) — from recovery_score_7day_avg in app_state
       const recRaw = d.recovery7DayAvg || d.recoveryToday || null;
       let recScore = null, recMissing = !recRaw;
       if (!recMissing) recScore = Math.min(100, Math.max(0, Math.round(recRaw)));
 
-      // Nutrition component (20%) — from last 7 daily_checkins protein adherence
-      let nutScore = null, nutMissing = d.checkins.length === 0;
+      // Nutrition component (20%) — from pre-computed or last 7 daily_checkins protein adherence
+      let nutScore = usePrecomputed && jc.nutrition !== null ? jc.nutrition : null;
+      let nutMissing = !nutScore && d.checkins.length === 0;
+      if (!nutScore && !nutMissing) {
       if (!nutMissing) {
         const checkinsWithProtein = d.checkins.filter(c => c.protein_grams > 0);
         if (checkinsWithProtein.length > 0) {
@@ -2432,9 +2786,12 @@
           nutScore = Math.round((hits / checkinsWithProtein.length) * 100);
         }
       }
+      nutMissing = nutScore === null;
 
-      // Load Balance (25%) — from ACWR in app_state (optimal 1.0 = 100, decreasing as ACWR moves away)
-      let loadScore = null, loadMissing = d.acwr === null || d.acwr === undefined || d.acwr === '';
+      // Load Balance (25%) — from pre-computed or ACWR in app_state
+      let loadScore = usePrecomputed && jc.load !== null ? jc.load : null;
+      let loadMissing = !loadScore && (d.acwr === null || d.acwr === undefined || d.acwr === '');
+      if (!loadScore && !loadMissing) { (optimal 1.0 = 100, decreasing as ACWR moves away)
       if (!loadMissing) {
         const acwrVal = parseFloat(d.acwr);
         if (!isNaN(acwrVal) && acwrVal > 0) {
@@ -2446,8 +2803,10 @@
         }
       }
 
-      // Athletic Trend (25%) — from last 2 athletic_tests
-      let athScore = null, athMissing = d.tests.length < 2;
+      // Athletic Trend (25%) — from pre-computed or last 2 athletic_tests
+      let athScore = usePrecomputed && jc.athletic !== null ? jc.athletic : null;
+      let athMissing = !athScore && d.tests.length < 2;
+      if (!athScore && !athMissing) {
       if (!athMissing) {
         let improving = 0, declining = 0;
         const lowerBetter = ['10m_sprint','30m_sprint','40yd_dash','505_shuttle','t_test','ladder_10yd'];
@@ -2490,8 +2849,9 @@
 
       // Arrow
       let arrowHtml = '';
-      if (d.prevJarvisScore !== null && d.prevJarvisScore !== undefined) {
-        const diff = composite - d.prevJarvisScore;
+      const prevJS = d.prevJarvisScore;
+      if (prevJS !== null && prevJS !== undefined) {
+        const diff = composite - prevJS;
         if (diff > 2) arrowHtml = '<span class="jarvis-arrow up">▲</span>';
         else if (diff < -2) arrowHtml = '<span class="jarvis-arrow down">▼</span>';
         else arrowHtml = '<span class="jarvis-arrow" style="color:var(--text-tertiary)">▬</span>';
@@ -2632,6 +2992,39 @@
       renderCompSparkline('trendNutritionSvg', nutData, '#6BE3A4');
       renderCompSparkline('trendLoadSvg', loadData, '#6BE3A4');
       renderCompSparkline('trendAthleticSvg', athData, '#6BE3A4');
+    }
+
+    function renderRestrictions() {
+      const rec = briefingData?.recommendation;
+      const card = $('restrictionsCard');
+      if (!rec || !rec.restrictions || rec.restrictions.length === 0) {
+        card.classList.remove('visible');
+        return;
+      }
+      card.classList.add('visible');
+      const chips = $('restrictionsChips');
+      chips.innerHTML = rec.restrictions.map(r => `<span class="restriction-chip">⚠️ ${r}</span>`).join('');
+    }
+
+    function renderD1Gaps() {
+      const gaps = briefingData?.d1Gaps;
+      const card = $('d1GapCard');
+      if (!gaps || gaps.length === 0) {
+        card.classList.remove('visible');
+        return;
+      }
+      card.classList.add('visible');
+      const row = $('d1GapRow');
+      row.innerHTML = gaps.map(g => {
+        const cls = g.onTrack ? 'on-track' : 'off-track';
+        const sign = g.onTrack ? '✓' : '✗';
+        const gapStr = g.onTrack ? '' : ` -${Math.abs(g.gap)}${g.unit}`;
+        return `<div class="d1-gap-metric">
+          <span class="d1-gap-dot ${cls}"></span>
+          <span class="d1-gap-metric-name">${g.metric}</span>
+          <span class="d1-gap-metric-val">${g.current}${g.unit}${gapStr}</span>
+        </div>`;
+      }).join('');
     }
 
     function renderACWR() {
