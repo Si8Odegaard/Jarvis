@@ -1085,6 +1085,7 @@ body:has(.modal-bg.show) { overflow: hidden; }
     if (error) { showToast('Delete failed'); return; }
     await loadEvents();
     renderAll();
+    writeMatchIntelligence(sb).catch(() => {});
     showToast('Event deleted');
   };
 
@@ -1192,6 +1193,7 @@ body:has(.modal-bg.show) { overflow: hidden; }
     renderAll();
     // Recalculate ACWR and write to app_state
     calculateACWR(sb).catch(() => {});
+    writeMatchIntelligence(sb).catch(() => {});
     showToast(editingId ? 'Event updated' : 'Event added');
   }
 
@@ -1303,11 +1305,64 @@ body:has(.modal-bg.show) { overflow: hidden; }
     if (e.key === 'Escape') closeModal();
   });
 
+  // ── Match Intelligence Writer ──
+  // Writes next_match_date, match_in_48_hours, match_in_24_hours_recovery to app_state
+  async function writeMatchIntelligence(sb) {
+    const now = new Date();
+    now.setHours(0,0,0,0);
+    const yesterday = new Date(now.getTime() - 86400000);
+    const yesterdayStr = toLocalDateStr(yesterday);
+
+    const { data: events } = await sb
+      .from('calendar_events')
+      .select('*')
+      .eq('event_type', 'match')
+      .gte('date', yesterdayStr)
+      .order('date', { ascending: true })
+      .limit(10);
+
+    const allMatches = events || [];
+    const nextMatch = allMatches.find(e => e.date >= toLocalDateStr(now)) || null;
+    const recentMatch = allMatches.find(e => e.date === yesterdayStr) || null;
+
+    if (!nextMatch && !recentMatch) {
+      await sb.from('app_state').upsert([
+        { key: 'next_match_date', data: null, updated_at: new Date().toISOString() },
+        { key: 'match_in_48_hours', data: false, updated_at: new Date().toISOString() },
+        { key: 'match_in_24_hours_recovery', data: false, updated_at: new Date().toISOString() }
+      ], { onConflict: 'key' }).catch(() => {});
+      return;
+    }
+
+    if (nextMatch) {
+      const matchDate = new Date(nextMatch.date + 'T00:00:00');
+      const daysUntil = (matchDate - now) / 864e5;
+      await sb.from('app_state').upsert([
+        { key: 'next_match_date', data: nextMatch.date, updated_at: new Date().toISOString() },
+        { key: 'match_in_48_hours', data: daysUntil <= 2 && daysUntil >= 0, updated_at: new Date().toISOString() }
+      ], { onConflict: 'key' }).catch(() => {});
+    }
+
+    if (recentMatch) {
+      await sb.from('app_state').upsert([
+        { key: 'match_in_24_hours_recovery', data: true, updated_at: new Date().toISOString() }
+      ], { onConflict: 'key' }).catch(() => {});
+    } else {
+      await sb.from('app_state').upsert([
+        { key: 'match_in_24_hours_recovery', data: false, updated_at: new Date().toISOString() }
+      ], { onConflict: 'key' }).catch(() => {});
+    }
+  }
+
+  // Expose globally so index.html computeDailyState can call it
+  window.writeMatchIntelligence = writeMatchIntelligence;
+
   // ── Init ──
   async function init() {
     await loadEvents();
     renderAll();
     calculateACWR(sb).catch(() => {});
+    writeMatchIntelligence(sb).catch(() => {});
   }
   init();
 

@@ -163,6 +163,7 @@ input[type="number"].error { border-color:var(--danger); }
       <h2>Daily Check-in</h2>
       <span id="checkinStatus" style="font-size:13px;color:var(--text-secondary)"></span>
     </div>
+    <div id="adaptiveTargets" style="background:rgba(107,227,164,0.06);border:1px solid rgba(107,227,164,0.15);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--text-secondary);display:none"></div>
     <div id="validationMsg" class="validation-msg"></div>
 
     <div class="form-group">
@@ -543,16 +544,35 @@ function showSummary(checkin, recoveryScore) {
   const card = $('checkinCard');
   const sc = scoreClass(recoveryScore);
   const starStr = '★'.repeat(checkin.sleep_quality) + '☆'.repeat(5 - checkin.sleep_quality);
+
+  // Compute protein adherence
+  const targetGrams = parseInt($('proteinTarget')?.textContent?.replace('g','')) || 150;
+  const actualGrams = checkin.protein_grams || 0;
+  const pct = targetGrams > 0 ? Math.round((actualGrams / targetGrams) * 100) : 0;
+  let proteinAdherenceColor = 'var(--text-primary)';
+  let proteinAdherenceMsg = '';
+  if (pct >= 90) {
+    proteinAdherenceColor = 'var(--success)';
+    proteinAdherenceMsg = '✓ You hit ' + actualGrams + 'g of ' + targetGrams + 'g protein (' + pct + '%)';
+  } else if (pct >= 70) {
+    proteinAdherenceColor = 'var(--warning)';
+    proteinAdherenceMsg = '⚠ You hit ' + actualGrams + 'g of ' + targetGrams + 'g protein (' + pct + '%)';
+  } else {
+    proteinAdherenceColor = 'var(--danger)';
+    proteinAdherenceMsg = '✗ You hit ' + actualGrams + 'g of ' + targetGrams + 'g protein (' + pct + '%)';
+  }
   card.innerHTML = `
     <div class="card-header">
       <h2>Today's Check-in</h2>
       <span style="font-size:13px;color:var(--success)">✓ Completed</span>
     </div>
+    <div id="adaptiveTargets" style="background:rgba(107,227,164,0.06);border:1px solid rgba(107,227,164,0.15);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--text-secondary);display:none"></div>
     <div class="success-anim">
       <div class="summary-row"><span class="summary-label">Sleep</span><span class="summary-value">${checkin.sleep_hours}h &nbsp; ${starStr}</span></div>
       <div class="summary-row"><span class="summary-label">Energy</span><span class="summary-value">${checkin.energy_score}/10</span></div>
       <div class="summary-row"><span class="summary-label">Soreness</span><span class="summary-value" style="text-transform:capitalize">${checkin.soreness}</span></div>
-      <div class="summary-row"><span class="summary-label">Protein</span><span class="summary-value">${checkin.protein_grams}g</span></div>
+      <div class="summary-row"><span class="summary-label">Protein</span><span class="summary-value" style="${proteinAdherenceColor}">${checkin.protein_grams}g</span></div>
+      <div style="font-size:11px;color:${proteinAdherenceColor};margin-bottom:8px">${proteinAdherenceMsg}</div>
       <div class="summary-row"><span class="summary-label">Hydration</span><span class="summary-value" style="text-transform:capitalize">${checkin.hydration}</span></div>
       <div class="summary-row"><span class="summary-label">Calories hit?</span><span class="summary-value" style="text-transform:capitalize">${checkin.calorie_hit}</span></div>
       <div style="margin-top:16px;padding:16px;background:rgba(255,255,255,.03);border-radius:8px;text-align:center">
@@ -574,6 +594,7 @@ function resetForm(prefill) {
   const card = $('checkinCard');
   card.innerHTML = `
     <div class="card-header"><h2>Daily Check-in</h2><span id="checkinStatus" style="font-size:13px;color:var(--text-secondary)">Editing today</span></div>
+    <div id="adaptiveTargets" style="background:rgba(107,227,164,0.06);border:1px solid rgba(107,227,164,0.15);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--text-secondary);display:none"></div>
     <div id="validationMsg" class="validation-msg"></div>
     <div class="form-group"><label>Sleep Hours: <strong id="sleepValue">${prefill?prefill.sleep_hours:7}</strong>h</label><input type="range" id="sleepHours" min="4" max="12" step="0.5" value="${prefill?prefill.sleep_hours:7}"></div>
     <div class="form-group"><label>Sleep Quality</label><div class="star-rating" id="sleepQuality"><button type="button" data-rating="1">★</button><button type="button" data-rating="2">★</button><button type="button" data-rating="3">★</button><button type="button" data-rating="4">★</button><button type="button" data-rating="5">★</button></div></div>
@@ -690,23 +711,42 @@ async function updateProteinTarget() {
       weightSource = 'default — set your weight in ⚙️ Profile Settings';
     }
 
-    // Training-day-aware: 2.0g/kg training, 1.6g/kg rest (0.91 vs 0.73 g/lb)
+    // Training-day-aware: 2.0g/kg training, 1.6g/kg rest
+    const weightKg = weightLbs / 2.205;
     const isTrainingDay = todaySplit() !== 'Rest';
-    const multiplier = isTrainingDay ? 0.91 : 0.73;
+    const multiplier = isTrainingDay ? 2.0 : 1.6;
     const label = isTrainingDay ? 'training day · 2.0g/kg' : 'rest day · 1.6g/kg';
-    let target = Math.round(weightLbs * multiplier);
+    let target = Math.round(weightKg * multiplier);
 
-    // Match day recovery: +20g protein
+    // Match day adjustments
+    const in48 = appStateData['match_in_48_hours'];
     const in24Recovery = appStateData['match_in_24_hours_recovery'];
+    const phase = appStateData['current_offseason_phase'] || 'Foundation';
     let matchBoost = '';
-    if (in24Recovery === true || in24Recovery === 'true') {
-      target += 20;
-      matchBoost = ' (+20g match recovery)';
+    if (in48 === true || in48 === 'true') {
+      // Match in 48hrs — slight protein reduction, carbs take priority
+      target = Math.round(weightKg * 1.8);
+      matchBoost = ' (match in 48h — carb priority)';
+    } else if (in24Recovery === true || in24Recovery === 'true') {
+      // Post-match recovery — elevated protein
+      target = Math.round(weightKg * 2.2);
+      matchBoost = ' (post-match recovery)';
     }
+
+    // Phase adjustments
+    if (phase === 'Power-Speed') target = Math.round(target * 1.05);
+    if (phase === 'Taper') target = Math.round(target * 0.95);
 
     $('proteinTarget').textContent = target + 'g';
     const noteEl = $('proteinWeightNote');
     if (noteEl) noteEl.textContent = weightSource + ' — ' + label + matchBoost;
+
+    // Set protein input placeholder with target
+    const pEl = $('proteinGrams');
+    if (pEl) pEl.placeholder = 'Target: ' + target + 'g';
+
+    // Update adaptive targets banner
+    renderAdaptiveTargets(target, weightLbs);
 
     const { data: checkins } = await sb.from('daily_checkins').select('protein_grams').order('date',{ascending:false}).limit(7);
     if (checkins && checkins.length) {
@@ -995,6 +1035,52 @@ async function loadAppState() {
     if (data) data.forEach(row => { appStateData[row.key] = row.data?.value ?? row.data; });
     return appStateData;
   } catch(e) { console.error('app_state load:', e); return {}; }
+}
+
+// ═══════════════════════════════════════════════
+//  ADAPTIVE TARGETS BANNER
+// ═══════════════════════════════════════════════
+function renderAdaptiveTargets(proteinTarget, weightLbs) {
+  const el = $('adaptiveTargets');
+  if (!el) return;
+
+  if (!proteinTarget) {
+    el.style.display = 'none';
+    return;
+  }
+
+  el.style.display = 'block';
+
+  const in48 = appStateData['match_in_48_hours'];
+  const in24 = appStateData['match_in_24_hours_recovery'];
+  const recoveryScore = parseInt(appStateData['recovery_score_today']?.score) || 70;
+  const baseTDEE = Math.round(weightLbs * 16);
+  const calorieTarget = baseTDEE + 300;
+
+  let html = '<span style="color:var(--success);font-weight:700">Protein today: ' + proteinTarget + 'g</span>';
+  html += ' &middot; <span style="color:var(--text-secondary)">Calories today: ~' + calorieTarget + ' kcal</span>';
+
+  if (in48 === true || in48 === 'true') {
+    html += '<div class="match-banner carb" style="margin-top:8px;padding:8px 12px;font-size:12px">';
+    html += '<span style="font-size:16px">🍝</span> ';
+    html += '<span>Match in 48hrs — prioritize carbohydrates today. Pasta, rice, bread. Reduce high-fiber veg.</span>';
+    html += '</div>';
+  }
+
+  if (in24 === true || in24 === 'true') {
+    html += '<div class="match-banner protein" style="margin-top:8px;padding:8px 12px;font-size:12px">';
+    html += '<span style="font-size:16px">🥩</span> ';
+    html += '<span>Recovery day — elevated protein for muscle repair. Anti-inflammatory foods: berries, salmon, turmeric.</span>';
+    html += '</div>';
+  }
+
+  if (recoveryScore < 55) {
+    html += '<div style="margin-top:8px;padding:8px 12px;border-radius:8px;background:rgba(125,211,252,0.08);border:1px solid rgba(125,211,252,0.20);color:#7DD3FC;font-size:12px">';
+    html += '💤 Low recovery — prioritize sleep and magnesium tonight.';
+    html += '</div>';
+  }
+
+  el.innerHTML = html;
 }
 
 // ═══════════════════════════════════════════════

@@ -1574,6 +1574,9 @@
           : 999;
         const hasRecentLowerGym = hoursSinceGym < 20 && lastGym?.isLowerBody === true;
 
+        // Refresh match intelligence from calendar events (writes match_in_48_hours, match_in_24_hours_recovery, next_match_date)
+        if (window.writeMatchIntelligence) { await window.writeMatchIntelligence(sb).catch(() => {}); }
+
         const { data: matchData } = await sb.from('app_state').select('data').eq('key','match_in_48_hours').maybeSingle();
         const matchIn48 = matchData?.data?.value === true || matchData?.data === true;
 
