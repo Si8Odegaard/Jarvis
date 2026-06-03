@@ -1457,6 +1457,16 @@
         // ── 1. Phase (phase.js writes to app_state, just call it) ──
         const phaseData = await window.getCurrentPhase(sb);
 
+        // Always write fresh gym_phase_config (bypass 24h cache)
+        if (window.getGymPhaseConfig && phaseData?.phase) {
+          const freshGymConfig = window.getGymPhaseConfig(phaseData.phase);
+          await sb.from('app_state').upsert({
+            key: 'gym_phase_config',
+            data: { phase: phaseData.phase, phaseWeek: phaseData.phaseWeek, ...freshGymConfig },
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'key' }).catch(() => {});
+        }
+
         // ── 2. Recovery Score from daily_checkins (last 7 days) ──
         const { data: checkins } = await sb.from('daily_checkins').select('*').order('date',{ascending:false}).limit(7);
         let recoveryToday = null, recovery7DayAvg = null;
