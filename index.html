@@ -2791,7 +2791,7 @@
       // Load Balance (25%) — from pre-computed or ACWR in app_state
       let loadScore = usePrecomputed && jc.load !== null ? jc.load : null;
       let loadMissing = !loadScore && (d.acwr === null || d.acwr === undefined || d.acwr === '');
-      if (!loadScore && !loadMissing) { (optimal 1.0 = 100, decreasing as ACWR moves away)
+      if (!loadScore && !loadMissing) {
       if (!loadMissing) {
         const acwrVal = parseFloat(d.acwr);
         if (!isNaN(acwrVal) && acwrVal > 0) {
