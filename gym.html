@@ -8,6 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="utils.js"></script>
 <script src="chat.js"></script>
+<script src="phase.js"></script>
 <style>
 :root {
   --bg:        #050506;
@@ -1009,11 +1010,25 @@ function getMesoInfo(){
 // ════════════════════════════════════════════════════════════
 //  RENDER: DAY PILL
 // ════════════════════════════════════════════════════════════
-function renderDayPill(){
+async function renderDayPill(){
   const { dayName, isRest, program } = getDayInfo();
   const d = new Date();
   const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const mons = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  // Phase context from phase.js
+  let phaseName = 'Foundation';
+  let phaseGoal = '';
+  if(window.getCurrentPhase && window.getGymPhaseConfig){
+    try {
+      const phaseResult = await window.getCurrentPhase(sb);
+      if(phaseResult){
+        phaseName = phaseResult.phase;
+        const gymConfig = window.getGymPhaseConfig(phaseName);
+        phaseGoal = gymConfig?.goal || '';
+      }
+    } catch(e){ /* fall through — use defaults */ }
+  }
 
   if(isRest){
     $('dayPillBadge').textContent = '😴';
@@ -1025,8 +1040,15 @@ function renderDayPill(){
     $('dayPillLabel').textContent = program.name;
     $('dayPillGoal').textContent = program.goal;
     $('dayPillSub').textContent = days[d.getDay()] + ', ' + mons[d.getMonth()] + ' ' + d.getDate() + ' · ' + program.exercises.length + ' exercises';
+    // Show phase context below: "Week 1 of Foundation — building the mass base..."
+    if(phaseName && phaseGoal){
+      $('dayPillGoal').textContent = phaseGoal;
+    }
   }
-  $('dayPillMode').textContent = gymMode === 'inseason' ? 'IN-SEASON' : 'OFFSEASON';
+
+  // Phase badge: "OFFSEASON · FOUNDATION W1" or "IN-SEASON"
+  const phaseDisplay = phaseName === 'Foundation' ? 'FOUNDATION' : phaseName === 'Strength-Speed' ? 'STR-SPEED' : phaseName === 'Power-Speed' ? 'PWR-SPEED' : phaseName === 'Taper' ? 'TAPER' : phaseName;
+  $('dayPillMode').textContent = gymMode === 'inseason' ? 'IN-SEASON' : 'OFFSEASON · ' + phaseDisplay;
   $('dayPillMode').className = 'day-pill-mode ' + (gymMode === 'inseason' ? 'pill-info' : 'pill-good');
 }
 

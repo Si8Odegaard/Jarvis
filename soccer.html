@@ -8,6 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="utils.js"></script>
 <script src="chat.js"></script>
+<script src="phase.js"></script>
 <style>
 :root {
   --bg: #050506;
@@ -711,19 +712,8 @@ const ATHLETE = {
   goal: 'gain functional mass + improve athleticism'
 };
 
-// ==================================================
-//  OFF-SEASON PLAN CONFIG
-// ==================================================
-const OFFSEASON_PLAN = {
-  startDate: '2026-06-01',
-  blocks: [
-    { name: 'Foundation Block', weeks: 2, goal: 'Build muscle base & establish movement quality. Higher gym volume. Acceleration mechanics focus (short 10m drills, perfect form). Technical ball work: wall passing, receiving & turning, finishing.' },
-    { name: 'Strength-Speed Block', weeks: 2, goal: 'Convert muscle to power. Gym shifts heavier lower rep. Add plyometrics. Begin reactive agility. Broad jump series, single leg bounding, depth drop to broad jump.' },
-    { name: 'Power-Speed Block', weeks: 2, goal: 'Express power & speed. Gym volume drops, intensity stays. Max velocity sprints. Full agility protocols. Repeated sprint training. Ball work becomes high-intensity & game-realistic.' },
-    { name: 'Taper Week', weeks: 1, goal: 'Drop total volume 35%. Maintain all intensities. Technical ball work only. Sleep & recovery prioritized. Arrive fresh, sharp, and confident for pre-season.' }
-  ]
-};
-const PRESEASON_START = '2026-07-20'; // After taper week (July 13-19)
+// Phase authority: all phase logic lives in phase.js
+// Use window.getCurrentPhase(sb) and window.setPhaseOverride(sb, days) for all phase operations
 
 // ==================================================
 //  STATE
@@ -856,28 +846,25 @@ async function loadGymWorkouts(){
   }
 }
 
+// Phase overrides are now handled by phase.js via window.setPhaseOverride(sb, days)
+// Uses app_state key 'current_offseason_phase'
+
 async function loadPhaseOverride(){
   try {
-    const { data } = await sb.from('app_state').select('data').eq('key','soccer_readiness').maybeSingle();
-    if(data?.data?.phaseOverrideDays) phaseOverrideDays = parseInt(data.data.phaseOverrideDays) || 0;
+    const { data } = await sb.from('app_state').select('data').eq('key','current_offseason_phase').maybeSingle();
+    if(data?.data?.override_days) phaseOverrideDays = parseInt(data.data.override_days) || 0;
   } catch(e){ phaseOverrideDays = 0; }
 }
 
 async function savePhaseOverride(){
-  try {
-    await sb.from('app_state').upsert({
-      key: 'soccer_readiness',
-      data: { phaseOverrideDays },
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'key' });
-  } catch(e){}
+  // No-op — phase.js handles all persistence
 }
 
 // ==================================================
 //  INTERNAL TAB SWITCHING
 // ==================================================
 document.querySelectorAll('.soccer-tab').forEach(btn => {
-  btn.addEventListener('click', () => {
+  btn.addEventListener('click', async () => {
     document.querySelectorAll('.soccer-tab').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     const tab = btn.dataset.stab;
@@ -886,9 +873,9 @@ document.querySelectorAll('.soccer-tab').forEach(btn => {
     });
     if(tab==='testing') renderTesting();
     if(tab==='sessions') renderSessions();
-    if(tab==='plan') renderPlan();
+    if(tab==='plan') await renderPlan();
     if(tab==='library') renderLibrary();
-    if(tab==='insights') renderInsights();
+    if(tab==='insights') await renderInsights();
   });
 });
 
@@ -1416,43 +1403,51 @@ $('saveSessionBtn').addEventListener('click', async () => {
 // ==================================================
 //  SECTION 3: PLAN
 // ==================================================
-function getCurrentPhase(){
+async function getCurrentPhase(){
   // Respect manual pre-season switch set by user
   if(planConfig?.mode === 'preseason'){
     return { mode:'preseason', name:'Pre-Season', goal:'Gym 3 days/week max. Individual technical only when recovery > 65. No speed on consecutive days. Recovery < 60 = rest day.', week:1, totalWeeks:1, daysLeft:0, progress:100 };
   }
 
-  const now = new Date(today()+'T00:00:00');
-  const start = new Date(OFFSEASON_PLAN.startDate+'T00:00:00');
-  const preseason = new Date(PRESEASON_START+'T00:00:00');
-
-  if(now >= preseason){
-    return { mode:'preseason', name:'Pre-Season', goal:'Gym 3 days/week max. Individual technical only when recovery > 65. No speed on consecutive days. Recovery < 60 = rest day.', week:1, totalWeeks:1, daysLeft:0, progress:100 };
+  // Fetch phase from the single authority (phase.js)
+  let phaseResult;
+  if(window.getCurrentPhase){
+    phaseResult = await window.getCurrentPhase(sb);
   }
 
-  let dayOffset = Math.floor((now - start) / 86400000) - phaseOverrideDays;
-  if(dayOffset < 0) dayOffset = 0;
-
-  let weekAccum = 0;
-  for(const block of OFFSEASON_PLAN.blocks){
-    const blockDays = block.weeks * 7;
-    if(dayOffset < weekAccum * 7 + blockDays){
-      const weekInBlock = Math.floor((dayOffset - weekAccum * 7) / 7) + 1;
-      const daysLeft = blockDays - (dayOffset - weekAccum * 7);
-      const totalDays = OFFSEASON_PLAN.blocks.reduce((s,b)=>s+b.weeks*7,0);
-      const progress = Math.min(100, Math.round((dayOffset / totalDays) * 100));
-      const readiness = checkPhaseReadiness(daysLeft);
-      return {
-        mode:'offseason', name:block.name, goal:block.goal,
-        week:weekInBlock, totalWeeks:block.weeks,
-        daysLeft:Math.max(0,daysLeft), progress, readiness
-      };
-    }
-    weekAccum += block.weeks;
+  // Fallback if phase.js not loaded
+  if(!phaseResult){
+    return { mode:'preseason', name:'Pre-Season', goal:'Phase authority not available.', week:1, totalWeeks:1, daysLeft:0, progress:0 };
   }
 
-  // Past all blocks = taper complete, pre-season mode
-  return { mode:'preseason', name:'Pre-Season', goal:'Gym 3 days/week max. Individual technical only when recovery > 65.', week:1, totalWeeks:1, daysLeft:0, progress:100 };
+  // Map phase.js names to soccer tab's legacy names
+  const nameMap = {
+    'Foundation': 'Foundation Block',
+    'Strength-Speed': 'Strength-Speed Block',
+    'Power-Speed': 'Power-Speed Block',
+    'Taper': 'Taper Week'
+  };
+
+  const legacyName = nameMap[phaseResult.phase] || phaseResult.phase;
+
+  if(phaseResult.phase === 'In-Season' || phaseResult.phase === 'Pre-Season'){
+    return { mode:'preseason', name:'Pre-Season', goal:'Gym 3 days/week max.', week:phaseResult.phaseWeek, totalWeeks:1, daysLeft:0, progress:100 };
+  }
+
+  // Compute progress (days elapsed / total offseason days)
+  const totalOffDays = 7*7; // 2+2+2+1 = 7 weeks
+  const totalDays = Math.ceil((new Date('2026-08-01T00:00:00') - new Date('2026-06-01T00:00:00')) / 86400000);
+  const daysElapsed = totalDays - phaseResult.daysToPreseason;
+  const progress = Math.min(100, Math.round((daysElapsed / totalDays) * 100));
+
+  const readiness = checkPhaseReadiness(phaseResult.daysLeftInBlock);
+
+  return {
+    mode:'offseason', name:legacyName, goal: phaseResult.goal || '',
+    week: phaseResult.phaseWeek, totalWeeks: phaseResult.totalWeeks,
+    daysLeft: phaseResult.daysLeftInBlock, progress, readiness,
+    mPhase: phaseResult.phase // keep original name for getDailyRecommendation
+  };
 }
 
 function checkPhaseReadiness(daysLeft){
@@ -1483,13 +1478,15 @@ function checkPhaseReadiness(daysLeft){
 }
 
 function getWeeklyTemplate(phase){
+  // Uses phase.js names ('Foundation', 'Strength-Speed', 'Power-Speed', 'Taper')
+  const pName = phase.mPhase || phase.name;
   const templates = {
-    'Foundation Block': `Mon: Gym Upper Push<br>Tue: Ball Work Technical + Ladder<br>Wed: Gym Lower Body<br>Thu: Acceleration Mechanics + Plyometrics<br>Fri: Gym Upper Pull<br>Sat: Ball Work Finishing + Turning<br>Sun: Rest`,
-    'Strength-Speed Block': `Mon: Gym Upper Strength<br>Tue: Speed Session + Reactive Agility + Plyometrics<br>Wed: Gym Lower Strength (heavy)<br>Thu: Ball Work Tactical + Pressing Patterns<br>Fri: Gym Upper Pull Strength<br>Sat: Speed Session + Planned Agility + 20m Sprints<br>Sun: Rest`,
-    'Power-Speed Block': `Mon: Gym Maintenance Upper<br>Tue: Full Speed Session + Max Velocity + Reactive Agility<br>Wed: Gym Maintenance Lower<br>Thu: High Intensity Ball Work — SSG simulation<br>Fri: Optional Gym or Rest<br>Sat: Repeated Sprint Protocol + Ball Work<br>Sun: Rest`,
-    'Taper Week': `Mon: Light Gym<br>Tue: Technical Ball Work<br>Wed: Speed Strides (short, sharp, not maximal)<br>Thu: Light Gym<br>Fri: Technical Ball Work<br>Sat: Rest<br>Sun: Rest`
+    'Foundation': `Mon: Gym Upper Push<br>Tue: Ball Work Technical + Ladder<br>Wed: Gym Lower Body<br>Thu: Acceleration Mechanics + Plyometrics<br>Fri: Gym Upper Pull<br>Sat: Ball Work Finishing + Turning<br>Sun: Rest`,
+    'Strength-Speed': `Mon: Gym Upper Strength<br>Tue: Speed Session + Reactive Agility + Plyometrics<br>Wed: Gym Lower Strength (heavy)<br>Thu: Ball Work Tactical + Pressing Patterns<br>Fri: Gym Upper Pull Strength<br>Sat: Speed Session + Planned Agility + 20m Sprints<br>Sun: Rest`,
+    'Power-Speed': `Mon: Gym Maintenance Upper<br>Tue: Full Speed Session + Max Velocity + Reactive Agility<br>Wed: Gym Maintenance Lower<br>Thu: High Intensity Ball Work — SSG simulation<br>Fri: Optional Gym or Rest<br>Sat: Repeated Sprint Protocol + Ball Work<br>Sun: Rest`,
+    'Taper': `Mon: Light Gym<br>Tue: Technical Ball Work<br>Wed: Speed Strides (short, sharp, not maximal)<br>Thu: Light Gym<br>Fri: Technical Ball Work<br>Sat: Rest<br>Sun: Rest`
   };
-  return templates[phase] || 'Follow your training plan.';
+  return templates[pName] || 'Follow your training plan.';
 }
 
 function getDailyRecommendation(phase){
@@ -1540,8 +1537,9 @@ function getDailyRecommendation(phase){
     return { type:'Speed Strides', focus:'Short sharp sprints, not maximal', duration:'20 min', equipment:'Field, cones', why:'Pre-season speed day — keep strides short and sharp, not maximal.'+yesterdayGymNote };
   }
 
-  // Foundation Block
-  if(phase.name==='Foundation Block'){
+
+  // Foundation
+  if(phase.name==='Foundation Block' || phase.mPhase==='Foundation'){
     if(dow===1) return todayGymCompleted
       ? {type:'Technical Ball Work',focus:'Wall passing, receiving & turning — gym already done today',duration:'30 min',equipment:'Ball, wall',why:'Gym ('+gymTag+') already completed today. Switch to light technical work for recovery.'+yesterdayGymNote}
       : {type:'Gym Upper Push',focus:'Planet Fitness — dumbbell press, shoulder press, tricep pushdowns',duration:'50 min',equipment:'Dumbbells, cables',why:'Foundation: build upper body muscle base with higher volume.'+yesterdayGymNote};
@@ -1557,8 +1555,9 @@ function getDailyRecommendation(phase){
     return {type:'Rest Day',focus:'Recovery walk or light stretch',duration:'—',equipment:'—',why:'Your body adapts during rest, not during training.'+yesterdayGymNote};
   }
 
-  // Strength-Speed Block
-  if(phase.name==='Strength-Speed Block'){
+
+  // Strength-Speed
+  if(phase.name==='Strength-Speed Block' || phase.mPhase==='Strength-Speed'){
     if(dow===1) return todayGymCompleted
       ? {type:'Technical Ball Work',focus:'Wall passing, turning drills — gym already done today',duration:'30 min',equipment:'Ball, wall, cones',why:'Gym ('+gymTag+') already completed today. Technical work for recovery.'+yesterdayGymNote}
       : {type:'Gym Upper Strength',focus:'Planet Fitness — heavier dumbbell press, cable flyes, lateral raises',duration:'45 min',equipment:'Dumbbells, cables',why:'Strength-Speed: gym shifts heavier, lower rep. Converting muscle to power.'+yesterdayGymNote};
@@ -1574,8 +1573,9 @@ function getDailyRecommendation(phase){
     return {type:'Rest Day',focus:'Recovery',duration:'—',equipment:'—',why:'Rest is when the adaptation happens.'+yesterdayGymNote};
   }
 
-  // Power-Speed Block
-  if(phase.name==='Power-Speed Block'){
+
+  // Power-Speed
+  if(phase.name==='Power-Speed Block' || phase.mPhase==='Power-Speed'){
     if(dow===1) return todayGymCompleted
       ? {type:'Technical Ball Work',focus:'Wall passing, first touch — gym already done today',duration:'25 min',equipment:'Ball, wall',why:'Gym ('+gymTag+') already completed today. Light technical work for recovery.'+yesterdayGymNote}
       : {type:'Gym Maintenance Upper',focus:'Planet Fitness — moderate dumbbell work, cables',duration:'35 min',equipment:'Dumbbells, cables',why:'Power-Speed: gym volume drops, intensity stays. Maintenance mode.'+yesterdayGymNote};
@@ -1589,8 +1589,9 @@ function getDailyRecommendation(phase){
     return {type:'Rest Day',focus:'Recovery',duration:'—',equipment:'—',why:'Rest.'+yesterdayGymNote};
   }
 
+
   // Taper
-  if(phase.name==='Taper Week'){
+  if(phase.name==='Taper Week' || phase.mPhase==='Taper'){
     if(dow===1||dow===4) return todayGymCompleted
       ? {type:'Recovery Walk',focus:'Light walk or foam rolling — gym already done today',duration:'20 min',equipment:'None',why:'Gym ('+gymTag+') already completed today. Prioritize recovery during taper.'+yesterdayGymNote}
       : {type:'Light Gym',focus:'Planet Fitness — light full body, moderate volume',duration:'30 min',equipment:'Dumbbells, cables',why:'Taper: maintain movement patterns, don\'t chase fatigue.'+yesterdayGymNote};
@@ -1602,8 +1603,8 @@ function getDailyRecommendation(phase){
   return {type:'Rest Day',focus:'Recovery',duration:'—',equipment:'—',why:'Follow your plan.'+yesterdayGymNote};
 }
 
-function renderPlan(){
-  const phase = getCurrentPhase();
+async function renderPlan(){
+  const phase = await getCurrentPhase();
   $('#phaseName').textContent = phase.name;
   $('#phaseGoal').textContent = phase.goal;
   $('#phaseBarFill').style.width = phase.progress + '%';
@@ -1623,15 +1624,17 @@ function renderPlan(){
   }
 
   if(phase.mode==='preseason'){
-    $('#phaseDates').textContent = 'Pre-Season Mode (July 13+)';
+    $('#phaseDates').textContent = 'Pre-Season Mode (July 28+)';
     $('#switchToPreseason').classList.add('hidden');
   } else {
-    const start = new Date(OFFSEASON_PLAN.startDate+'T00:00:00');
-    // Calculate cumulative weeks of prior blocks to get the correct block start
+    // Compute block dates from phase.js anchor (June 1, 2026)
+    const start = new Date('2026-06-01T00:00:00');
     let cumWeeks = 0;
-    for(const block of OFFSEASON_PLAN.blocks){
-      if(block.name === phase.name) break;
-      cumWeeks += block.weeks;
+    const PHASE_WEEKS = { 'Foundation': 2, 'Strength-Speed': 2, 'Power-Speed': 2, 'Taper': 1 };
+    const phaseNames = ['Foundation','Strength-Speed','Power-Speed','Taper'];
+    for(const pn of phaseNames){
+      if(pn === (phase.mPhase || phase.name)) break;
+      cumWeeks += (PHASE_WEEKS[pn] || 2);
     }
     const blockStart = new Date(start); blockStart.setDate(blockStart.getDate() + cumWeeks*7 + (phase.week-1)*7);
     const blockEnd = new Date(blockStart); blockEnd.setDate(blockEnd.getDate() + phase.totalWeeks*7 - 1);
@@ -1646,13 +1649,13 @@ function renderPlan(){
   $('#dailyRecWhy').textContent = rec.why;
 
   // Weekly template
-  $('#weeklyTemplate').innerHTML = getWeeklyTemplate(phase.name);
+  $('#weeklyTemplate').innerHTML = getWeeklyTemplate(phase);
 }
 
 $('switchToPreseason').addEventListener('click', async () => {
   if(!confirm('Switch to pre-season mode? This changes the daily recommendations.')) return;
   const upsertData = {
-    start_date: PRESEASON_START,
+    start_date: '2026-08-01',
     end_date: null,
     current_phase: 'preseason',
     phase_week: 1,
@@ -1668,16 +1671,18 @@ $('switchToPreseason').addEventListener('click', async () => {
 
 // Phase readiness: Advance Anyway
 $('advancePhaseBtn').addEventListener('click', async () => {
-  const phase = getCurrentPhase();
+  const phase = await getCurrentPhase();
   if(phaseOverrideDays > 0){
     if(!confirm('Reset all block extensions and let the plan advance based on the calendar date?')) return;
     phaseOverrideDays = 0;
+    await window.setPhaseOverride(sb, 0); // Reset — compute from real date
   } else {
     if(!confirm(`Skip the readiness check and advance past ${phase.name}?`)) return;
     // Force-advance: set offset to push past the current block boundary
-    phaseOverrideDays = -(phase.daysLeft + 1);
+    const skipDays = -(phase.daysLeft + 1);
+    phaseOverrideDays = skipDays;
+    await window.setPhaseOverride(sb, skipDays);
   }
-  await savePhaseOverride();
   renderPlan();
   await renderInsights();
 });
@@ -1686,7 +1691,7 @@ $('advancePhaseBtn').addEventListener('click', async () => {
 $('extendPhaseBtn').addEventListener('click', async () => {
   if(!confirm('Extend the current block by one week? You can advance manually at any time.')) return;
   phaseOverrideDays += 7;
-  await savePhaseOverride();
+  await window.setPhaseOverride(sb, phaseOverrideDays);
   renderPlan();
   await renderInsights();
 });
@@ -1797,7 +1802,7 @@ async function renderInsights(){
   const allSpeedSessions = soccerSessions.filter(s => s.session_type==='speed' && s.date <= today()).sort((a,b) => b.date.localeCompare(a.date));
   const lastSpeedDate = allSpeedSessions.length ? allSpeedSessions[0].date : null;
   const daysSinceLastSpeed = lastSpeedDate ? Math.floor((new Date(today()+'T00:00:00') - new Date(lastSpeedDate+'T00:00:00')) / 86400000) : 999;
-  const phase = getCurrentPhase();
+  const phase = await getCurrentPhase();
   if(phase.name==='Power-Speed Block' && daysSinceLastSpeed >= 5){
     alerts.push({ cls:'warn', title:'🏃 Acceleration Focus Needed', body:`No speed session in ${daysSinceLastSpeed} days during your Power-Speed block. Acceleration is your identified weakness — this is your most important block for it. Log a speed session today.` });
   }
@@ -1857,7 +1862,8 @@ async function renderInsights(){
   }
 
   // Pre-season readiness check (within 14 days of pre-season)
-  const daysToPreseason = Math.floor((new Date(PRESEASON_START+'T00:00:00') - new Date(today()+'T00:00:00')) / 86400000);
+  const phaseResult = await window.getCurrentPhase(sb);
+  const daysToPreseason = phaseResult ? phaseResult.daysToPreseason : 0;
   if(daysToPreseason <= 14 && daysToPreseason > 0){
     const baseline10mLatest = athleticTests.filter(t=>t.test_type==='10m_sprint').slice(-1)[0];
     const baselineYoyoLatest = athleticTests.filter(t=>t.test_type==='yoyo_level').slice(-1)[0];

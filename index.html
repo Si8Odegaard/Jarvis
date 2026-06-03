@@ -1306,6 +1306,7 @@
   <script src="topbar.js" defer></script>
   <script src="utils.js"></script>
   <script src="chat.js"></script>
+  <script src="phase.js"></script>
   <script>
   (function () {
     'use strict';
@@ -1346,15 +1347,9 @@
 
     /* ── Morning Briefing State ── */
     let briefingData = null;
-    const BRIEFING_START = '2026-06-01';
-    const BRIEFING_PRESEASON = '2026-08-01';
     const START_WEIGHT = 135;
-    const BLOCKS = [
-      { name:'Foundation Block', weeks:2, goal:'Build muscle base & establish movement quality.' },
-      { name:'Strength-Speed Block', weeks:2, goal:'Convert muscle to power. Heavier gym, add plyometrics.' },
-      { name:'Power-Speed Block', weeks:2, goal:'Express power & speed. Max velocity sprints, game-realistic ball work.' },
-      { name:'Taper Week', weeks:1, goal:'Drop volume 35%. Arrive fresh and sharp for pre-season.' }
-    ];
+    // Phase authority: all phase logic lives in phase.js
+    // Use window.getCurrentPhase(sb) for phase data
 
 
     function toLocalDateStr(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
@@ -1379,31 +1374,6 @@
         data: { scores: jarvisHistory },
         updated_at: new Date().toISOString()
       }, { onConflict: 'key' })).catch(() => {});
-    }
-
-    function getBriefingPhase() {
-      const now = new Date(briefingToday()+'T00:00:00');
-      const preseason = new Date(BRIEFING_PRESEASON+'T00:00:00');
-      if(now >= preseason) return { mode:'preseason', name:'Pre-Season', week:1, totalWeeks:1, daysLeft:0, dayOfOffseason:0, goal:'Individual work when recovery allows.' };
-      const start = new Date(BRIEFING_START+'T00:00:00');
-      let dayOffset = Math.floor((now - start) / 86400000);
-      let dayOfOffseason = Math.max(1, dayOffset + 1);
-      if(dayOffset < 0) dayOffset = 0;
-      let weekAccum = 0;
-      for(const block of BLOCKS) {
-        const blockDays = block.weeks * 7;
-        if(dayOffset < weekAccum * 7 + blockDays) {
-          const weekInBlock = Math.floor((dayOffset - weekAccum * 7) / 7) + 1;
-          const daysLeft = blockDays - (dayOffset - weekAccum * 7);
-          return { mode:'offseason', name:block.name, goal:block.goal, week:weekInBlock, totalWeeks:block.weeks, daysLeft:Math.max(0,daysLeft), dayOfOffseason };
-        }
-        weekAccum += block.weeks;
-      }
-      // Gap between end of off-season blocks and actual pre-season date
-      const daysLeft = Math.max(0, Math.ceil((preseason - now) / 86400000));
-      const totalOffseasonDays = Math.ceil((preseason - start) / 86400000);
-      dayOfOffseason = Math.max(1, totalOffseasonDays - daysLeft);
-      return { mode:'preseason', name:'Pre-Season', week:1, totalWeeks:1, daysLeft, dayOfOffseason, goal:'Individual work when recovery allows.' };
     }
 
     const $ = (id) => document.getElementById(id.startsWith('#') ? id.slice(1) : id);
@@ -2276,15 +2246,28 @@
         // Use the 7-day avg directly if available, otherwise use today's
         const avgRecovery = recovery7DayAvg || recoveryToday;
 
-        // Phase
-        const phase = getBriefingPhase();
+        // Phase — get from shared authority (phase.js)
+        let phase;
+        if(window.getCurrentPhase){
+          const pr = await window.getCurrentPhase(supa);
+          if(pr){
+            phase = {
+              mode: (pr.phase === 'In-Season' || pr.phase === 'Pre-Season') ? 'preseason' : 'offseason',
+              name: pr.phase, week: pr.phaseWeek, totalWeeks: pr.totalWeeks || 1,
+              daysLeft: pr.daysLeftInBlock || 0, dayOfOffseason: pr.daysToPreseason || 0,
+              goal: pr.goal || '',
+              daysToPreseason: pr.daysToPreseason
+            };
+          }
+        }
+        if(!phase) phase = { mode:'offseason', name:'Foundation', week:1, totalWeeks:2, daysLeft:14, dayOfOffseason:55, goal:'', daysToPreseason:55 };
 
         // Today's recommendation (simplified for brief)
         const dow = new Date().getDay();
         let todayRec = 'Rest day';
         if (phase.mode === 'preseason') {
           todayRec = (dow === 0 || dow === 6) ? 'Rest day' : 'Technical ball work or light gym';
-        } else if (phase.name === 'Foundation Block') {
+        } else if (phase.name === 'Foundation Block' || phase.name === 'Foundation') {
           if (dow === 1) todayRec = 'Gym: Upper Push';
           else if (dow === 2) todayRec = 'Ball Work + Ladder';
           else if (dow === 3) todayRec = 'Gym: Lower Body';
@@ -2335,17 +2318,15 @@
     }
 
     function renderCountdown() {
-      const ps = new Date(BRIEFING_PRESEASON+'T00:00:00');
-      const now = new Date();
-      const daysRemaining = Math.max(0, Math.ceil((ps - now) / 86400000));
-      const totalOffseason = Math.ceil((ps - new Date(BRIEFING_START+'T00:00:00')) / 86400000);
+      const d = briefingData;
+      const daysRemaining = d?.phase?.daysToPreseason ?? d?.phase?.dayOfOffseason ?? 0;
+      const totalOffseason = 61; // June 1 to Aug 1 = 61 days
       const daysElapsed = Math.max(0, totalOffseason - daysRemaining);
       const pct = totalOffseason > 0 ? Math.min(100, Math.round((daysElapsed / totalOffseason) * 100)) : 0;
 
       $('countdownDays').textContent = daysRemaining;
       $('countdownDays').style.color = daysRemaining <= 7 ? 'var(--warning)' : 'var(--success)';
       $('countdownBar').style.width = pct + '%';
-      const label = daysRemaining === 0 ? 'Pre-season is here' : daysRemaining === 1 ? '1 day to pre-season' : `${daysRemaining} days to pre-season`;
       $('countdownCard').querySelector('.countdown-label').textContent = daysRemaining === 0 ? 'IT BEGINS NOW' : 'Days to make history';
     }
 
@@ -2355,8 +2336,7 @@
       const name = 'Silas';
       const now = new Date();
       const currentHour = now.getHours();
-      const ps = new Date(BRIEFING_PRESEASON+'T00:00:00');
-      const daysToPS = Math.max(0, Math.ceil((ps - now) / 86400000));
+      const daysToPS = d.phase?.daysToPreseason ?? d.phase?.dayOfOffseason ?? 0;
 
       // Before 6am: rest message
       if (currentHour < 6) {
@@ -2375,11 +2355,17 @@
       // Build the brief in the specified format
       let brief = `Good morning ${name}. `;
 
-      // Phase + days to pre-season
-      if (phase.mode === 'preseason') {
+      // Phase + days to pre-season      // Phase name mapping for display
+      const phaseDisplayName = {
+        'Foundation': 'Foundation Block', 'Strength-Speed': 'Strength-Speed Block',
+        'Power-Speed': 'Power-Speed Block', 'Taper': 'Taper Week',
+        'In-Season': 'In-Season', 'Pre-Season': 'Pre-Season'
+      }[phase.name] || phase.name;
+
+      if(phase.mode === 'preseason') {
         brief += `<span class="brief-highlight">Pre-Season</span> — `;
       } else {
-        brief += `<span class="brief-highlight">${phase.name}</span> — `;
+        brief += `<span class="brief-highlight">${phaseDisplayName}</span> — `;
       }
       brief += `<span class="brief-highlight">${daysToPS} days to pre-season</span>. `;
 
