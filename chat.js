@@ -258,9 +258,10 @@
   <div class="jarvis-input-wrap">
     <div class="jarvis-chips" id="jvChips">
       <button class="jarvis-chip" data-prompt="What should I do today?" data-autosend="true">What should I do today?</button>
-      <button class="jarvis-chip" data-prompt="How am I progressing?" data-autosend="true">How am I progressing?</button>
-      <button class="jarvis-chip" data-prompt="What did I eat today?" data-autosend="true">What did I eat today?</button>
+      <button class="jarvis-chip" data-prompt="How am I progressing toward D1?" data-autosend="true">How am I progressing toward D1?</button>
       <button class="jarvis-chip" data-prompt="Pre-season readiness check" data-autosend="true">Pre-season readiness check</button>
+      <button class="jarvis-chip" data-prompt="What should I eat today?" data-autosend="true">What should I eat today?</button>
+      <button class="jarvis-chip" data-prompt="Analyze my last week" data-autosend="true">Analyze my last week</button>
     </div>
     <div class="jarvis-input-row">
       <textarea class="jarvis-textarea" id="jvInput" rows="1" placeholder="Ask Jarvis anything&hellip;" aria-label="Chat message"></textarea>
@@ -277,86 +278,117 @@
   // ──────────────── DOM HELPERS ────────────────
   function $(id) { return document.getElementById(id); }
 
-  // ──────────────── SUPABASE CONTEXT LOADER ────────────────
+  // ──────────────── UNIFIED STATE READER ────────────────
   const toLocal = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
-  async function loadSupabaseContext() {
-    if (!supa) return null;
-    const today = toLocal(new Date());
-    const last7 = new Date(); last7.setDate(last7.getDate() - 6);
-    const last7Str = toLocal(last7);
-    const last14 = new Date(); last14.setDate(last14.getDate() - 13);
-    const last14Str = toLocal(last14);
-    const next14 = new Date(); next14.setDate(next14.getDate() + 14);
-    const next14Str = toLocal(next14);
+  async function loadJarvisContext(sb) {
+    if (!sb) return null;
+    const [stateRes, checkinsRes, testRes, soccerRes, gymRes] = await Promise.all([
+      sb.from('app_state').select('*'),
+      sb.from('daily_checkins').select('*').order('date', { ascending: false }).limit(7),
+      sb.from('athletic_tests').select('*').order('date', { ascending: false }).limit(20),
+      sb.from('soccer_sessions').select('*').order('date', { ascending: false }).limit(7),
+      sb.from('workout_sessions').select('*').order('date', { ascending: false }).limit(7)
+    ]);
 
-    const safeQuery = (qb) => Promise.resolve(qb).catch(() => ({ data: [] }));
-    const safeMaybe = (qb) => Promise.resolve(qb).catch(() => ({ data: null }));
-
-    const ctx = {};
-
-    try {
-      const [
-        appRes, checkinsRes, recoveryRes, weightRes, soccerRes,
-        workoutRes, setsRes, testsRes, nutProfRes, planRes, eventsRes
-      ] = await Promise.all([
-        safeQuery(supa.from('app_state').select('key,data')),
-        safeQuery(supa.from('daily_checkins').select('*').gte('date', last7Str).order('date', { ascending: false }).limit(7)),
-        safeQuery(supa.from('recovery_scores').select('*').gte('date', last7Str).order('date', { ascending: false }).limit(7)),
-        safeQuery(supa.from('weight_logs').select('*').order('date', { ascending: false }).limit(14)).then(async (r) => {
-          // Fallback to 'weight' table if weight_logs is empty
-          if (!r.data || r.data.length === 0) {
-            const alt = await safeQuery(supa.from('weight').select('*').order('date', { ascending: false }).limit(14));
-            return alt;
-          }
-          return r;
-        }),
-        safeQuery(supa.from('soccer_sessions').select('*').order('date', { ascending: false }).limit(14)),
-        safeQuery(supa.from('workout_sessions').select('*').order('date', { ascending: false }).limit(10)),
-        safeQuery(supa.from('session_sets').select('*').order('created_at', { ascending: false }).limit(50)),
-        safeQuery(supa.from('athletic_tests').select('*').order('date', { ascending: false })),
-        safeMaybe(supa.from('nutrition_profile').select('*').limit(1).maybeSingle()),
-        safeMaybe(supa.from('offseason_plan').select('*').order('last_updated', { ascending: false }).limit(1).maybeSingle()),
-        safeQuery(supa.from('calendar_events').select('*').gte('date', today).lte('date', next14Str).order('date', { ascending: true }))
-      ]);
-
-      // App state as key-value
-      ctx.app_state = {};
-      (appRes.data || []).forEach(r => { ctx.app_state[r.key] = r.data; });
-
-      ctx.daily_checkins = checkinsRes.data || [];
-      ctx.recovery_scores = recoveryRes.data || [];
-      ctx.weight_logs = weightRes.data || [];
-      ctx.soccer_sessions = soccerRes.data || [];
-      ctx.workout_sessions = workoutRes.data || [];
-      ctx.session_sets = setsRes.data || [];
-      ctx.athletic_tests = testsRes.data || [];
-      ctx.nutrition_profile = nutProfRes.data || null;
-      ctx.offseason_plan = planRes.data || null;
-      ctx.calendar_events = eventsRes.data || [];
-
-    } catch (_) {
-      // If any fail, return what we have (empty context is better than crashing)
+    // Parse app_state into a clean key-value object
+    const state = {};
+    for (const row of (stateRes.data || [])) {
+      state[row.key] = row.data;
     }
 
-    return ctx;
+    return {
+      state,
+      checkins: checkinsRes.data || [],
+      tests: testRes.data || [],
+      soccerSessions: soccerRes.data || [],
+      gymSessions: gymRes.data || []
+    };
   }
 
   // ──────────────── SYSTEM PROMPT ────────────────
-  const COACHING_IDENTITY = `You are Jarvis, a world-class soccer performance coach operating at Premier League academy methodology level. Your athlete is ${athleteName} — an 18-year-old box-to-box and defensive midfielder with the physical profile and positional role of Declan Rice. Current weight ${startWeight}lbs, target 150-155lbs of functional mass. Primary weaknesses: acceleration, first-step quickness, lateral agility. Primary strength: exceptional aerobic endurance and engine. Training environment: mostly solo with balls, goal, wall, cones, agility ladder, full field, Planet Fitness gym. No barbells, no squat rack, no sled. Pre-season starts August 1 at JUCO college. Individual off-season runs June 1 to end of July with some disruptions for vacation (late June) and moving (late July).
-
-You operate using the most current sports science research. Key principles you apply: (1) Relative strength in hip extension is the primary physical predictor of sprint acceleration — every kg added to Smith machine squat and Bulgarian split squat directly improves ${athleteName}'s first step. (2) The acute-to-chronic workload ratio must stay between 0.8 and 1.3 to minimize injury risk — flag if it approaches 1.5. (3) Carbohydrate periodization around matches produces measurable performance improvements — increase carb targets 48 hours before matches, prioritize protein in the 24 hours after. (4) Sleep extension to 9+ hours produces direct improvements in sprint speed and reaction time — actively coach this. (5) Technical skill acquisition for going pro requires perception-action coupling — pressure receiving, decision-making under fatigue — not just isolated repetition. (6) Nordic curl negatives are non-negotiable for hamstring injury prevention in sprint-based athletes — prescribe them every lower body session. (7) Repeated sprint ability is assessed by decay percentage across 6 sprints — above 8% decay indicates insufficient aerobic base relative to sprint volume.
-
-Your coaching voice is direct, specific, and motivating — like a Premier League academy coach who genuinely believes in this player's potential and has no patience for vagueness. You give specific numbers, specific exercises, specific sets and reps. You never give generic advice when ${athleteName}'s actual data is available. You know his equipment constraints and never recommend equipment he does not have. You know his schedule constraints and account for vacation and moving periods.
-
-When ${athleteName} asks what to do today, you tell him exactly what to do with specific exercises, sets, reps, and why each one moves him toward his goal. When he tells you what he ate, you estimate his macros and tell him if he hit his targets. When he describes a training session, you log it and give a coaching response. You end every substantive response with one sentence that connects today's work to his pro goal — something like "This session directly builds the hip extension power that makes defenders bounce off you."`;
-
-  function buildSystemPrompt(context) {
-    let prompt = COACHING_IDENTITY;
-    if (context && Object.keys(context).length > 0) {
-      prompt += '\n\n' + athleteName.toUpperCase() + ' CURRENT PERFORMANCE DATA: ' + JSON.stringify(context);
+  function buildJarvisSystemPrompt(state) {
+    if (!state || Object.keys(state).length === 0) {
+      // Minimal fallback so the AI still knows its identity
+      return `You are Jarvis, a Premier League academy performance coach working exclusively with Silas, an 18-year-old box-to-box midfielder. Your athlete trains at Planet Fitness (no barbell, no squat rack, no sled). Pre-season starts August 1, 2026. Give specific, data-driven coaching advice. Never recommend equipment he doesn't have.`;
     }
-    return prompt;
+
+    const weight = state.latest_weight?.weight || state.latest_weight || 135;
+    const phase = state.current_offseason_phase || 'Foundation';
+    const phaseWeek = state.current_phase_week || state.phase_week || 1;
+    const daysToPreseason = state.days_to_preseason || 'unknown';
+    const recScore = state.recovery_score_today?.score || state.recovery_score_today || 'not logged';
+    const recAvgScore = state.recovery_score_7day_avg?.score || state.recovery_score_7day_avg || 'not logged';
+    const acwrVal = state.acwr?.value || state.acwr?.acwr || state.acwr || 'unknown';
+    const acwrStatus = state.acwr?.status || 'unknown';
+    const recSession = state.recommended_session_today?.primarySession || 'not computed';
+    const recReason = state.recommended_session_today?.reasoning || '';
+    const recRestrictions = state.recommended_session_today?.restrictions?.join(', ') || 'none';
+    const gainRate = state.latest_weight?.gain_rate || state.weekly_gain_rate || 'not logged';
+    const gainTarget = ((weight || 135) * 0.006).toFixed(1);
+    const js = state.jarvis_score?.score || state.jarvis_score || 'not computed';
+    const match48Bool = state.match_in_48_hours === true || state.match_in_48_hours === 'true' || state.match_in_48_hours?.value === true;
+    const match24Bool = state.match_in_24_hours_recovery === true || state.match_in_24_hours_recovery === 'true' || state.match_in_24_hours_recovery?.value === true;
+    const lastGym = state.last_gym_session;
+    const gymLine = lastGym ? `${lastGym.split || 'gym'} on ${lastGym.date || 'unknown'}, ${Math.round((Date.now() - new Date(lastGym.completedAt || Date.now())) / 36e5)}hrs ago` : 'none logged';
+    const lastSoccer = state.last_soccer_session;
+    const soccerLine = lastSoccer ? `${lastSoccer.sessionType || 'soccer'} on ${lastSoccer.date || 'unknown'}, ${Math.round((Date.now() - new Date(lastSoccer.completedAt || Date.now())) / 36e5)}hrs ago` : 'none logged';
+
+    let d1Lines = '- No test data yet';
+    const d1Metrics = state.d1_gap_summary?.metrics;
+    if (d1Metrics && d1Metrics.length > 0) {
+      d1Lines = d1Metrics.map(m =>
+        `- ${m.metric}: ${m.current || 'untested'} vs D1 target ${m.target}${m.unit ? m.unit : ''} — ${m.onTrack ? '✓ on track' : '⚠ behind'}`
+      ).join('\n');
+    }
+
+    return `You are Jarvis, a Premier League academy performance coach working exclusively with Silas, an 18-year-old box-to-box and defensive midfielder (think Declan Rice) committed to Hagerstown Community College NJCAA Hawks starting August 1, 2026, with the goal of transferring to D1 and eventually going pro.
+
+SILAS'S PROFILE:
+- Position: Box-to-box and defensive midfielder
+- Current weight: ${weight}lbs — target 150-155lbs
+- Primary weaknesses: acceleration, first-step quickness
+- Strengths: endurance, work rate, technical base
+- Equipment: Planet Fitness only (Smith machine, dumbbells, cables, leg press, pull-up bar, resistance bands — NO barbell, NO squat rack, NO sled)
+- Timeline: Off-season now, pre-season August 1 in Hagerstown Maryland (moving from Austin Texas)
+
+CURRENT STATE (updated ${new Date().toLocaleDateString()}):
+- Training phase: ${phase} — Week ${phaseWeek}
+- Days to pre-season: ${daysToPreseason}
+- Recovery score today: ${recScore}/100
+- 7-day recovery average: ${recAvgScore}/100
+- ACWR: ${acwrVal} (${acwrStatus})
+- Today's recommended session: ${recSession} — ${recReason}
+- Active restrictions: ${recRestrictions}
+- Weekly gain rate: ${gainRate}lbs/week (target 0.5-0.7% bodyweight = ~${gainTarget}lbs/week)
+- Jarvis Score: ${js}/100
+- Match in 48hrs: ${match48Bool ? 'YES — carb load protocol active' : 'no'}
+- Match recovery: ${match24Bool ? 'YES — protein priority protocol active' : 'no'}
+
+LAST SESSIONS:
+- Last gym: ${gymLine}
+- Last soccer: ${soccerLine}
+
+D1 READINESS GAPS:
+${d1Lines}
+
+COACHING VOICE AND RULES:
+- Be direct and specific. Never give generic advice when real data is available.
+- Always reference actual numbers from the state above when relevant.
+- When Silas asks what to do today, answer specifically: session type, duration, focus, why.
+- When he asks about progress, reference his actual test data and gain rate.
+- When he asks nutrition questions, use his actual protein target and match schedule.
+- Cite sports science when relevant: Mendiguchia acceleration research, Tim Gabbett ACWR, Martin Buchheit soccer fitness, James Morton nutrition, UEFA injury prevention data.
+- Never recommend barbells, squat racks, sleds, or equipment he doesn't have.
+- Always account for his timeline — ${daysToPreseason} days until pre-season is always the backdrop.
+- If recovery score is below 55, always factor that in first before prescribing training.
+- The goal of every recommendation is: get Silas recruited to D1 from JUCO, then pro.
+
+FOOD LOGGING:
+If Silas describes food he ate, make a secondary analysis to estimate protein and calories, then confirm with him before logging. Format: "That sounds like roughly [N]g protein and [N] calories. Want me to log that?"
+
+DATA LOGGING FROM CONVERSATION:
+If Silas mentions his weight, water intake, or how he's feeling, offer to log it. Say "Want me to log that?" and if he confirms, write to the appropriate Supabase table.`;
   }
 
   // ──────────────── FOOD NUTRITION ESTIMATION ────────────────
@@ -607,8 +639,8 @@ Return only the JSON array, no formatting wrappers like \`\`\`json.`;
     }
   }
 
-  async function callGemini(messages, context) {
-    const systemText = buildSystemPrompt(context);
+  async function callGemini(messages, state) {
+    const systemText = buildJarvisSystemPrompt(state);
     const contents = messages.map(m => ({
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: m.content }]
@@ -645,8 +677,8 @@ Return only the JSON array, no formatting wrappers like \`\`\`json.`;
     return textPart?.text || null;
   }
 
-  async function callGroq(messages, context) {
-    const systemText = buildSystemPrompt(context);
+  async function callGroq(messages, state) {
+    const systemText = buildJarvisSystemPrompt(state);
     const groqMessages = [{ role: 'system', content: systemText }];
     messages.forEach(m => groqMessages.push({ role: m.role, content: m.content }));
 
@@ -704,20 +736,24 @@ Return only the JSON array, no formatting wrappers like \`\`\`json.`;
     let logResult = null;
     try {
       logResult = await detectAndLog(userText);
+      // Refresh app_state if any logging happened and computeDailyState is available
+      if (logResult && window.computeDailyState) {
+        window.computeDailyState(supa).catch(() => {});
+      }
     } catch (_) { /* Silently fail */ }
 
     // ═══ STEP 3: Load context & call AI ═══
     try {
-      const ctx = await loadSupabaseContext();
+      const ctx = await loadJarvisContext(supa);
 
       let response;
       try {
-        response = await callGemini(conversation, ctx);
+        response = await callGemini(conversation, ctx.state);
         activeModel = 'gemini';
       } catch (geminiErr) {
         console.warn('Gemini failed, falling back to Groq:', geminiErr.message);
         try {
-          response = await callGroq(conversation, ctx);
+          response = await callGroq(conversation, ctx.state);
           activeModel = 'groq';
         } catch (groqErr) {
           throw new Error('Both APIs failed');
@@ -749,9 +785,12 @@ Return only the JSON array, no formatting wrappers like \`\`\`json.`;
               });
             }
 
-            const target = startWeight; // 1g per lb
+            const targetWeight = ctx?.state?.latest_weight || startWeight;
+            const target = Math.round((typeof targetWeight === 'object' ? (targetWeight.weight || 135) : targetWeight) * 0.82);
             const foodPrefix = `\uD83C\uDF57 Logged — estimated ${protein_grams}g protein and approximately ${calories} calories. Running total today: ${newProtein}g protein toward your ${target}g target.${newProtein >= target ? ' Strong protein hit — keep this up to support today\'s muscle building stimulus.' : ''}\n\n`;
             finalReply = foodPrefix + finalReply;
+            // Refresh app_state after food logging
+            if (window.computeDailyState) { window.computeDailyState(supa).catch(() => {}); }
           } catch (_) {
             finalReply = `\uD83C\uDF57 Estimated ${protein_grams}g protein, ~${calories} calories.\n\n` + finalReply;
           }
