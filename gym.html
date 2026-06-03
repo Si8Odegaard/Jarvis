@@ -380,6 +380,24 @@ label.field-label{
   margin-bottom:12px;
 }
 
+/* program recommendation bar in log modal */
+.program-rec{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 14px;border-radius:9px;
+  background:rgba(107,227,164,.06);
+  border:1px solid rgba(107,227,164,.20);
+  margin-bottom:12px;font-size:13px;
+}
+.program-rec-label{color:var(--text-3);font-size:10px;letter-spacing:.10em;font-weight:700;text-transform:uppercase;}
+.program-rec-value{font-weight:700;color:var(--good);}
+.program-rec-reset{
+  background:transparent;border:1px solid rgba(107,227,164,.25);
+  color:var(--good);border-radius:6px;padding:4px 10px;
+  font-family:var(--font);font-size:11px;font-weight:600;
+  cursor:pointer;transition:all .15s;
+}
+.program-rec-reset:hover{background:rgba(107,227,164,.12);}
+
 /* gym tabs */
 .gym-tabs{
   display:flex;gap:6px;margin-bottom:16px;
@@ -609,7 +627,14 @@ label.field-label{
     <div class="coaching-brief" id="logCoachingBrief" style="display:none"></div>
     <div id="stallBox"></div>
     <div id="logOrmStats" style="margin-bottom:12px"></div>
-    <div class="eyebrow">Log Sets</div>
+    <div class="program-rec" id="programRec" style="display:none">
+      <div>
+        <div class="program-rec-label">Program Recommends</div>
+        <div class="program-rec-value" id="programRecValue">—</div>
+      </div>
+      <button class="program-rec-reset" id="programRecReset" title="Reset all rows to the program recommendation">↺ Use Recommended</button>
+    </div>
+    <div class="eyebrow">Your Sets</div>
     <div id="logSetRows"></div>
     <button class="btn btn-ghost btn-sm mt8" id="addSetRowBtn">+ Add Set</button>
     <div style="margin-top:16px;display:flex;gap:8px">
@@ -1413,6 +1438,24 @@ function openLogModal(idx){
         '<span class="pill pill-dim">'+logs.length+' sessions</span>'+
       '</div>' : '';
   } else { $('logOrmStats').innerHTML=''; }
+
+  // Show program recommendation
+  const recEl = $('programRec');
+  recEl.style.display = 'flex';
+  $('programRecValue').textContent = effWeight + ' lbs × ' + exDef.repMin + (exDef.repMin !== exDef.repMax ? '–' + exDef.repMax : '') + ' reps, ' + exDef.sets + ' sets';
+
+  // Reset to recommended button
+  $('programRecReset').onclick = () => {
+    if(!currentLogExDef) return;
+    const recWeight = getEffectiveWeight(currentLogExDef);
+    const container = $('logSetRows');
+    const rows = container.querySelectorAll('.set-row');
+    rows.forEach(row => {
+      const inputs = row.querySelectorAll('input');
+      if(inputs[0]) inputs[0].value = recWeight;
+      if(inputs[1]) inputs[1].value = currentLogExDef.repMin;
+    });
+  };
 
   // Build set rows
   buildSetRows(exDef);

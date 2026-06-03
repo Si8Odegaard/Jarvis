@@ -1365,6 +1365,28 @@
       return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
     }
 
+    // Gym day rotation (synchronized with gym.html)
+    function getGymDayName(gymMode) {
+      const MICROCYCLE_OFFSEASON = ['Lower Power','Upper Hypertrophy','Rest','Lower Hypertrophy & Lateral','Upper Power & Full Body','Rest','Rest'];
+      const MICROCYCLE_INSEASON  = ['Lower (In-Season)','Rest','Upper (In-Season)','Rest','Rest','Rest','Rest'];
+      const anchor = new Date('2026-06-01T00:00:00');
+      const now = new Date();
+      const todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+      const nowDate = new Date(todayStr + 'T00:00:00');
+      const diff = Math.round((nowDate - anchor) / 86400000);
+      const idx = ((0 + diff) % 7 + 7) % 7;
+      const cycle = gymMode === 'inseason' ? MICROCYCLE_INSEASON : MICROCYCLE_OFFSEASON;
+      return cycle[idx];
+    }
+
+    function getGymExerciseCount(gymDayName, gymMode) {
+      const exCounts = {
+        'Lower Power':6, 'Upper Hypertrophy':9, 'Lower Hypertrophy & Lateral':8, 'Upper Power & Full Body':7,
+        'Lower (In-Season)':5, 'Upper (In-Season)':5
+      };
+      return exCounts[gymDayName] || 0;
+    }
+
     // Jarvis score history (loaded inline in loadMorningBriefing from app_state key: jarvis_history)
     let jarvisHistory = [];
     // Component score history for trend charts under each Jarvis component
@@ -2294,6 +2316,9 @@
           todayRec = 'Check Plan tab';
         }
 
+        // Gym day rotation (synchronized with gym.html)
+        const gymDay = getGymDayName(d.gymMode || 'offseason');
+
         briefingData = {
           today, phase, recoveryToday, recovery7DayAvg, avgRecovery,
           latestWeight, weightDelta, weightWeekAgo: prevWeekWeight,
@@ -2305,7 +2330,9 @@
           matchIn48: matchRes?.data?.data?.value ?? matchRes?.data?.data ?? null,
           bodyData: bodyRes?.data?.data ?? null,
           weakestTech: techRes?.data?.data?.value ?? techRes?.data?.data ?? null,
-          gymMode: gymModeRes?.data?.data?.mode ?? gymModeRes?.data?.data ?? null
+          gymMode: gymModeRes?.data?.data?.mode ?? gymModeRes?.data?.data ?? null,
+          gymDay: gymDay,
+          gymExCount: getGymExerciseCount(gymDay, gymModeRes?.data?.data?.mode || 'offseason')
         };
 
         renderAllBriefing();
@@ -2376,8 +2403,16 @@
       }
       brief += `<span class="brief-highlight">${daysToPS} days to pre-season</span>. `;
 
-      // Today's recommendation
-      brief += `${d.todayRec}. `;
+      // Combined schedule: field work + gym
+      const gymIcons = {'Lower Power':'🏋️','Upper Hypertrophy':'💪','Lower Hypertrophy & Lateral':'🦵','Upper Power & Full Body':'⚡','Rest':'😴','Lower (In-Season)':'🦵','Upper (In-Season)':'💪'};
+      const gymIcon = gymIcons[d.gymDay] || '🏋️';
+      brief += `<br>🏟️ Field: ${d.todayRec}`;
+      if (d.gymDay === 'Rest') {
+        brief += ` · ${gymIcon} Gym: <span style="color:var(--text-tertiary)">Rest day</span>.`;
+      } else {
+        brief += ` · ${gymIcon} Gym: <span class="brief-highlight">${d.gymDay}</span> (${d.gymExCount || '?'} exercises).`;
+      }
+      brief += ` `;
 
       // Recovery score with one-word status
       const recScore = d.recoveryToday ?? '--';

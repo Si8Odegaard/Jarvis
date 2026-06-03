@@ -19,6 +19,7 @@ DROP TABLE IF EXISTS public.recovery_scores  CASCADE;
 DROP TABLE IF EXISTS public.daily_checkins   CASCADE;
 DROP TABLE IF EXISTS public.nutrition_profile CASCADE;
 DROP TABLE IF EXISTS public.progress_photos  CASCADE;
+DROP TABLE IF EXISTS public.relative_strength_ratios CASCADE;
 DROP TABLE IF EXISTS public.tdee_estimates   CASCADE;
 DROP TABLE IF EXISTS public.app_state        CASCADE;
 
@@ -190,13 +191,14 @@ CREATE INDEX idx_workout_sessions_date ON public.workout_sessions(date);
 --  Individual sets within a workout session
 -- ============================================
 CREATE TABLE public.session_sets (
-  id          BIGSERIAL PRIMARY KEY,
-  session_id  BIGINT REFERENCES public.workout_sessions(id) ON DELETE CASCADE,
-  exercise_id BIGINT REFERENCES public.exercises(id) ON DELETE CASCADE,
-  set_number  INTEGER,
-  reps        INTEGER,
-  weight      NUMERIC,
-  created_at  TIMESTAMPTZ DEFAULT NOW()
+  id            BIGSERIAL PRIMARY KEY,
+  session_id    BIGINT REFERENCES public.workout_sessions(id) ON DELETE CASCADE,
+  exercise_id   BIGINT REFERENCES public.exercises(id) ON DELETE CASCADE,
+  exercise_name TEXT,
+  set_number    INTEGER,
+  reps          INTEGER,
+  weight        NUMERIC,
+  created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
 ALTER TABLE public.session_sets ENABLE ROW LEVEL SECURITY;
@@ -238,6 +240,7 @@ CREATE POLICY "anon_delete_mesocycles" ON public.mesocycles FOR DELETE USING (tr
 CREATE TABLE public.stall_tracking (
   id               BIGSERIAL PRIMARY KEY,
   exercise_id      BIGINT REFERENCES public.exercises(id) ON DELETE CASCADE UNIQUE,
+  exercise_name    TEXT,
   sessions_stalled INTEGER DEFAULT 0,
   updated_at       TIMESTAMPTZ DEFAULT NOW()
 );
@@ -277,7 +280,33 @@ CREATE INDEX idx_tdee_estimates_date ON public.tdee_estimates(date);
 
 
 -- ============================================
---  12. PROGRESS_PHOTOS  (weight tab)
+--  12. RELATIVE_STRENGTH_RATIOS  (gym tab)
+--  Bodyweight-to-strength ratio tracking
+-- ============================================
+CREATE TABLE public.relative_strength_ratios (
+  id             BIGSERIAL PRIMARY KEY,
+  date           TEXT NOT NULL,
+  exercise_name  TEXT NOT NULL,
+  estimated_1rm  NUMERIC,
+  bodyweight_lbs NUMERIC,
+  ratio          NUMERIC,
+  target_ratio   NUMERIC,
+  elite_ratio    NUMERIC,
+  created_at     TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.relative_strength_ratios ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "anon_select_relative_strength_ratios" ON public.relative_strength_ratios FOR SELECT USING (true);
+CREATE POLICY "anon_insert_relative_strength_ratios" ON public.relative_strength_ratios FOR INSERT WITH CHECK (true);
+CREATE POLICY "anon_update_relative_strength_ratios" ON public.relative_strength_ratios FOR UPDATE USING (true);
+CREATE POLICY "anon_delete_relative_strength_ratios" ON public.relative_strength_ratios FOR DELETE USING (true);
+
+CREATE INDEX IF NOT EXISTS idx_relative_strength_date ON public.relative_strength_ratios(date);
+
+
+-- ============================================
+--  13. PROGRESS_PHOTOS  (weight tab)
 --  Metadata for progress photos stored in Supabase Storage
 --  Images go to bucket: 'progress-photos'
 -- ============================================
