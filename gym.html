@@ -851,9 +851,7 @@ const STRENGTH_TARGETS = {
 };
 
 // Day rotation: 7-day microcycle. Day 0 = anchor date
-const MICROCYCLE_OFFSEASON = ['Lower Power','Upper Hypertrophy','Rest','Lower Hypertrophy & Lateral','Upper Power & Full Body','Rest','Rest'];
-const MICROCYCLE_INSEASON  = ['Lower (In-Season)','Rest','Upper (In-Season)','Rest','Rest','Rest','Rest'];
-const ROTATION_ANCHOR = { date:'2026-06-01', index: 0 }; // June 1 2026 = Sunday = Day 0
+// Rotation logic now in utils.js — use window.getGymDayName(gymMode)
 
 // ════════════════════════════════════════════════════════════
 //  STATE
@@ -879,12 +877,7 @@ let exerciseIds = {};
 //  DAY ROTATION
 // ════════════════════════════════════════════════════════════
 function getTodayDayName(){
-  const anchor = new Date(ROTATION_ANCHOR.date + 'T00:00:00');
-  const now    = new Date(today() + 'T00:00:00');
-  const diff   = Math.round((now - anchor) / 86400000);
-  const idx    = ((ROTATION_ANCHOR.index + diff) % 7 + 7) % 7;
-  const cycle  = gymMode === 'inseason' ? MICROCYCLE_INSEASON : MICROCYCLE_OFFSEASON;
-  return cycle[idx];
+  return window.getGymDayName ? window.getGymDayName(gymMode) : 'Rest';
 }
 
 function getDayInfo(){
