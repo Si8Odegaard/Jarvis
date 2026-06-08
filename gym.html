@@ -296,14 +296,14 @@ const SPLITS={
         coaching:'Overhead stability — protects the shoulder complex during aerial duels and throw-ins. Full range of motion, control the descent.'},
       {name:'Face Pull',type:'accessory',workWeight:30,inc:1.25,fixedSets:3,fixedReps:15,
         coaching:'Posterior rotator cuff — the most neglected injury prevention exercise for soccer players. High reps, light weight, every upper session without exception. Protects the shoulder from chronic overuse.'},
-      {name:'Dead Hang',type:'accessory',workWeight:0,inc:0,fixedSets:3,fixedReps:'max',
+      {name:'Dead Hang',type:'accessory',workWeight:0,inc:0,fixedSets:3,fixedReps:30,repDisplay:'max time',
         coaching:'Grip strength and shoulder decompression — hang from the pull-up bar for max time. Decompresses the spine after loaded work, builds grip endurance for shielding, and improves shoulder health passively.'}
     ]
   },
   'Lateral Power & Single Leg':{
     icon:'🦵',goal:'Agility — lateral explosiveness and single-leg stability for change of direction',
     exercises:[
-      {name:'Lateral Bound',type:'plyo',workWeight:0,inc:0,fixedSets:4,fixedReps:'4 each side',
+      {name:'Lateral Bound',type:'plyo',workWeight:0,inc:0,fixedSets:4,fixedReps:4,repDisplay:'4 each side',
         coaching:'Lateral explosiveness — do this completely fresh before any strength work. This is the gym expression of your first lateral step in a cut. Maximum push-off, stick the landing, minimal ground contact time. Directly trains the movement pattern that separates good midfielders from great ones.'},
       {name:'Bulgarian Split Squat',type:'compound',workWeight:40,inc:2.5,
         coaching:'The most important exercise in your program. Single-leg hip extension under load — highest carryover to first-step quickness of any gym exercise. Exposes and corrects left-right imbalances that cause compensation injuries. Every kg of relative strength gained here directly improves your acceleration split.'},
@@ -322,17 +322,17 @@ const SPLITS={
   'Full Body Power':{
     icon:'⚡',goal:'Athletic expression — rotational power, loaded carries, relative strength',
     exercises:[
-      {name:'Plyo Push-Up',type:'plyo',workWeight:0,inc:0,fixedSets:4,fixedReps:5,
+      {name:'Plyo Push-Up',type:'plyo',workWeight:0,inc:0,fixedSets:4,fixedReps:5,repDisplay:'5 reps',
         coaching:'Upper body CNS primer — do first. Maximum explosive intent, chest leaves the ground fully. Improves reactive upper body strength for shielding contacts and ground recovery. Reset fully between reps — quality over speed.'},
-      {name:'Single-Leg Broad Jump',type:'plyo',workWeight:0,inc:0,fixedSets:3,fixedReps:'3 each side',
+      {name:'Single-Leg Broad Jump',type:'plyo',workWeight:0,inc:0,fixedSets:3,fixedReps:3,repDisplay:'3 each side',
         coaching:'Unilateral horizontal power and asymmetry detection — compare left vs right distance. Any asymmetry above 10% between legs is a compensation risk. This is your acceleration diagnostic — measure and track monthly.'},
       {name:'Cable Woodchop',type:'compound',workWeight:30,inc:1.25,fixedSets:4,fixedReps:'8 each side',
         coaching:'Rotational power — directly trains the core mechanics of driven passing, shooting, and body rotation in duels. The transfer from gym to pitch on this exercise is immediate and measurable. Rotate from the hips, not the arms.'},
-      {name:'Farmer Carry',type:'compound',workWeight:50,inc:2.5,fixedSets:3,fixedReps:'40m',
+      {name:'Farmer Carry',type:'compound',workWeight:50,inc:2.5,fixedSets:3,fixedReps:1,repDisplay:'40m carry',
         coaching:'Loaded carry — builds grip strength, core anti-lateral-flexion, and postural endurance. This is what keeps your shape and work rate intact in minute 85 when other midfielders are hunching and slowing. Walk with purpose, maximum tension throughout.'},
       {name:'Pull-Up',type:'compound',workWeight:0,inc:0,
         coaching:'Relative strength benchmark — bodyweight pull-ups to max reps. When you hit 12+ consistently, move to weighted pull-ups on Day 2 with heavier load. Track monthly.'},
-      {name:'Copenhagen Plank',type:'injury_prevention',workWeight:0,inc:0,fixedSets:3,fixedReps:'20s each side',
+      {name:'Copenhagen Plank',type:'injury_prevention',workWeight:0,inc:0,fixedSets:3,fixedReps:1,repDisplay:'20s each side',
         coaching:'Groin injury prevention — the most important injury prevention exercise for midfielders that almost nobody does. Groin strain is a top-3 career-disrupting injury for box-to-box midfielders. Side plank with top foot on a bench, bottom leg hanging. Feel it in the inner thigh.'}
     ]
   }
@@ -564,7 +564,7 @@ function renderExercises(){
           <div class="ex-name">${esc(ex.name)}</div>
           <div class="ex-target">
             <span class="ex-type-tag ${typeTag}">${typeLabel}</span>
-            <span>${scheme.sets}×${scheme.repMin}${scheme.repMin!==scheme.repMax?'–'+scheme.repMax:''}</span>
+            <span>${scheme.sets}×${ex.repDisplay||scheme.repMin}${!ex.repDisplay&&scheme.repMin!==scheme.repMax?'–'+scheme.repMax:''}</span>
             <span>·</span>
             <span>${effWeight} lbs</span>
             ${epleyTarget?`<span style="color:var(--warn);font-family:var(--mono);margin-left:4px">${epleyTarget}</span>`:''}
@@ -744,7 +744,7 @@ $('markDoneBtn').addEventListener('click',async()=>{
     const totalSetsDone=todaySets.length;
 
     // Write last_gym_session to app_state for cross-tab awareness
-    const isLowerBody = selectedSplit.includes('Lower');
+    const isLowerBody = selectedSplit.includes('Lower') || selectedSplit.includes('Lateral');
     await sb.from('app_state').upsert({
       key: 'last_gym_session',
       data: { date: today(), split: selectedSplit, isLowerBody: isLowerBody, completedAt: new Date().toISOString(), phase: phaseName, setsCompleted: totalSetsDone },
