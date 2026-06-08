@@ -1801,7 +1801,7 @@
         { day: 'Tuesday',   sessions: [{ type: 'field', label: 'Technical Quality', focus: 'Perception-action coupling, decision speed under pressure, receiving on the move' }] },
         { day: 'Wednesday', sessions: [{ type: 'gym', label: 'Upper Athletic', focus: 'Shielding strength, aerial ability, shoulder health' }] },
         { day: 'Thursday',  sessions: [{ type: 'speed', label: 'Speed + Agility', focus: '10m acceleration, 5-10-5, agility ladder, lateral quickness — your primary weakness' }] },
-        { day: 'Friday',    sessions: [{ type: 'gym', label: 'Lateral Power + Single Leg', focus: 'First-step quickness, frontal plane strength, agility foundation' }] },
+        { day: 'Friday',    sessions: [{ type: 'gym', label: 'Lateral Power & Single Leg', focus: 'First-step quickness, frontal plane strength, agility foundation' }] },
         { day: 'Saturday',  sessions: [{ type: 'field', label: 'Possession + Patterns', focus: 'High intensity, longer duration, match-realistic pressure and decisions' }] },
         { day: 'Sunday',    sessions: sessionCount >= 4
           ? [{ type: 'gym', label: 'Full Body Power', focus: 'Rotational power, loaded carries, relative strength benchmark' }]
@@ -2911,7 +2911,7 @@
       brief += `<span class="brief-highlight">${daysToPS} days to pre-season</span>. `;
 
       // Combined schedule: field work + gym
-      const gymIcons = {'Lower Power':'🏋️','Upper Hypertrophy':'💪','Lower Hypertrophy & Lateral':'🦵','Upper Power & Full Body':'⚡','Rest':'😴','Lower (In-Season)':'🦵','Upper (In-Season)':'💪'};
+      const gymIcons = {'Lower Power':'🏋️','Upper Athletic':'💪','Lateral Power & Single Leg':'🦵','Full Body Power':'⚡','Rest':'😴','Lower (In-Season)':'🦵','Upper (In-Season)':'💪'};
       const gymIcon = gymIcons[d.gymDay] || '🏋️';
       brief += `<br>🏟️ Field: ${d.todayRec}`;
       if (d.gymDay === 'Rest') {

@@ -191,7 +191,7 @@ if (typeof window !== 'undefined') {
   // ── Shared Gym Rotation Logic ──
   // Used by gym.html (gym tab) and index.html (dashboard morning brief)
   // Change these once to update both tabs.
-  const MICROCYCLE_OFFSEASON = ['Lower Power','Upper Hypertrophy','Rest','Lower Hypertrophy & Lateral','Upper Power & Full Body','Rest','Rest'];
+  const MICROCYCLE_OFFSEASON = ['Lower Power','Upper Athletic','Rest','Lateral Power & Single Leg','Full Body Power','Rest','Rest'];
   const MICROCYCLE_INSEASON  = ['Lower (In-Season)','Rest','Upper (In-Season)','Rest','Rest','Rest','Rest'];
   const ROTATION_ANCHOR = { date:'2026-06-01', index: 0 };
 
@@ -209,7 +209,7 @@ if (typeof window !== 'undefined') {
 
   window.getGymExerciseCount = function(gymDayName) {
     const exCounts = {
-      'Lower Power':6, 'Upper Hypertrophy':9, 'Lower Hypertrophy & Lateral':8, 'Upper Power & Full Body':7,
+      'Lower Power':5, 'Upper Athletic':6, 'Lateral Power & Single Leg':7, 'Full Body Power':6,
       'Lower (In-Season)':5, 'Upper (In-Season)':5
     };
     return exCounts[gymDayName] || 0;
