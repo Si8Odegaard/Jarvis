@@ -167,10 +167,10 @@ label.field-label{display:block;font-size:11px;font-weight:700;letter-spacing:.0
   <!-- ═══ SECTION 2: SPLIT SELECTOR ═══ -->
   <div class="section-title">Today's Split</div>
   <div class="split-selector" id="splitSelector">
-    <button class="split-pill active" data-split="Lower Power"><span class="split-pill-icon">🏋️</span>Lower Power<span class="split-pill-sub"></span></button>
-    <button class="split-pill" data-split="Upper Hypertrophy"><span class="split-pill-icon">💪</span>Upper Hypertrophy<span class="split-pill-sub"></span></button>
-    <button class="split-pill" data-split="Lower Hypertrophy & Lateral"><span class="split-pill-icon">🦵</span>Lower Hypertrophy<span class="split-pill-sub"></span></button>
-    <button class="split-pill" data-split="Upper Power & Full Body"><span class="split-pill-icon">⚡</span>Upper Power<span class="split-pill-sub"></span></button>
+    <button class="split-pill active" data-split="Lower Power"><span class="split-pill-icon">🏋️</span>Lower Power<span class="split-pill-sub">Day 1</span></button>
+    <button class="split-pill" data-split="Upper Athletic"><span class="split-pill-icon">💪</span>Upper Athletic<span class="split-pill-sub">Day 2</span></button>
+    <button class="split-pill" data-split="Lateral Power & Single Leg"><span class="split-pill-icon">🦵</span>Lateral Power<span class="split-pill-sub">Day 3</span></button>
+    <button class="split-pill" data-split="Full Body Power"><span class="split-pill-icon">⚡</span>Full Body Power<span class="split-pill-sub">Day 4</span></button>
   </div>
 
   <!-- ═══ GYM TABS ═══ -->
@@ -269,79 +269,74 @@ function calc1RM(weight,reps){if(!reps||reps<1)return null;const c=Math.min(reps
 // ════════════════════════════════════════════════════════════
 const SPLITS={
   'Lower Power':{
-    icon:'🏋️',goal:'Hip extension power for first-step acceleration',
+    icon:'🏋️',goal:'Acceleration — hip extension power and horizontal force expression',
     exercises:[
+      {name:'Broad Jump',type:'plyo',workWeight:0,inc:0,fixedSets:4,fixedReps:3,
+        coaching:'Horizontal power expression — the direct gym measure of first-step distance. Maximum intent every rep. Measure distance and compare monthly. Do this completely fresh, before anything else.'},
+      {name:'Box Jump',type:'plyo',workWeight:0,inc:0,fixedSets:3,fixedReps:4,
+        coaching:'Vertical CNS activation — primes fast-twitch recruitment before heavy loading. Focus on landing: soft knees, hip hinge, controlled absorption. Reset fully between reps.'},
       {name:'Smith Machine Squat',type:'compound',workWeight:135,inc:5,
-        coaching:'Bilateral hip extension strength — foundation of sprint mechanics. Every 10% strength gain here reduces ground contact time in acceleration per Mendiguchia 2014.'},
-      {name:'Dumbbell RDL',type:'compound',workWeight:95,inc:5,
-        coaching:'Posterior chain loading under stretch — builds the eccentric hamstring strength that prevents non-contact hamstring tears, the most common injury ending JUCO careers.'},
+        coaching:'Bilateral hip extension — the strength foundation of sprint mechanics. Per Mendiguchia 2014, every 10% relative strength gain in hip extension reduces ground contact time in acceleration. Heavy, controlled descent, explosive drive.'},
       {name:'Single-Leg RDL',type:'compound',workWeight:35,inc:2.5,
-        coaching:'Hip stability under load — directly trains the stance-phase mechanics of sprinting and cutting. Poor single-leg stability is the root cause of groin injuries in midfielders.'},
-      {name:'Box Jump',type:'plyo',workWeight:0,inc:0,fixedSets:3,fixedReps:5,
-        coaching:'CNS activation — perform before heavy compound work to prime fast-twitch recruitment. Focus on landing mechanics: soft knees, hip hinge, controlled.'},
-      {name:'Broad Jump',type:'plyo',workWeight:0,inc:0,fixedSets:3,fixedReps:3,
-        coaching:'Horizontal power expression — directly maps to first-step distance. Maximum intent on every rep. Measure and log distance monthly.'},
-      {name:'Nordic Curl Negative',type:'injury',workWeight:0,inc:0,fixedSets:3,fixedReps:5,
-        coaching:'51% reduction in hamstring injury risk per UEFA research. Non-negotiable every lower session. Lower slowly 4-5 seconds, use hands to return.'},
-      {name:'Single-Leg Bound',type:'plyo',workWeight:0,inc:0,fixedSets:3,fixedReps:3,
-        coaching:'Unilateral horizontal power — the direct gym expression of first-step distance. Measure and compare left vs right; asymmetry above 10% needs addressing.'}
+        coaching:'Hip stability under load — trains the stance-phase mechanics of sprinting and cutting. Weak single-leg hip stability is the root cause of groin injuries in midfielders. Feel the stretch, control the return.'},
+      {name:'Nordic Curl Negative',type:'injury_prevention',workWeight:0,inc:0,fixedSets:3,fixedReps:5,
+        coaching:'51% reduction in hamstring injury risk per UEFA research. Non-negotiable every lower session. Lower slowly over 4-5 full seconds, use hands to return. This exercise protects your career.'}
     ]
   },
-  'Upper Hypertrophy':{
-    icon:'💪',goal:'Functional upper body mass for physicality in duels',
-    exercises:[
-      {name:'Smith Machine Bench Press',type:'compound',workWeight:115,inc:2.5,
-        coaching:'Anterior shoulder and chest strength — improves shielding ability and contact strength in 50/50 challenges. Secondary benefit: shoulder girdle stability for throw-ins.'},
-      {name:'Cable Row',type:'compound',workWeight:90,inc:2.5,
-        coaching:'Horizontal pulling strength — balances bench pressing to protect shoulder health. Scapular retraction strength is critical for heading mechanics.'},
-      {name:'Pull-Up',type:'compound',workWeight:0,inc:0,
-        coaching:'Relative pulling strength — the mark of a complete athlete. D1 midfielders average 15+ bodyweight reps. Every rep builds the posterior shoulder stability that protects headers.'},
-      {name:'Dumbbell Overhead Press',type:'accessory',workWeight:35,inc:2.5,
-        coaching:'Overhead stability — protects the shoulder complex during aerial duels and throw-ins. Use full range of motion.'},
-      {name:'Face Pull',type:'accessory',workWeight:30,inc:1.25,
-        coaching:'Posterior rotator cuff — the most neglected injury prevention exercise for soccer players. High reps, light weight, every upper session.'},
-      {name:'Dumbbell Curl',type:'accessory',workWeight:25,inc:1.25,
-        coaching:'Arm hypertrophy for completeness — secondary benefit for throw-in power and shielding.'}
-    ]
-  },
-  'Lower Hypertrophy & Lateral':{
-    icon:'🦵',goal:'Single-leg strength and lateral stability for change of direction',
-    exercises:[
-      {name:'DB Bulgarian Split Squat',type:'compound',workWeight:40,inc:2.5,
-        coaching:'Single-leg hip extension — highest carryover exercise to first-step quickness. Unilateral load exposes and corrects left-right imbalances that cause compensation injuries.'},
-      {name:'Lateral Lunge',type:'compound',workWeight:25,inc:1.25,
-        coaching:'Frontal plane strength — trains the deceleration mechanics of lateral cuts. Most gym programs ignore this plane entirely; most soft tissue injuries happen in it.'},
-      {name:'Leg Press',type:'compound',workWeight:180,inc:5,
-        coaching:'Quad strength base for knee stability. Supplement to single-leg work — use full range of motion, control the eccentric.'},
-      {name:'Hip Abduction Machine',type:'accessory',workWeight:60,inc:2.5,
-        coaching:'Glute medius strength — the single most important stabilizer for knee health in cutting sports. Weakness here causes the knee valgus that tears ACLs.'},
-      {name:'Banded Lateral Walk',type:'accessory',workWeight:0,inc:0,
-        coaching:'Glute activation under fatigue — finish lower sessions with this to groove lateral stability patterns when muscles are tired, simulating late-game demands.'},
-      {name:'Nordic Curl Negative',type:'injury',workWeight:0,inc:0,fixedSets:3,fixedReps:5,
-        coaching:'51% reduction in hamstring injury risk per UEFA research. Non-negotiable every lower session. 4-second lowering, use hands to return.'},
-      {name:'Calf Raise',type:'accessory',workWeight:90,inc:5,
-        coaching:'Ankle stiffness and Achilles tendon loading — reduces Achilles injury risk and improves ground contact efficiency in sprinting. Slow eccentric, full range.'}
-    ]
-  },
-  'Upper Power & Full Body':{
-    icon:'⚡',goal:'Full-body power expression — jumping, heading, fighting for position',
+  'Upper Athletic':{
+    icon:'💪',goal:'Shielding strength, aerial ability, and shoulder durability',
     exercises:[
       {name:'Weighted Pull-Up',type:'compound',workWeight:0,inc:0,
-        coaching:'Peak pulling strength — when bodyweight pull-ups exceed 12 reps, add load. Lat and upper back strength directly improves shielding and aerial duels.'},
+        coaching:'Peak pulling strength — do this first while completely fresh. Add load via dumbbell between feet or belt. D1 midfielders average 15+ bodyweight pull-ups. Lat and upper back strength directly improves shielding, aerial duels, and header mechanics.'},
+      {name:'Smith Machine Bench Press',type:'compound',workWeight:115,inc:2.5,
+        coaching:'Contact strength — improves shielding ability and power in 50/50 challenges. Secondary benefit: shoulder girdle stability for throw-ins and goalkeeper distribution under pressure.'},
+      {name:'Cable Row',type:'compound',workWeight:90,inc:2.5,
+        coaching:'Horizontal pulling — balances pressing to protect shoulder health long-term. Scapular retraction strength is critical for heading mechanics and postural endurance in the 90th minute.'},
+      {name:'Dumbbell Overhead Press',type:'accessory',workWeight:35,inc:2.5,
+        coaching:'Overhead stability — protects the shoulder complex during aerial duels and throw-ins. Full range of motion, control the descent.'},
+      {name:'Face Pull',type:'accessory',workWeight:30,inc:1.25,fixedSets:3,fixedReps:15,
+        coaching:'Posterior rotator cuff — the most neglected injury prevention exercise for soccer players. High reps, light weight, every upper session without exception. Protects the shoulder from chronic overuse.'},
+      {name:'Dead Hang',type:'accessory',workWeight:0,inc:0,fixedSets:3,fixedReps:'max',
+        coaching:'Grip strength and shoulder decompression — hang from the pull-up bar for max time. Decompresses the spine after loaded work, builds grip endurance for shielding, and improves shoulder health passively.'}
+    ]
+  },
+  'Lateral Power & Single Leg':{
+    icon:'🦵',goal:'Agility — lateral explosiveness and single-leg stability for change of direction',
+    exercises:[
+      {name:'Lateral Bound',type:'plyo',workWeight:0,inc:0,fixedSets:4,fixedReps:'4 each side',
+        coaching:'Lateral explosiveness — do this completely fresh before any strength work. This is the gym expression of your first lateral step in a cut. Maximum push-off, stick the landing, minimal ground contact time. Directly trains the movement pattern that separates good midfielders from great ones.'},
+      {name:'Bulgarian Split Squat',type:'compound',workWeight:40,inc:2.5,
+        coaching:'The most important exercise in your program. Single-leg hip extension under load — highest carryover to first-step quickness of any gym exercise. Exposes and corrects left-right imbalances that cause compensation injuries. Every kg of relative strength gained here directly improves your acceleration split.'},
+      {name:'Dumbbell RDL',type:'compound',workWeight:95,inc:5,
+        coaching:'Posterior chain loading under stretch — builds the eccentric hamstring strength that prevents non-contact hamstring tears, the most common injury ending JUCO careers. Feel the stretch at the bottom, drive through the hips.'},
+      {name:'Lateral Lunge',type:'compound',workWeight:25,inc:1.25,
+        coaching:'Frontal plane deceleration strength — trains the mechanics of lateral cuts and direction changes. Most gym programs completely ignore the frontal plane; most soft tissue injuries happen in it. Control the descent, push back explosively.'},
+      {name:'Hip Abduction Machine',type:'accessory',workWeight:60,inc:2.5,
+        coaching:'Glute medius strength — the single most important stabilizer for knee health in cutting sports. Weakness here causes the knee valgus that tears ACLs. High reps, full range, squeeze at the top.'},
+      {name:'Banded Lateral Walk',type:'accessory',workWeight:0,inc:0,fixedSets:2,fixedReps:'20 each',
+        coaching:'Glute activation under fatigue — finish lower sessions with this to groove lateral stability patterns when muscles are tired, simulating late-game demands on your hips.'},
+      {name:'Nordic Curl Negative',type:'injury_prevention',workWeight:0,inc:0,fixedSets:3,fixedReps:5,
+        coaching:'Non-negotiable every lower session. 51% hamstring injury reduction per UEFA research. Lower over 4-5 seconds, hands to return.'}
+    ]
+  },
+  'Full Body Power':{
+    icon:'⚡',goal:'Athletic expression — rotational power, loaded carries, relative strength',
+    exercises:[
       {name:'Plyo Push-Up',type:'plyo',workWeight:0,inc:0,fixedSets:4,fixedReps:5,
-        coaching:'Upper body power expression — improves the reactive strength used in shielding contacts and ground recovery. Maximum intent, reset fully between reps.'},
-      {name:'Cable Woodchop',type:'compound',workWeight:30,inc:1.25,
-        coaching:'Rotational power — directly trains the core mechanics of driven passing and shooting. The transfer from gym to pitch is immediate and measurable.'},
-      {name:'DB Farmer Carry',type:'compound',workWeight:50,inc:2.5,
-        coaching:'Loaded carry — builds grip strength, core anti-lateral-flexion, and the postural endurance that keeps your form intact in minute 85.'},
-      {name:'DB Power Shrug',type:'accessory',workWeight:40,inc:2.5,
-        coaching:'Triple extension pattern — trains the same ankle-knee-hip sequence used in jumping and first-step acceleration. Keep it explosive.'}
+        coaching:'Upper body CNS primer — do first. Maximum explosive intent, chest leaves the ground fully. Improves reactive upper body strength for shielding contacts and ground recovery. Reset fully between reps — quality over speed.'},
+      {name:'Single-Leg Broad Jump',type:'plyo',workWeight:0,inc:0,fixedSets:3,fixedReps:'3 each side',
+        coaching:'Unilateral horizontal power and asymmetry detection — compare left vs right distance. Any asymmetry above 10% between legs is a compensation risk. This is your acceleration diagnostic — measure and track monthly.'},
+      {name:'Cable Woodchop',type:'compound',workWeight:30,inc:1.25,fixedSets:4,fixedReps:'8 each side',
+        coaching:'Rotational power — directly trains the core mechanics of driven passing, shooting, and body rotation in duels. The transfer from gym to pitch on this exercise is immediate and measurable. Rotate from the hips, not the arms.'},
+      {name:'Farmer Carry',type:'compound',workWeight:50,inc:2.5,fixedSets:3,fixedReps:'40m',
+        coaching:'Loaded carry — builds grip strength, core anti-lateral-flexion, and postural endurance. This is what keeps your shape and work rate intact in minute 85 when other midfielders are hunching and slowing. Walk with purpose, maximum tension throughout.'},
+      {name:'Pull-Up',type:'compound',workWeight:0,inc:0,
+        coaching:'Relative strength benchmark — bodyweight pull-ups to max reps. When you hit 12+ consistently, move to weighted pull-ups on Day 2 with heavier load. Track monthly.'},
+      {name:'Copenhagen Plank',type:'injury_prevention',workWeight:0,inc:0,fixedSets:3,fixedReps:'20s each side',
+        coaching:'Groin injury prevention — the most important injury prevention exercise for midfielders that almost nobody does. Groin strain is a top-3 career-disrupting injury for box-to-box midfielders. Side plank with top foot on a bench, bottom leg hanging. Feel it in the inner thigh.'}
     ]
   }
 };
-
-// ════════════════════════════════════════════════════════════
-//  STATE
 // ════════════════════════════════════════════════════════════
 let phaseConfig=null;let phaseName='Foundation';let phaseWeek=1;
 let recommendation=null;let sessions=[];let allSets=[];
@@ -416,11 +411,11 @@ async function applySoccerAwareness(){
       var hoursSinceSoccer = (Date.now() - new Date(lastSoccer.completedAt).getTime()) / 36e5;
       var soccerHadSprints = lastSoccer.hasSprintWork === true;
       if (soccerHadSprints && hoursSinceSoccer < 16) {
-        selectedSplit = 'Upper Hypertrophy';
+        selectedSplit = 'Upper Athletic';
         soccerBannerMsg = 'Speed/match session ' + Math.round(hoursSinceSoccer) + 'hrs ago — upper body recommended today';
       } else if (hoursSinceSoccer < 8) {
         soccerBannerMsg = 'Recent soccer session — consider rest or upper body only';
-        if (selectedSplit.includes('Lower')) selectedSplit = 'Upper Power & Full Body';
+        if (selectedSplit.includes('Lower')) selectedSplit = 'Full Body Power';
       }
     }
   } catch(e) {}
@@ -543,8 +538,8 @@ function renderExercises(){
     }
 
     // Type tag
-    const typeTag=ex.type==='compound'?'compound':ex.type==='plyo'?'plyo':ex.type==='injury'?'injury':'accessory';
-    const typeLabel=ex.type==='compound'?'Compound':ex.type==='plyo'?'Plyometric':ex.type==='injury'?'Injury Prev':'Accessory';
+    const typeTag=ex.type==='compound'?'compound':ex.type==='plyo'?'plyo':ex.type==='injury_prevention'?'injury':'accessory';
+    const typeLabel=ex.type==='compound'?'Compound':ex.type==='plyo'?'Plyometric':ex.type==='injury_prevention'?'Injury Prev':'Accessory';
 
     // Overload info
     const lastSession=logs.length?logs[0]:null;
