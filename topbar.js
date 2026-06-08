@@ -74,52 +74,12 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.topbar-water-wrap {
-  flex: 1 1 0; min-width: 0;
-  display: flex;
-}
-.topbar-water-pill {
-  flex: 1; min-width: 0;
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 8px 12px;
-  background: rgba(125, 211, 252, 0.07);
-  border: 1px solid rgba(125, 211, 252, 0.14);
-  border-right: none;
-  border-radius: 11px 0 0 11px;
-  text-decoration: none;
-  color: #FAFAFA;
-  -webkit-tap-highlight-color: transparent;
-  transition: background 0.15s;
-}
-.topbar-water-pill:hover { background: rgba(125, 211, 252, 0.12); }
-.topbar-water-pill .topbar-pill-dot { background: #7DD3FC; }
-.topbar-water-add {
-  flex: 0 0 auto;
-  width: 38px;
-  border: 1px solid rgba(125, 211, 252, 0.14);
-  background: linear-gradient(180deg, rgba(125, 211, 252, 0.22), rgba(110, 231, 183, 0.22));
-  color: #FFFFFF;
-  font-family: inherit; font-size: 17px; font-weight: 700;
-  cursor: pointer;
-  border-radius: 0 11px 11px 0;
-  -webkit-tap-highlight-color: transparent;
-  transition: background 0.15s, transform 0.10s;
-}
-.topbar-water-add:hover {
-  background: linear-gradient(180deg, rgba(125, 211, 252, 0.34), rgba(110, 231, 183, 0.34));
-}
-.topbar-water-add:active { transform: scale(0.94); }
-.topbar-water-add.flash {
-  background: linear-gradient(180deg, rgba(125, 211, 252, 0.65), rgba(110, 231, 183, 0.65));
-}
-
 @media (max-width: 480px) {
   .topbar { padding-left: 10px; padding-right: 10px; gap: 4px; }
   .topbar-pill, .topbar-water-pill { padding: 7px 9px; gap: 5px; }
   .topbar-pill-label { font-size: 9px; letter-spacing: 0.10em; }
   .topbar-pill-count { font-size: 11px; }
-  .topbar-water-wrap { flex: 1.2 1 0; }
-  .topbar-water-add { width: 28px; font-size: 15px; }
+
 }
 @media (max-width: 380px) {
   .topbar-pill-label { display: none; }
@@ -184,14 +144,7 @@ body.topbar-modal-open {
     <span class="topbar-pill-label">HEALTH</span>
     <span class="topbar-pill-count" id="topbarStackCount">—/—</span>
   </a>
-  <div class="topbar-water-wrap">
-    <a href="#water" class="topbar-water-pill" id="topbarWater">
-      <span class="topbar-pill-dot"></span>
-      <span class="topbar-pill-label">WATER</span>
-      <span class="topbar-pill-count" id="topbarWaterCount">—/—</span>
-    </a>
-    <button class="topbar-water-add" id="topbarWaterAdd" aria-label="Log one drink" type="button">+</button>
-  </div>
+
 </header>
 `;
 
@@ -243,33 +196,7 @@ body.topbar-modal-open {
     return { done, total };
   }
 
-  function getWaterProgress() {
-    let state = null;
-    try { state = JSON.parse(localStorage.getItem('po_water_v1')); } catch (e) {}
-    if (!state) return { done: 0, total: 0 };
-    const todayKey = calendarDateKey();
-    const done = (state.logs || {})[todayKey] || 0;
-    const p = state.profile || { weightKg: 75 };
-    const wKg = state.weightUnit === 'lb' ? (p.weightKg || 0) / 2.20462 : (p.weightKg || 0);
-    const base = wKg * 35;
-    const exercise = (p.activityHrsPerWeek || 0) / 7 * 500;
-    const caffeine = Math.max(0, (state.caffeineMgPerDay || 0) - 200) * 1.5;
-    const subs = (state.substances || []).reduce((s, x) => {
-      const dose = (x && x.dose != null ? x.dose : (x && x.defaultDose)) || 0;
-      return s + Math.max(0, dose * ((x && x.mlPerUnit) || 0));
-    }, 0);
-    let adjust = 0;
-    if (p.sex === 'm') adjust += 200;
-    if ((p.age || 0) >= 50) adjust += 100;
-    const totalMl = base + exercise + caffeine + subs + adjust;
-    let unitVol;
-    if (state.unit === 'glass') unitVol = state.glassMl || 250;
-    else if (state.unit === 'oz') unitVol = 30;
-    else if (state.unit === 'ml') unitVol = 1;
-    else unitVol = state.bottleMl || 500;
-    const total = Math.max(1, Math.ceil(totalMl / unitVol));
-    return { done, total };
-  }
+
 
   function classifyStatus(done, total) {
     if (total === 0) return 'idle';
@@ -289,76 +216,22 @@ body.topbar-modal-open {
   function render() {
     const goalsEl = document.getElementById('topbarGoals');
     const stackEl = document.getElementById('topbarStack');
-    const waterEl = document.getElementById('topbarWater');
     if (!goalsEl) return; // not injected yet
 
     const g = getGoalsProgress();
     const s = getStackProgress();
-    const w = getWaterProgress();
 
     document.getElementById('topbarGoalsCount').textContent =
       g.total ? g.done + '/' + g.total : '0/0';
     document.getElementById('topbarStackCount').textContent =
       s.total ? s.done + '/' + s.total : '0/0';
-    document.getElementById('topbarWaterCount').textContent =
-      w.total ? w.done + '/' + w.total : '0/0';
 
     setPillStatus(goalsEl, classifyStatus(g.done, g.total));
     setPillStatus(stackEl, classifyStatus(s.done, s.total));
-    setPillStatus(waterEl, classifyStatus(w.done, w.total));
   }
 
-  // -------- Water +1 (works from any page) --------
-  function defaultWaterState() {
-    return {
-      unit: 'bottle', bottleMl: 500, glassMl: 250, weightUnit: 'kg',
-      profile: { weightKg: 75, age: 25, sex: 'm', activityHrsPerWeek: 5 },
-      caffeineMgPerDay: 200, substances: [], logs: {}
-    };
-  }
+  // -------- Water tracking moved to Health tab --------
 
-  async function pushWaterMergedToSupabase(localWater) {
-    // Only do this when we're NOT on the health page — health page
-    // has its own sync that already detects the localStorage change.
-    if (window.location.pathname.endsWith('/health.html') ||
-        window.location.pathname.endsWith('health.html')) return;
-
-    if (!window.supabase || !TOPBAR_SUPABASE_URL || !TOPBAR_SUPABASE_KEY) return;
-    if (TOPBAR_SUPABASE_URL.indexOf('PASTE-') === 0) return;
-
-    try {
-      const supa = window.supabase.createClient(TOPBAR_SUPABASE_URL, TOPBAR_SUPABASE_KEY);
-      // Push to the 'water' key — same key po-water.html uses.
-      // This prevents stale 'health'-key data from overwriting profile settings.
-      const { data } = await supa
-        .from('app_state').select('data').eq('key', 'water').maybeSingle();
-      const current = (data && data.data) || {};
-      const merged = Object.assign({}, current, { po_water_v1: localWater });
-      await supa.from('app_state').upsert(
-        { key: 'water', data: merged, updated_at: new Date().toISOString() },
-        { onConflict: 'key' }
-      );
-    } catch (e) { /* offline — local change will sync next time user visits water */ }
-  }
-
-  function addWater() {
-    let state = null;
-    try { state = JSON.parse(localStorage.getItem('po_water_v1')); } catch (e) {}
-    if (!state || typeof state !== 'object') state = defaultWaterState();
-    state.logs = state.logs || {};
-    const k = calendarDateKey();
-    state.logs[k] = (state.logs[k] || 0) + 1;
-    try { localStorage.setItem('po_water_v1', JSON.stringify(state)); } catch (e) {}
-    render();
-
-    const btn = document.getElementById('topbarWaterAdd');
-    if (btn) {
-      btn.classList.add('flash');
-      setTimeout(() => btn.classList.remove('flash'), 220);
-    }
-
-    pushWaterMergedToSupabase(state);
-  }
 
   // -------- Mobile lockdown helpers --------
   // Belt-and-suspenders zoom prevention — iOS Safari sometimes ignores
@@ -411,7 +284,6 @@ body.topbar-modal-open {
     if (!window.DashTabs) return;
     const goalsEl = document.getElementById('topbarGoals');
     const stackEl = document.getElementById('topbarStack');
-    const waterEl = document.getElementById('topbarWater');
     if (goalsEl && document.getElementById('tab-panel-home')) {
       goalsEl.addEventListener('click', (e) => {
         e.preventDefault();
@@ -424,20 +296,12 @@ body.topbar-modal-open {
         window.DashTabs.show('stack');
       });
     }
-    if (waterEl && document.getElementById('tab-panel-water')) {
-      waterEl.addEventListener('click', (e) => {
-        e.preventDefault();
-        window.DashTabs.show('water');
-      });
-    }
   }
 
   // -------- Boot --------
   function boot() {
     injectStyleAndHTML();
     wireDashboardTabs();
-    const btn = document.getElementById('topbarWaterAdd');
-    if (btn) btn.addEventListener('click', (e) => { e.preventDefault(); addWater(); });
     render();
     lockGestures();
     startModalLock();
@@ -449,13 +313,7 @@ body.topbar-modal-open {
     window.addEventListener('goals-changed', render);
     window.addEventListener('dashboard-synced', render);
     window.addEventListener('message', (e) => {
-      if (e.data && (
-        e.data.type === 'po-water-updated' ||
-        e.data.type === 'stack-updated'
-      )) {
-        // Render immediately from localStorage — the iframe already saved it.
-        // Don't wait for cloud fetch, which can race with the iframe's push
-        // and pull stale data that overwrites fresh localStorage settings.
+      if (e.data && e.data.type === 'stack-updated') {
         render();
       }
       if (e.data && e.data.type === 'dashboard-synced') {
@@ -474,11 +332,9 @@ body.topbar-modal-open {
     if (!window.supabase || TOPBAR_SUPABASE_URL.indexOf('PASTE-') === 0) return;
     try {
       const supa = window.supabase.createClient(TOPBAR_SUPABASE_URL, TOPBAR_SUPABASE_KEY);
-      const [{ data: dash }, { data: health }, { data: stack }, { data: water }] = await Promise.all([
+      const [{ data: dash }, { data: stack }] = await Promise.all([
         supa.from('app_state').select('data').eq('key', 'dashboard').maybeSingle(),
-        supa.from('app_state').select('data').eq('key', 'health').maybeSingle(),
         supa.from('app_state').select('data').eq('key', 'stack').maybeSingle(),
-        supa.from('app_state').select('data').eq('key', 'water').maybeSingle(),
       ]);
       if (dash && dash.data && typeof dash.data === 'object') {
         Object.keys(dash.data).forEach((k) => {
@@ -487,14 +343,7 @@ body.topbar-modal-open {
           }
         });
       }
-      // Water: prefer the dedicated 'water' key (authoritative).
-      // Only fall back to the old 'health' key if 'water' has no data.
-      if (water && water.data && typeof water.data === 'object' && water.data.po_water_v1 != null) {
-        try { localStorage.setItem('po_water_v1', JSON.stringify(water.data.po_water_v1)); } catch (e) {}
-      } else if (health && health.data && typeof health.data === 'object' && health.data.po_water_v1 != null) {
-        // Legacy fallback — migrate from health to water key next time water tab opens
-        try { localStorage.setItem('po_water_v1', JSON.stringify(health.data.po_water_v1)); } catch (e) {}
-      }
+
       if (stack && stack.data && typeof stack.data === 'object') {
         Object.keys(stack.data).forEach((k) => {
           if (k.startsWith('stack:')) {
