@@ -369,6 +369,9 @@ LAST SESSIONS:
 - Last gym: ${gymLine}
 - Last soccer: ${soccerLine}
 
+WEEKLY PLAN:
+${state.weekly_plan?.days ? state.weekly_plan.days.map(d => `${d.day}${d.isToday ? ' (TODAY)' : ''}: ${d.sessions.map(s => s.label).join(' + ')}`).join('\n') : 'Not generated yet'}
+
 D1 READINESS GAPS:
 ${d1Lines}
 

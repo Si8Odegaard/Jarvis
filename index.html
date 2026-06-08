@@ -1094,6 +1094,73 @@
     .d1-gap-metric-val { color: var(--text-primary); font-weight: 700; }
     .d1-gap-metric-target { color: var(--text-tertiary); font-size: 9px; }
 
+    /* ── Weekly Plan Calendar ── */
+    .weekly-plan-section { margin-bottom: 14px; }
+    .weekly-plan-phase {
+      font-size: 11px; font-weight: 600; color: var(--text-secondary);
+      margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+    }
+    .weekly-plan-phase em {
+      font-style: normal; color: var(--success); font-weight: 700;
+    }
+    .weekly-plan-scroll {
+      display: flex; gap: 6px; overflow-x: auto;
+      -webkit-overflow-scrolling: touch; scrollbar-width: none;
+      padding-bottom: 4px;
+    }
+    .weekly-plan-scroll::-webkit-scrollbar { display: none; }
+    .week-day-col {
+      flex: 0 0 auto; width: 80px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 10px; padding: 10px 6px;
+      text-align: center; transition: all 0.2s;
+    }
+    .week-day-col.today {
+      background: rgba(107,227,164,0.08);
+      border-color: rgba(107,227,164,0.28);
+      box-shadow: 0 0 12px rgba(107,227,164,0.15);
+    }
+    .week-day-name {
+      font-size: 9px; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--text-tertiary);
+      margin-bottom: 8px;
+    }
+    .week-day-col.today .week-day-name { color: var(--success); }
+    .week-day-sessions { display: flex; flex-direction: column; gap: 4px; }
+    .week-session-pill {
+      display: flex; align-items: center; gap: 4px;
+      padding: 4px 6px; border-radius: 6px;
+      font-size: 8px; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase; line-height: 1.2;
+      justify-content: center;
+    }
+    .week-session-pill.gym {
+      background: rgba(107,227,164,0.12); color: #6BE3A4;
+      border: 1px solid rgba(107,227,164,0.18);
+    }
+    .week-session-pill.field {
+      background: rgba(96,165,250,0.12); color: #60A5FA;
+      border: 1px solid rgba(96,165,250,0.18);
+    }
+    .week-session-pill.speed {
+      background: rgba(242,192,99,0.12); color: #F2C063;
+      border: 1px solid rgba(242,192,99,0.18);
+    }
+    .week-session-pill.match {
+      background: rgba(255,138,138,0.12); color: #FF8A8A;
+      border: 1px solid rgba(255,138,138,0.18);
+    }
+    .week-session-pill.rest {
+      background: rgba(255,255,255,0.04); color: #444;
+      border: 1px solid rgba(255,255,255,0.04);
+    }
+    .week-session-icon { font-size: 10px; line-height: 1; }
+    @media (max-width: 480px) {
+      .week-day-col { width: 68px; padding: 8px 4px; }
+      .week-session-pill { font-size: 7px; padding: 3px 4px; }
+    }
+
     /* ── Session Recommendation Pill ── */
     .session-rec-pill {
       display: inline-flex; align-items: center; gap: 8px;
@@ -1150,6 +1217,12 @@
     <div class="d1-gap-card" id="d1GapCard">
       <div class="d1-gap-title">D1 Readiness</div>
       <div class="d1-gap-row" id="d1GapRow"></div>
+    </div>
+
+    <!-- ═══ WEEKLY TRAINING CALENDAR ═══ -->
+    <div class="weekly-plan-section" id="weeklyPlanSection">
+      <div class="weekly-plan-phase" id="weeklyPlanPhase">--</div>
+      <div class="weekly-plan-scroll" id="weeklyPlanScroll"></div>
     </div>
 
     <div class="jarvis-section" id="jarvisSection">
@@ -1577,6 +1650,20 @@
         // Refresh match intelligence from calendar events (writes match_in_48_hours, match_in_24_hours_recovery, next_match_date)
         if (window.writeMatchIntelligence) { await window.writeMatchIntelligence(sb).catch(() => {}); }
 
+        // ── 5b. Generate Weekly Plan ──
+        let hasRecLeague = false;
+        try {
+          const { data: rl } = await sb.from('app_state').select('data').eq('key','has_rec_league').maybeSingle();
+          hasRecLeague = rl?.data?.value === true || rl?.data === true;
+        } catch(_) {}
+
+        const weeklyPlan = generateWeeklyPlan(phaseData, hasRecLeague);
+        await sb.from('app_state').upsert({
+          key: 'weekly_plan',
+          data: weeklyPlan,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'key' }).catch(()=>{});
+
         const { data: matchData } = await sb.from('app_state').select('data').eq('key','match_in_48_hours').maybeSingle();
         const matchIn48 = matchData?.data?.value === true || matchData?.data === true;
 
@@ -1698,7 +1785,7 @@
           key:'d1_gap_summary', data:{ metrics:d1Gaps }, updated_at:new Date().toISOString()
         }, { onConflict:'key' }).catch(()=>{});
 
-        return { phase:phaseData, recoveryToday, recovery7DayAvg, acwr, acwrStatus, latestWeight, weeklyGainRate, recommendation:rec, jarvisScore, jarvisComponents:{ recovery:recComp, nutrition:nutComp, load:loadComp, athletic:athComp }, prevJarvisScore:prevJS, d1Gaps };
+        return { phase:phaseData, recoveryToday, recovery7DayAvg, acwr, acwrStatus, latestWeight, weeklyGainRate, recommendation:rec, jarvisScore, jarvisComponents:{ recovery:recComp, nutrition:nutComp, load:loadComp, athletic:athComp }, prevJarvisScore:prevJS, d1Gaps, weeklyPlan };
       } catch(e) {
         console.error('computeDailyState error:', e);
         return null;
@@ -1707,6 +1794,104 @@
 
     // Expose globally so chat.js can refresh after logging
     window.computeDailyState = computeDailyState;
+
+    /* ── Weekly Plan Generator ── */
+    function generateWeeklyPlan(phaseData, hasRecLeague) {
+      const phase = phaseData?.phase || 'Foundation';
+      const sessionCount = phaseData?.gymPhaseConfig?.sessionCount || 4;
+      const phaseWeek = phaseData?.phaseWeek || 1;
+      const daysToPreseason = phaseData?.daysToPreseason || '?';
+
+      const baseWeek = [
+        { day: 'Monday',    sessions: [{ type: 'gym', label: 'Lower Power', focus: 'Acceleration — horizontal power and hip extension' }] },
+        { day: 'Tuesday',   sessions: [{ type: 'field', label: 'Technical Quality', focus: 'Perception-action coupling, decision speed under pressure, receiving on the move' }] },
+        { day: 'Wednesday', sessions: [{ type: 'gym', label: 'Upper Athletic', focus: 'Shielding strength, aerial ability, shoulder health' }] },
+        { day: 'Thursday',  sessions: [{ type: 'speed', label: 'Speed + Agility', focus: '10m acceleration, 5-10-5, agility ladder, lateral quickness — your primary weakness' }] },
+        { day: 'Friday',    sessions: [{ type: 'gym', label: 'Lateral Power + Single Leg', focus: 'First-step quickness, frontal plane strength, agility foundation' }] },
+        { day: 'Saturday',  sessions: [{ type: 'field', label: 'Possession + Patterns', focus: 'High intensity, longer duration, match-realistic pressure and decisions' }] },
+        { day: 'Sunday',    sessions: sessionCount >= 4
+          ? [{ type: 'gym', label: 'Full Body Power', focus: 'Rotational power, loaded carries, relative strength benchmark' }]
+          : [{ type: 'rest', label: 'Rest', focus: 'Full recovery' }] }
+      ];
+
+      // Rec league toggle — if hasRecLeague, Saturday becomes match day
+      if (hasRecLeague) {
+        baseWeek[5].sessions = [{ type: 'match', label: 'Rec League Match', focus: 'Competitive minutes — application of technical and physical work' }];
+        baseWeek[4].sessions = [
+          { type: 'field', label: 'Match Activation', focus: 'Light technical — 20 mins, sharp touches, no fatigue' },
+          ...baseWeek[4].sessions
+        ];
+      }
+
+      // Phase modifiers
+      if (phase === 'Taper') {
+        baseWeek[6].sessions = [{ type: 'rest', label: 'Rest', focus: 'Neural freshness — full recovery before pre-season' }];
+        baseWeek[5].sessions = [{ type: 'field', label: 'Light Technical', focus: '20-25 mins only — sharp touches, no fatigue' }];
+      }
+      if (phase === 'Pre-Season' || phase === 'In-Season') {
+        baseWeek[6].sessions = [{ type: 'rest', label: 'Rest', focus: 'Recovery priority' }];
+      }
+
+      // Add today marker
+      const todayDayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date().getDay()];
+      baseWeek.forEach(d => d.isToday = d.day === todayDayName);
+
+      return { week: phaseWeek, phase, daysToPreseason, days: baseWeek };
+    }
+
+    /* ── Weekly Calendar Renderer ── */
+    function renderWeeklyCalendar() {
+      const section = document.getElementById('weeklyPlanSection');
+      const phaseEl = document.getElementById('weeklyPlanPhase');
+      const scrollEl = document.getElementById('weeklyPlanScroll');
+      if (!section || !phaseEl || !scrollEl) return;
+
+      // Read from app_state (set by computeDailyState) or use briefingData
+      let plan = null;
+      if (briefingData?.weeklyPlan) {
+        plan = briefingData.weeklyPlan;
+      }
+
+      if (!plan || !plan.days) {
+        section.style.display = 'none';
+        return;
+      }
+
+      section.style.display = 'block';
+      phaseEl.innerHTML = 'Week <em>' + plan.week + '</em> of <em>' + plan.phase + '</em> — ' + plan.daysToPreseason + ' days to pre-season';
+
+      const typeIcons = { gym: '🏋️', field: '⚽', speed: '🏃', match: '🏟️', rest: '—' };
+      scrollEl.innerHTML = '';
+
+      plan.days.forEach(d => {
+        const col = document.createElement('div');
+        col.className = 'week-day-col' + (d.isToday ? ' today' : '');
+
+        const nameEl = document.createElement('div');
+        nameEl.className = 'week-day-name';
+        nameEl.textContent = d.day.slice(0,3).toUpperCase();
+        col.appendChild(nameEl);
+
+        const sessionsEl = document.createElement('div');
+        sessionsEl.className = 'week-day-sessions';
+
+        d.sessions.forEach(s => {
+          const pill = document.createElement('div');
+          pill.className = 'week-session-pill ' + s.type;
+          const icon = document.createElement('span');
+          icon.className = 'week-session-icon';
+          icon.textContent = typeIcons[s.type] || '•';
+          const label = document.createElement('span');
+          label.textContent = s.label;
+          pill.appendChild(icon);
+          pill.appendChild(label);
+          sessionsEl.appendChild(pill);
+        });
+
+        col.appendChild(sessionsEl);
+        scrollEl.appendChild(col);
+      });
+    }
 
     /* ── Morning Briefing Loader ── */
 
@@ -2511,7 +2696,7 @@
         const last7Str = toLocalDateStr(last7);
 
         // Read from app_state keys written by computeDailyState (fall back to direct queries if needed)
-        const [nutRes, soccerRes, checkinsRes, weightRes, testsRes, sessRes, gymRes, rsaRes, planRes, jarvisHistRes, compHistRes, acwrRes, matchRes, bodyRes, techRes, gymModeRes, d1Res, weightStateRes] = await Promise.all([
+        const [nutRes, soccerRes, checkinsRes, weightRes, testsRes, sessRes, gymRes, rsaRes, planRes, jarvisHistRes, compHistRes, acwrRes, matchRes, bodyRes, techRes, gymModeRes, d1Res, weightStateRes, weeklyPlanRes] = await Promise.all([
           supa.from('app_state').select('data').eq('key','nutrition').maybeSingle(),
           supa.from('app_state').select('data').eq('key','soccer').maybeSingle(),
           supa.from('daily_checkins').select('*').gte('date',last7Str).order('date',{ascending:false}),
@@ -2529,7 +2714,8 @@
           supa.from('app_state').select('data').eq('key','weakest_technical_area').maybeSingle(),
           supa.from('app_state').select('data').eq('key','gym_mode').maybeSingle(),
           supa.from('app_state').select('data').eq('key','d1_gap_summary').maybeSingle(),
-          supa.from('app_state').select('data').eq('key','latest_weight').maybeSingle()
+          supa.from('app_state').select('data').eq('key','latest_weight').maybeSingle(),
+          supa.from('app_state').select('data').eq('key','weekly_plan').maybeSingle(),
         ]);
         // Load jarvis history and component history
         if (jarvisHistRes?.data?.data?.scores) jarvisHistory = jarvisHistRes.data.data.scores;
@@ -2662,7 +2848,8 @@
           recommendation: dailyState?.recommendation || null,
           d1Gaps: d1Res?.data?.data?.metrics || dailyState?.d1Gaps || [],
           jarvisComponents: dailyState?.jarvisComponents || { recovery:null, nutrition:null, load:null, athletic:null },
-          gainRate: weightStateRes?.data?.data?.gain_rate || dailyState?.weeklyGainRate
+          gainRate: weightStateRes?.data?.data?.gain_rate || dailyState?.weeklyGainRate,
+          weeklyPlan: dailyState?.weeklyPlan || weeklyPlanRes?.data?.data || null
         };
 
         renderAllBriefing();
@@ -2680,6 +2867,7 @@
       renderStatusGrid();
       renderRestrictions();
       renderD1Gaps();
+      renderWeeklyCalendar();
       renderAlerts();
       renderWeeklySnapshot();
       renderACWR();
