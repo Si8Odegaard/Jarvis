@@ -1777,7 +1777,15 @@
           key:'d1_gap_summary', data:{ metrics:d1Gaps }, updated_at:new Date().toISOString()
         }, { onConflict:'key' }).catch(()=>{});
 
-        return { phase:phaseData, recoveryToday, recovery7DayAvg, acwr, acwrStatus, latestWeight, weeklyGainRate, recommendation:rec, jarvisScore, jarvisComponents:{ recovery:recComp, nutrition:nutComp, load:loadComp, athletic:athComp }, prevJarvisScore:prevJS, d1Gaps, weeklyPlan };
+
+        // Fetch today calendar events for home tab display
+        let todayCalendarEvents = [];
+        try {
+          const { data: calEvents } = await sb.from('calendar_events')
+            .select('*').eq('date', today).order('event_type', { ascending: true });
+          todayCalendarEvents = calEvents || [];
+        } catch(_) {}
+        return { phase:phaseData, recoveryToday, recovery7DayAvg, acwr, acwrStatus, latestWeight, weeklyGainRate, recommendation:rec, jarvisScore, jarvisComponents:{ recovery:recComp, nutrition:nutComp, load:loadComp, athletic:athComp }, prevJarvisScore:prevJS, d1Gaps, weeklyPlan }, todayCalendarEvents;
       } catch(e) {
         console.error('computeDailyState error:', e);
         return null;
@@ -2828,7 +2836,8 @@
           d1Gaps: d1Res?.data?.data?.metrics || dailyState?.d1Gaps || [],
           jarvisComponents: dailyState?.jarvisComponents || { recovery:null, nutrition:null, load:null, athletic:null },
           gainRate: weightStateRes?.data?.data?.gain_rate || dailyState?.weeklyGainRate,
-          weeklyPlan: dailyState?.weeklyPlan || weeklyPlanRes?.data?.data || null
+          weeklyPlan: dailyState?.weeklyPlan || weeklyPlanRes?.data?.data || null,
+          todayCalendarEvents: dailyState?.todayCalendarEvents || null
         };
 
         renderAllBriefing();
@@ -2942,6 +2951,25 @@
 
       // Most important single action
       if (d.recoveryToday !== null && d.recoveryToday < 55) {
+      // Today's Calendar Events
+      if (d.todayCalendarEvents && d.todayCalendarEvents.length > 0) {
+        const calIcons = { match:'🏟️', gym:'🏋️', field:'⚽', rest:'😴', recovery:'🧘', travel:'✈️', work:'💼' };
+        const calLabels = { match:'Match', gym:'Gym', field:'Field', rest:'Rest', recovery:'Recovery', travel:'Travel', work:'Work' };
+        brief += `<br><span style="font-size:10px;text-transform:uppercase;letter-spacing:0.18em;color:var(--text-tertiary);font-weight:700;">📅 Today's Schedule</span>`;
+        d.todayCalendarEvents.forEach(e => {
+          const icon = calIcons[e.event_type] || '📌';
+          const label = e.title || calLabels[e.event_type] || e.event_type;
+          const details = [];
+          if (e.duration_minutes) details.push(e.duration_minutes + 'min');
+          if (e.opponent) details.push('vs ' + e.opponent);
+          if (e.location) details.push(e.location);
+          if (e.equipment_available && e.equipment_available !== 'full') details.push('⚠️ ' + e.equipment_available + ' equip');
+          if (e.work_hours) details.push(e.work_hours + 'h work');
+          const detailStr = details.length > 0 ? `<span style="color:var(--text-tertiary);font-size:10px;"> · ${details.join(' · ')}</span>` : '';
+          brief += `<br>${icon} <span class="brief-highlight">${label}</span>${detailStr}`;
+        });
+      }
+
         brief += ` Today's priority: <span class="brief-highlight">prioritize sleep and hydration</span> — recovery is your limiting factor.`;
       } else if (d.proteinDays < 4) {
         brief += ` Today's priority: <span class="brief-highlight">hit your protein target</span> — muscle building is compromised.`;
