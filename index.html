@@ -1825,6 +1825,14 @@
     }
 
     /* ── Weekly Calendar Renderer ── */
+    function getTodayGymSplit(weeklyPlan) {
+      if (!weeklyPlan) return null;
+      const todayEntry = weeklyPlan.days ? weeklyPlan.days.find(d => d.isToday) : null;
+      if (!todayEntry) return null;
+      const gymSession = todayEntry.sessions.find(s => s.type === 'gym');
+      return gymSession ? gymSession.label : null;
+    }
+
     function renderWeeklyCalendar() {
       const section = document.getElementById('weeklyPlanSection');
       const phaseEl = document.getElementById('weeklyPlanPhase');
@@ -1889,7 +1897,6 @@
       return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
     }
 
-    // Gym day rotation + exercise count now in utils.js (window.getGymDayName, window.getGymExerciseCount)
 
     // Jarvis score history (loaded inline in loadMorningBriefing from app_state key: jarvis_history)
     let jarvisHistory = [];
@@ -2809,8 +2816,7 @@
         }
 
         // Gym day rotation (synchronized with gym.html via utils.js)
-        const gymDay = (window.getGymDayName ? window.getGymDayName(gymModeRes?.data?.data?.mode || gymModeRes?.data?.data || 'offseason') : 'Rest');
-
+        
         briefingData = {
           today, phase, recoveryToday, recovery7DayAvg, avgRecovery,
           latestWeight: weightStateRes?.data?.data?.weight || dailyState?.latestWeight || latestWeight, weightDelta, weightWeekAgo: prevWeekWeight,
@@ -2820,8 +2826,6 @@
           todayRec, prevJarvisScore,
           acwr: acwrRes?.data?.data?.value ?? acwrRes?.data?.data ?? null,
           matchIn48: matchRes?.data?.data?.value ?? matchRes?.data?.data ?? null,
-          gymDay: gymDay,
-          gymExCount: (window.getGymExerciseCount ? window.getGymExerciseCount(gymDay) : 0),
           recommendation: dailyState?.recommendation || null,
           d1Gaps: d1Res?.data?.data?.metrics || dailyState?.d1Gaps || [],
           jarvisComponents: dailyState?.jarvisComponents || { recovery:null, nutrition:null, load:null, athletic:null },
@@ -2910,17 +2914,18 @@
       }
       brief += `<span class="brief-highlight">${daysToPS} days to pre-season</span>. `;
 
-      // Combined schedule: field work + gym
-      const gymIcons = {'Lower Power':'🏋️','Upper Athletic':'💪','Lateral Power & Single Leg':'🦵','Full Body Power':'⚡','Rest':'😴','Lower (In-Season)':'🦵','Upper (In-Season)':'💪'};
-      const gymIcon = gymIcons[d.gymDay] || '🏋️';
-      brief += `<br>🏟️ Field: ${d.todayRec}`;
-      if (d.gymDay === 'Rest') {
-        brief += ` · ${gymIcon} Gym: <span style="color:var(--text-tertiary)">Rest day</span>.`;
-      } else {
-        brief += ` · ${gymIcon} Gym: <span class="brief-highlight">${d.gymDay}</span> (${d.gymExCount || '?'} exercises).`;
+            // Gym from weekly plan
+      const todayGymSplit = getTodayGymSplit(d.weeklyPlan);
+      const gymIcons = {'Lower Power':'🏋️','Upper Athletic':'💪','Lateral Power & Single Leg':'🦵','Full Body Power':'⚡','Rest':'😴'};
+      if (todayGymSplit) {
+        const gymIcon = gymIcons[todayGymSplit] || '🏋️';
+        brief += `<br>🏟️ Field: ${d.todayRec}`;
+      if (todayGymSplit) {
+        const gymIcon2 = gymIcons[todayGymSplit] || '🏋️';
+        brief += ` · ${gymIcon2} Gym: <span class="brief-highlight">${todayGymSplit}</span>.`;
+      }
       }
       brief += ` `;
-
       // Recovery score with one-word status
       const recScore = d.recoveryToday ?? '--';
       const recWord = d.recoveryToday >= 75 ? 'Fresh' : d.recoveryToday >= 60 ? 'Okay' : d.recoveryToday >= 45 ? 'Fatigued' : d.recoveryToday > 0 ? 'Low' : 'Unknown';

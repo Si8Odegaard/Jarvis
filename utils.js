@@ -187,31 +187,4 @@ async function calculateACWR(sb) {
 // Expose on window for inline scripts in HTML files
 if (typeof window !== 'undefined') {
   window.calculateACWR = calculateACWR;
-
-  // ── Shared Gym Rotation Logic ──
-  // Used by gym.html (gym tab) and index.html (dashboard morning brief)
-  // Change these once to update both tabs.
-  const MICROCYCLE_OFFSEASON = ['Lower Power','Upper Athletic','Rest','Lateral Power & Single Leg','Full Body Power','Rest','Rest'];
-  const MICROCYCLE_INSEASON  = ['Lower (In-Season)','Rest','Upper (In-Season)','Rest','Rest','Rest','Rest'];
-  const ROTATION_ANCHOR = { date:'2026-06-01', index: 0 };
-
-  window.getGymDayName = function(gymMode) {
-    const mode = gymMode || 'offseason';
-    const anchor = new Date(ROTATION_ANCHOR.date + 'T00:00:00');
-    const now = new Date();
-    const todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
-    const nowDate = new Date(todayStr + 'T00:00:00');
-    const diff = Math.round((nowDate - anchor) / 86400000);
-    const idx = ((ROTATION_ANCHOR.index + diff) % 7 + 7) % 7;
-    const cycle = mode === 'inseason' ? MICROCYCLE_INSEASON : MICROCYCLE_OFFSEASON;
-    return cycle[idx];
-  };
-
-  window.getGymExerciseCount = function(gymDayName) {
-    const exCounts = {
-      'Lower Power':5, 'Upper Athletic':6, 'Lateral Power & Single Leg':7, 'Full Body Power':6,
-      'Lower (In-Season)':5, 'Upper (In-Season)':5
-    };
-    return exCounts[gymDayName] || 0;
-  };
 }
