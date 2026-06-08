@@ -331,6 +331,175 @@ label.field-label{
   .focus-grid{ grid-template-columns:1fr 1fr; }
 }
 
+/* ── TECHNICAL TAB (from football.html) ── */
+
+
+/* ── Section ── */
+.section{margin-bottom:24px}
+.section-title{
+  font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--text-tertiary);margin-bottom:12px;display:flex;align-items:center;gap:10px;
+}
+.section-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(255,255,255,.08),transparent)}
+
+/* ── Card ── */
+.card{
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);
+  border-radius:14px;padding:16px;margin-bottom:12px;
+  backdrop-filter:blur(24px) saturate(1.2);-webkit-backdrop-filter:blur(24px) saturate(1.2);
+}
+
+/* ── Segmented Buttons ── */
+.seg-row{display:flex;gap:4px;flex-wrap:wrap}
+.seg-btn{
+  padding:7px 12px;border:1px solid rgba(255,255,255,.08);
+  background:rgba(0,0,0,.20);color:var(--text-tertiary);border-radius:7px;
+  font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;
+}
+.seg-btn.active{background:rgba(107,227,164,.12);color:var(--success);border-color:rgba(107,227,164,.30)}
+
+/* ── Focus Area Tags ── */
+.focus-tags{display:flex;flex-wrap:wrap;gap:6px}
+.focus-tag{
+  padding:5px 10px;border-radius:99px;font-size:10px;font-weight:700;cursor:pointer;
+  border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.04);color:var(--text-tertiary);
+  letter-spacing:.03em;transition:all .15s;font-family:var(--mono);
+}
+.focus-tag.selected{background:rgba(107,227,164,.14);color:var(--success);border-color:rgba(107,227,164,.35)}
+.focus-tag.high-priority{border-color:rgba(255,107,107,.30);color:var(--danger)}
+
+/* ── Form ── */
+.form-group{margin-bottom:14px}
+.form-label{
+  display:block;font-size:10px;font-weight:700;letter-spacing:.10em;
+  text-transform:uppercase;color:var(--text-tertiary);margin-bottom:6px;
+}
+.form-input{
+  width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.08);
+  background:rgba(0,0,0,.30);color:var(--text-primary);font-size:14px;font-family:inherit;outline:none;
+}
+.form-input:focus{border-color:rgba(107,227,164,.4)}
+textarea.form-input{min-height:80px;resize:vertical}
+
+/* ── Buttons ── */
+/* Scoped to technical tab and its modals to avoid overriding soccer's green .btn-primary */
+#stab-technical .btn-primary, #techModal .btn-primary, #matchModal .btn-primary{
+  width:100%;padding:13px;border:none;border-radius:10px;
+  background:linear-gradient(180deg,#FFFFFF 0%,#E8E5DD 100%);color:#0A0A0B;
+  font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;
+  box-shadow:0 2px 8px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.8);
+  transition:transform .15s,filter .15s;
+}
+#stab-technical .btn-primary:hover, #techModal .btn-primary:hover, #matchModal .btn-primary:hover{transform:translateY(-1px);filter:brightness(1.05)}
+#stab-technical .btn-primary:disabled, #techModal .btn-primary:disabled, #matchModal .btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+/* ── Session Card ── */
+.session-card{
+  background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.05);
+  border-radius:12px;padding:14px;margin-bottom:6px;display:flex;gap:12px;align-items:flex-start;
+}
+.session-icon{
+  width:36px;height:36px;border-radius:10px;display:flex;align-items:center;
+  justify-content:center;font-size:18px;flex-shrink:0;background:rgba(255,255,255,.06);
+}
+.session-info{flex:1;min-width:0}
+.session-title{font-size:14px;font-weight:700;margin-bottom:2px}
+.session-meta{font-size:11px;color:var(--text-tertiary);display:flex;flex-wrap:wrap;gap:8px}
+.session-focus{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.session-focus-tag{
+  font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;
+  font-family:var(--mono);letter-spacing:.04em;background:rgba(107,227,164,.10);color:var(--success);
+}
+.session-delete{
+  background:none;border:none;color:var(--text-tertiary);font-size:18px;cursor:pointer;
+  padding:4px 8px;border-radius:6px;transition:all .15s;
+}
+.session-delete:hover{color:var(--danger);background:rgba(255,107,107,.10)}
+
+/* ── Quality Stars ── */
+.quality-stars{display:flex;gap:4px}
+.quality-star{
+  width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.20);color:var(--text-tertiary);font-size:14px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;
+  transition:all .15s;font-family:var(--mono);
+}
+.quality-star.filled{background:rgba(107,227,164,.20);color:var(--success);border-color:var(--success)}
+
+/* ── Radar Chart ── */
+.radar-wrap{display:flex;justify-content:center;margin:16px 0}
+.radar-svg{width:100%;max-width:280px;height:280px}
+
+/* ── Priority Weakness ── */
+.priority-weakness{
+  background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.20);
+  border-radius:10px;padding:12px 14px;margin-top:12px;
+}
+.priority-label{color:var(--danger);font-weight:700;font-size:11px;margin-bottom:6px;letter-spacing:.06em;text-transform:uppercase}
+.priority-text{font-size:13px;color:var(--text-secondary);line-height:1.6}
+
+/* ── Drill Library ── */
+.drill-card{
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);
+  border-radius:10px;padding:12px;margin-bottom:8px;
+}
+.drill-name{font-size:13px;font-weight:700;margin-bottom:4px;color:var(--success)}
+.drill-meta{font-size:11px;color:var(--text-tertiary);display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+.drill-desc{font-size:11px;color:var(--text-secondary);line-height:1.5}
+.drill-decision{font-size:11px;color:var(--warning);margin-top:4px;font-style:italic}
+
+/* ── Match Performance Card ── */
+.match-card{
+  background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.05);
+  border-radius:12px;padding:14px;margin-bottom:8px;
+}
+.match-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.match-result{font-size:13px;font-weight:700}
+.match-result.win{color:var(--success)}.match-result.loss{color:var(--danger)}.match-result.draw{color:var(--warning)}
+.match-meta{font-size:11px;color:var(--text-tertiary)}
+.rating-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.rating-item{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:rgba(0,0,0,.15);border-radius:6px}
+.rating-label{font-size:11px;color:var(--text-secondary)}
+.rating-value{font-size:14px;font-weight:700;font-family:var(--mono)}
+.rating-value.high{color:var(--success)}.rating-value.mid{color:var(--warning)}.rating-value.low{color:var(--danger)}
+.ai-note{
+  margin-top:10px;padding:10px;border-radius:8px;font-size:11px;line-height:1.5;
+  background:rgba(107,227,164,.06);border:1px solid rgba(107,227,164,.15);color:var(--text-secondary);
+}
+
+/* ── Trend Chart ── */
+.trend-wrap{margin-top:12px}
+.trend-svg{display:block;width:100%;height:40px;overflow:visible}
+.trend-label{font-size:9px;color:var(--text-tertiary);text-align:center;margin-top:2px;font-family:var(--mono)}
+
+/* ── Modal ── */
+.modal-bg{display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);align-items:flex-end;justify-content:center}
+.modal-bg.show{display:flex}
+body:has(.modal-bg.show){overflow:hidden}
+.modal{background:#0e0e10;border:1px solid rgba(255,255,255,.07);border-radius:16px 16px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom));width:100%;max-width:600px;max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.modal-title{font-size:17px;font-weight:700}
+.modal-close{background:rgba(255,255,255,.07);border:none;color:var(--text-secondary);font-size:18px;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+
+/* ── Cross-Reference Alert ── */
+.cross-ref{
+  background:rgba(125,211,252,.08);border:1px solid rgba(125,211,252,.20);
+  border-radius:10px;padding:12px;margin-top:12px;font-size:12px;color:var(--info);line-height:1.5;
+}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#0e0e10;border:1px solid rgba(255,255,255,.10);padding:10px 20px;border-radius:12px;font-size:13px;font-weight:600;z-index:9999;pointer-events:none;opacity:0;transition:opacity .3s}
+.toast.show{opacity:1}
+
+/* ── Empty State ── */
+.empty-state{text-align:center;padding:24px;color:var(--text-tertiary);font-size:13px;font-style:italic}
+
+@media(max-width:480px){
+  .rating-grid{grid-template-columns:1fr}
+  .radar-svg{max-width:240px;height:240px}
+}
+
+
 /* Jarvis floating chat button */
 </style>
 </head>
@@ -350,6 +519,7 @@ label.field-label{
     <button class="soccer-tab" data-stab="plan">📅 Plan</button>
     <button class="soccer-tab" data-stab="library">📚 Library</button>
     <button class="soccer-tab" data-stab="insights">🧠 Insights</button>
+    <button class="soccer-tab" data-stab="technical">🔧 Technical</button>
   </div>
 
   <!-- ═══════════════════════════════════════════════
@@ -473,6 +643,130 @@ label.field-label{
     <div id="insightCards">
       <div style="text-align:center;padding:24px;color:var(--text-3);font-size:13px">Log more data across tabs to unlock insights</div>
     </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       TAB: TECHNICAL (from football.html)
+  ═══════════════════════════════════════════════ -->
+  <div id="stab-technical" class="hidden">
+
+
+
+
+<!-- ═══ SECTION 1: TECHNICAL DEVELOPMENT ═══ -->
+<div class="section">
+  <div class="section-title">Technical Development</div>
+
+  <!-- Weakness Analysis -->
+  <div class="card" id="weaknessCard">
+    <div style="font-size:13px;font-weight:700;margin-bottom:12px">📊 Technical Time Distribution (30 days)</div>
+    <div class="radar-wrap"><svg class="radar-svg" id="radarChart" viewBox="0 0 280 280"></svg></div>
+    <div id="priorityWeakness"></div>
+  </div>
+
+  <!-- Drill Library -->
+  <div class="card" id="drillCard">
+    <div style="font-size:13px;font-weight:700;margin-bottom:12px">📚 Solo Drill Library</div>
+    <div id="drillList"></div>
+  </div>
+
+  <!-- Session List -->
+  <div id="techSessionList"></div>
+  <div class="empty-state" id="techEmpty">No technical sessions logged yet</div>
+
+  <button class="btn-primary" id="logTechBtn" style="background:rgba(255,255,255,.05);color:var(--text-primary);border:1px dashed rgba(255,255,255,.15);margin-top:4px">+ Log Technical Session</button>
+</div>
+
+<!-- ═══ SECTION 2: MATCH PERFORMANCE ═══ -->
+<div class="section">
+  <div class="section-title">Match Performance</div>
+
+  <!-- Match Trend -->
+  <div class="card" id="trendCard" style="display:none">
+    <div style="font-size:13px;font-weight:700;margin-bottom:12px">📈 Performance Trends (Last 10 Matches)</div>
+    <div id="trendCharts"></div>
+    <div id="crossRef"></div>
+  </div>
+
+  <!-- Match List -->
+  <div id="matchList"></div>
+  <div class="empty-state" id="matchEmpty">No matches logged yet</div>
+
+  <button class="btn-primary" id="logMatchBtn" style="background:rgba(255,255,255,.05);color:var(--text-primary);border:1px dashed rgba(255,255,255,.15);margin-top:4px">+ Log Match Performance</button>
+</div>
+
+<!-- ═══ TECHNICAL SESSION MODAL ═══ -->
+<div class="modal-bg" id="techModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Log Technical Session</div>
+      <button class="modal-close" id="techModalClose">×</button>
+    </div>
+    <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="techDate"></div>
+    <div class="form-group"><label class="form-label">Session Type</label>
+      <div class="seg-row" id="techTypeSeg">
+        <button class="seg-btn active" data-type="wall_work">🧱 Wall Work</button>
+        <button class="seg-btn" data-type="cone_dribbling">🔺 Cone Dribbling & Turning</button>
+        <button class="seg-btn" data-type="finishing">🎯 Finishing</button>
+        <button class="seg-btn" data-type="long_passing">📡 Long Passing</button>
+        <button class="seg-btn" data-type="pressing_patterns">⚡ Pressing Patterns</button>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Duration (minutes)</label><input type="number" class="form-input" id="techDuration" placeholder="e.g. 45" min="5"></div>
+    <div class="form-group"><label class="form-label">Intensity</label>
+      <div class="seg-row" id="techIntensitySeg">
+        <button class="seg-btn" data-value="light">Light</button>
+        <button class="seg-btn active" data-value="medium">Medium</button>
+        <button class="seg-btn" data-value="high">High</button>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Quality Rating</label>
+      <div class="quality-stars" id="techQualityStars"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Focus Areas (select all that apply)</label>
+      <div class="focus-tags" id="techFocusTags"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Notes (optional)</label><textarea class="form-input" id="techNotes" placeholder="Coaching notes or self-assessment..."></textarea></div>
+    <button class="btn-primary" id="techSaveBtn">Save Session</button>
+  </div>
+</div>
+
+<!-- ═══ MATCH PERFORMANCE MODAL ═══ -->
+<div class="modal-bg" id="matchModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Log Match Performance</div>
+      <button class="modal-close" id="matchModalClose">×</button>
+    </div>
+    <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="matchDate"></div>
+    <div class="form-group"><label class="form-label">Competition Type</label>
+      <div class="seg-row" id="matchCompSeg">
+        <button class="seg-btn active" data-value="rec_league">Rec League</button>
+        <button class="seg-btn" data-value="friendly">Friendly</button>
+        <button class="seg-btn" data-value="trial">Trial</button>
+        <button class="seg-btn" data-value="official">Official</button>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Minutes Played</label><input type="number" class="form-input" id="matchMinutes" placeholder="e.g. 90" min="0" max="120"></div>
+    <div class="form-group"><label class="form-label">Position</label><input type="text" class="form-input" id="matchPosition" placeholder="e.g. CM, CDM"></div>
+    <div class="form-group"><label class="form-label">Result</label>
+      <div class="seg-row" id="matchResultSeg">
+        <button class="seg-btn" data-value="win">🏆 Win</button>
+        <button class="seg-btn" data-value="loss">Loss</button>
+        <button class="seg-btn active" data-value="draw">Draw</button>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Performance Ratings (1–10)</label></div>
+    <div id="matchRatings"></div>
+    <div class="form-group"><label class="form-label">What to improve (optional)</label><textarea class="form-input" id="matchNotes" placeholder="What went well, what to work on..."></textarea></div>
+    <div id="matchAiNote" style="margin-bottom:12px"></div>
+    <button class="btn-primary" id="matchSaveBtn">Save & Generate AI Coaching Note</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+
   </div>
 
 </div><!-- /shell -->
@@ -680,6 +974,81 @@ label.field-label{
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════
+     TECHNICAL SESSION MODAL (from football.html)
+═══════════════════════════════════════════ -->
+<div class="modal-bg" id="techModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Log Technical Session</div>
+      <button class="modal-close" id="techModalClose">×</button>
+    </div>
+    <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="techDate"></div>
+    <div class="form-group"><label class="form-label">Session Type</label>
+      <div class="seg-row" id="techTypeSeg">
+        <button class="seg-btn active" data-type="wall_work">🧱 Wall Work</button>
+        <button class="seg-btn" data-type="cone_dribbling">🔺 Cone Dribbling & Turning</button>
+        <button class="seg-btn" data-type="finishing">🎯 Finishing</button>
+        <button class="seg-btn" data-type="long_passing">📡 Long Passing</button>
+        <button class="seg-btn" data-type="pressing_patterns">⚡ Pressing Patterns</button>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Duration (minutes)</label><input type="number" class="form-input" id="techDuration" placeholder="e.g. 45" min="5"></div>
+    <div class="form-group"><label class="form-label">Intensity</label>
+      <div class="seg-row" id="techIntensitySeg">
+        <button class="seg-btn" data-value="light">Light</button>
+        <button class="seg-btn active" data-value="medium">Medium</button>
+        <button class="seg-btn" data-value="high">High</button>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Quality Rating</label>
+      <div class="quality-stars" id="techQualityStars"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Focus Areas (select all that apply)</label>
+      <div class="focus-tags" id="techFocusTags"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Notes (optional)</label><textarea class="form-input" id="techNotes" placeholder="Coaching notes or self-assessment..."></textarea></div>
+    <button class="btn-primary" id="techSaveBtn">Save Session</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     MATCH PERFORMANCE MODAL (from football.html)
+═══════════════════════════════════════════ -->
+<div class="modal-bg" id="matchModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Log Match Performance</div>
+      <button class="modal-close" id="matchModalClose">×</button>
+    </div>
+    <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="matchDate"></div>
+    <div class="form-group"><label class="form-label">Competition Type</label>
+      <div class="seg-row" id="matchCompSeg">
+        <button class="seg-btn active" data-value="rec_league">Rec League</button>
+        <button class="seg-btn" data-value="friendly">Friendly</button>
+        <button class="seg-btn" data-value="trial">Trial</button>
+        <button class="seg-btn" data-value="official">Official</button>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Minutes Played</label><input type="number" class="form-input" id="matchMinutes" placeholder="e.g. 90" min="0" max="120"></div>
+    <div class="form-group"><label class="form-label">Position</label><input type="text" class="form-input" id="matchPosition" placeholder="e.g. CM, CDM"></div>
+    <div class="form-group"><label class="form-label">Result</label>
+      <div class="seg-row" id="matchResultSeg">
+        <button class="seg-btn" data-value="win">🏆 Win</button>
+        <button class="seg-btn" data-value="loss">Loss</button>
+        <button class="seg-btn active" data-value="draw">Draw</button>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Performance Ratings (1–10)</label></div>
+    <div id="matchRatings"></div>
+    <div class="form-group"><label class="form-label">What to improve (optional)</label><textarea class="form-input" id="matchNotes" placeholder="What went well, what to work on..."></textarea></div>
+    <div id="matchAiNote" style="margin-bottom:12px"></div>
+    <button class="btn-primary" id="matchSaveBtn">Save & Generate AI Coaching Note</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
 <script>
 // ════════════════════════════════════════════════════════════
 //  SUPABASE
@@ -868,7 +1237,7 @@ document.querySelectorAll('.soccer-tab').forEach(btn => {
     document.querySelectorAll('.soccer-tab').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     const tab = btn.dataset.stab;
-    ['testing','sessions','plan','library','insights'].forEach(t => {
+    ['testing','sessions','plan','library','insights','technical'].forEach(t => {
       const el = $('#stab-'+t); if(el) el.classList.toggle('hidden', t!==tab);
     });
     if(tab==='testing') renderTesting();
@@ -876,6 +1245,7 @@ document.querySelectorAll('.soccer-tab').forEach(btn => {
     if(tab==='plan') await renderPlan();
     if(tab==='library') renderLibrary();
     if(tab==='insights') await renderInsights();
+    if(tab==='technical') await renderTechnical();
   });
 });
 
