@@ -1651,13 +1651,7 @@
         if (window.writeMatchIntelligence) { await window.writeMatchIntelligence(sb).catch(() => {}); }
 
         // ── 5b. Generate Weekly Plan ──
-        let hasRecLeague = false;
-        try {
-          const { data: rl } = await sb.from('app_state').select('data').eq('key','has_rec_league').maybeSingle();
-          hasRecLeague = rl?.data?.value === true || rl?.data === true;
-        } catch(_) {}
-
-        const weeklyPlan = generateWeeklyPlan(phaseData, hasRecLeague);
+        const weeklyPlan = generateWeeklyPlan(phaseData);
         await sb.from('app_state').upsert({
           key: 'weekly_plan',
           data: weeklyPlan,
@@ -1796,7 +1790,7 @@
     window.computeDailyState = computeDailyState;
 
     /* ── Weekly Plan Generator ── */
-    function generateWeeklyPlan(phaseData, hasRecLeague) {
+    function generateWeeklyPlan(phaseData) {
       const phase = phaseData?.phase || 'Foundation';
       const sessionCount = phaseData?.gymPhaseConfig?.sessionCount || 4;
       const phaseWeek = phaseData?.phaseWeek || 1;
@@ -1813,15 +1807,6 @@
           ? [{ type: 'gym', label: 'Full Body Power', focus: 'Rotational power, loaded carries, relative strength benchmark' }]
           : [{ type: 'rest', label: 'Rest', focus: 'Full recovery' }] }
       ];
-
-      // Rec league toggle — if hasRecLeague, Saturday becomes match day
-      if (hasRecLeague) {
-        baseWeek[5].sessions = [{ type: 'match', label: 'Rec League Match', focus: 'Competitive minutes — application of technical and physical work' }];
-        baseWeek[4].sessions = [
-          { type: 'field', label: 'Match Activation', focus: 'Light technical — 20 mins, sharp touches, no fatigue' },
-          ...baseWeek[4].sessions
-        ];
-      }
 
       // Phase modifiers
       if (phase === 'Taper') {
@@ -2696,21 +2681,18 @@
         const last7Str = toLocalDateStr(last7);
 
         // Read from app_state keys written by computeDailyState (fall back to direct queries if needed)
-        const [nutRes, soccerRes, checkinsRes, weightRes, testsRes, sessRes, gymRes, rsaRes, planRes, jarvisHistRes, compHistRes, acwrRes, matchRes, bodyRes, techRes, gymModeRes, d1Res, weightStateRes, weeklyPlanRes] = await Promise.all([
+        const [nutRes, checkinsRes, weightRes, testsRes, sessRes, gymRes, rsaRes, jarvisHistRes, compHistRes, acwrRes, matchRes, techRes, gymModeRes, d1Res, weightStateRes, weeklyPlanRes] = await Promise.all([
           supa.from('app_state').select('data').eq('key','nutrition').maybeSingle(),
-          supa.from('app_state').select('data').eq('key','soccer').maybeSingle(),
           supa.from('daily_checkins').select('*').gte('date',last7Str).order('date',{ascending:false}),
           supa.from('weight_logs').select('*').order('date',{ascending:false}).limit(14),
           supa.from('athletic_tests').select('*').order('date',{ascending:false}).limit(20),
           supa.from('soccer_sessions').select('*').gte('date',last7Str).order('date',{ascending:false}),
           supa.from('workout_sessions').select('*').gte('date',last7Str).order('date',{ascending:false}),
           supa.from('sprint_decay_sessions').select('*').order('date',{ascending:false}).limit(3),
-          supa.from('offseason_plan').select('*').order('last_updated',{ascending:false}).limit(1).maybeSingle(),
           supa.from('app_state').select('data').eq('key','jarvis_history').maybeSingle(),
           supa.from('app_state').select('data').eq('key',COMPONENT_HISTORY_KEY).maybeSingle(),
           supa.from('app_state').select('data').eq('key','acwr').maybeSingle(),
           supa.from('app_state').select('data').eq('key','match_in_48_hours').maybeSingle(),
-          supa.from('app_state').select('data').eq('key','body').maybeSingle(),
           supa.from('app_state').select('data').eq('key','weakest_technical_area').maybeSingle(),
           supa.from('app_state').select('data').eq('key','gym_mode').maybeSingle(),
           supa.from('app_state').select('data').eq('key','d1_gap_summary').maybeSingle(),
@@ -2722,7 +2704,6 @@
         if (compHistRes?.data?.data) componentHistory = compHistRes.data.data;
 
         const nutData = nutRes?.data?.data || {};
-        const socData = soccerRes?.data?.data || {};
         const recoveryToday = nutData.recovery_score_today ?? null;
         const recovery7DayAvg = nutData.recovery_score_7day_avg ?? null;
 
@@ -2739,7 +2720,6 @@
         const sessions = sessRes?.data || [];
         const gymSessions = gymRes?.data || [];
         const rsaSessions = rsaRes?.data || [];
-        const plan = planRes?.data;
 
         // Session counts this week
         const weekSessions = sessions.filter(s => s.date >= weekStart);
@@ -2836,13 +2816,10 @@
           latestWeight: weightStateRes?.data?.data?.weight || dailyState?.latestWeight || latestWeight, weightDelta, weightWeekAgo: prevWeekWeight,
           proteinDays, proteinStreak, todayCheckin, checkins,
           tests, sessions, weekSessions, gymCount, ballCount, speedCount, techCount,
-          athleticTrend, latestRSA, rsaSessions,
-          todayRec, plan, nutData, socData, prevJarvisScore,
+          latestRSA, prevJarvisScore,
+          todayRec, phase,
           acwr: acwrRes?.data?.data?.value ?? acwrRes?.data?.data ?? null,
           matchIn48: matchRes?.data?.data?.value ?? matchRes?.data?.data ?? null,
-          bodyData: bodyRes?.data?.data ?? null,
-          weakestTech: techRes?.data?.data?.value ?? techRes?.data?.data ?? null,
-          gymMode: gymModeRes?.data?.data?.mode ?? gymModeRes?.data?.data ?? null,
           gymDay: gymDay,
           gymExCount: (window.getGymExerciseCount ? window.getGymExerciseCount(gymDay) : 0),
           recommendation: dailyState?.recommendation || null,
