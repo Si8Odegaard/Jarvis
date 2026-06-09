@@ -1018,6 +1018,7 @@ body.stack-embed main {
 <script>if (/[?&]embed=1/.test(location.search)) document.body.classList.add('stack-embed');</script>
 
 <div id="loadingOverlay" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:1000;background:#050506;font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',Roboto,sans-serif;color:rgba(255,255,255,0.45);font-size:14px;font-weight:500;letter-spacing:0.04em;">Loading...</div>
+<script>setTimeout(function(){var o=document.getElementById('loadingOverlay');if(o){o.textContent='Took too long — try refreshing the page';o.style.color='rgba(255,255,255,0.65)';}},5000);</script>
 
 <main>
   <!-- PILL TABS -->

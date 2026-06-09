@@ -1785,7 +1785,7 @@
             .select('*').eq('date', today).order('event_type', { ascending: true });
           todayCalendarEvents = calEvents || [];
         } catch(_) {}
-        return { phase:phaseData, recoveryToday, recovery7DayAvg, acwr, acwrStatus, latestWeight, weeklyGainRate, recommendation:rec, jarvisScore, jarvisComponents:{ recovery:recComp, nutrition:nutComp, load:loadComp, athletic:athComp }, prevJarvisScore:prevJS, d1Gaps, weeklyPlan }, todayCalendarEvents;
+        return { phase:phaseData, recoveryToday, recovery7DayAvg, acwr, acwrStatus, latestWeight, weeklyGainRate, recommendation:rec, jarvisScore, jarvisComponents:{ recovery:recComp, nutrition:nutComp, load:loadComp, athletic:athComp }, prevJarvisScore:prevJS, d1Gaps, weeklyPlan, todayCalendarEvents };
       } catch(e) {
         console.error('computeDailyState error:', e);
         return null;
