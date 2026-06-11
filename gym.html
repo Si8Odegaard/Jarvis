@@ -738,7 +738,7 @@ $('markDoneBtn').addEventListener('click',async()=>{
     if(!sess){const{data}=await sb.from('workout_sessions').insert({date:today(),completed:true,split_name:selectedSplit,phase:phaseName}).select().single();sess=data;sessions.unshift(sess);}
     else{await sb.from('workout_sessions').update({completed:true,split_name:selectedSplit,phase:phaseName}).eq('id',sess.id);sess.completed=true;}
     // Refresh app_state — update recommended_session_today to remove "no heavy lower" restriction
-    if(window.getCurrentPhase)await window.getCurrentPhase(sb).catch(()=>{});
+    if(window.getCurrentPhase)await window.getCurrentPhase(sb);
     await loadSessions();
     const todaySets=allSets.filter(s=>{const ss=sessions.find(ss2=>ss2.id===s.session_id);return ss&&ss.date===today();});
     const totalSetsDone=todaySets.length;
@@ -749,7 +749,7 @@ $('markDoneBtn').addEventListener('click',async()=>{
       key: 'last_gym_session',
       data: { date: today(), split: selectedSplit, isLowerBody: isLowerBody, completedAt: new Date().toISOString(), phase: phaseName, setsCompleted: totalSetsDone },
       updated_at: new Date().toISOString()
-    }, { onConflict: 'key' }).catch(() => {});
+    }, { onConflict: 'key' });
     $('completionCard').classList.add('show');
     $('completionNum').textContent=totalSetsDone+' sets';
     const sessionCount=phaseConfig?.sessionCount||4;const daysBetween=Math.round(7/sessionCount);$('completionText').textContent=`Session logged. ${totalSetsDone} sets completed. Next session: ${selectedSplit} in approximately ${daysBetween} day${daysBetween!==1?'s':''}.`;
