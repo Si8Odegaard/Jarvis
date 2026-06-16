@@ -1643,7 +1643,7 @@ function renderSessions(){
       const d = new Date(s.date+'T00:00:00');
       const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
       const mons = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      const dateLabel = s.date === today() ? 'Today' : s.date === new toLocalDateStr(Date(Date.now()-86400000)) ? 'Yesterday' : days[d.getDay()]+' '+mons[d.getMonth()]+' '+d.getDate();
+      const dateLabel = s.date === today() ? 'Today' : s.date === toLocalDateStr(new Date(Date.now()-86400000)) ? 'Yesterday' : days[d.getDay()]+' '+mons[d.getMonth()]+' '+d.getDate();
       return `<div class="sesh-card">
         <div class="sesh-icon">${getSessionIcon(s.session_type)}</div>
         <div class="sesh-info">

@@ -1641,8 +1641,8 @@
             sb.from('app_state').select('data').eq('key','last_gym_session').maybeSingle(),
             sb.from('app_state').select('data').eq('key','last_soccer_session').maybeSingle()
           ]);
-          lastGym = _a[0]?.data?.data || null;
-          lastSoccer = _a[1]?.data?.data || null;
+          lastGym = _a[0]?.data || null;
+          lastSoccer = _a[1]?.data || null;
         } catch(_) {}
 
         const hoursSinceGym = lastGym?.completedAt
@@ -2726,9 +2726,9 @@
         const recovery7DayAvg = nutData.recovery_score_7day_avg ?? null;
 
         const checkins = checkinsRes?.data || [];
-        const proteinDays = checkins.filter(c => c.protein_goal_met).length;
-
         const weights = weightRes?.data || [];
+        const latestWeightForCalc = weights.length ? parseFloat(weights[0].weight) : 150;
+
         const latestWeight = weights.length ? parseFloat(weights[0].weight) : null;
         const weightWeekAgo = weights.filter(w => w.date <= weekStart).slice(0,1);
         const prevWeekWeight = weightWeekAgo.length ? parseFloat(weightWeekAgo[0].weight) : null;
@@ -2738,6 +2738,25 @@
         const sessions = sessRes?.data || [];
         const gymSessions = gymRes?.data || [];
         const rsaSessions = rsaRes?.data || [];
+
+        // On-the-fly protein goal helper: 2.0g/kg (0.91g/lb) training, 1.6g/kg (0.73g/lb) rest
+        // Uses actual logged sessions to avoid misclassification during Taper/Injury
+        function isGoalMet(c) {
+          if (!c.protein_grams) return false;
+          
+          // Use weight current on the check-in date
+          const sortedWeights = [...weights].sort((a,b) => b.date.localeCompare(a.date));
+          const entry = sortedWeights.find(w => w.date <= c.date) || sortedWeights[sortedWeights.length - 1];
+          const checkinWeight = entry ? parseFloat(entry.weight) : 150;
+
+          const hasGym = gymSessions.some(s => s.date === c.date && s.completed);
+          const hasSoccer = sessions.some(s => s.date === c.date);
+          const multiplier = (hasGym || hasSoccer) ? 2.0 : 1.6;
+          const target = Math.round((checkinWeight / 2.205) * multiplier);
+          return c.protein_grams >= target;
+        }
+
+        const proteinDays = checkins.filter(isGoalMet).length;
 
         // Session counts this week
         const weekSessions = sessions.filter(s => s.date >= weekStart);
@@ -2753,7 +2772,7 @@
         let proteinStreak = 0;
         const sortedCheckins = [...checkins].sort((a,b) => b.date.localeCompare(a.date));
         for (const c of sortedCheckins) {
-          if (c.protein_goal_met) proteinStreak++;
+          if (isGoalMet(c)) proteinStreak++;
           else break;
         }
 

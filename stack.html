@@ -2429,7 +2429,7 @@ body.stack-embed main {
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'water-coach-data-' + new toLocalDateStr(Date()) + '.json';
+    a.href = url; a.download = 'water-coach-data-' + dateKey(new Date()) + '.json';
     a.click(); URL.revokeObjectURL(url);
   });
   $w('setImport').addEventListener('click', () => $w('setImportFile').click());
@@ -2696,20 +2696,28 @@ body.stack-embed main {
       state = normalize({});
     }
 
-    // Hide loading overlay
-    var overlay = document.getElementById('loadingOverlay');
-    if (overlay) overlay.style.display = 'none';
+    try {
+      $w('appTitle').textContent = CONFIG.appTitle || 'Water Coach';
+      renderAll();
 
-    $w('appTitle').textContent = CONFIG.appTitle || 'Water Coach';
-    renderAll();
+      // Set up realtime subscription (non-blocking)
+      pwSetupRealtime();
 
-    // Set up realtime subscription (non-blocking)
-    pwSetupRealtime();
-
-    // If we have local data but no remote was found, push it
-    if (Object.keys(pwCollectState()).length > 0 && !pwLastSyncedJson) {
-      pwSchedulePush();
+      // If we have local data but no remote was found, push it
+      if (Object.keys(pwCollectState()).length > 0 && !pwLastSyncedJson) {
+        pwSchedulePush();
+      }
+    } catch (e) {
+      console.error('initApp error:', e);
+    } finally {
+      // Hide loading overlay unconditionally
+      var overlay = document.getElementById('loadingOverlay');
+      if (overlay) overlay.style.display = 'none';
     }
+  }
+
+  function toLocalDateStr(d) {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
 
   initApp();
