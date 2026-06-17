@@ -8,8 +8,13 @@
   'use strict';
 
   // ──────────────── CONFIGURATION ────────────────
-  const GEMINI_API_KEY = window.JARVIS_GEMINI_KEY || String.fromCharCode(65,73,122,97,83,121,68,55,48,111,48,56,115,87,118,90,81,51,48,90,83,115,80,111,102,83,112,71,51,118,114,56,88,114,72,98,72,108,85);
-  const GROQ_API_KEY = window.JARVIS_GROQ_KEY || String.fromCharCode(103,115,107,95,79,112,120,85,74,103,56,67,113,117,103,70,66,69,110,70,69,71,101,50,87,71,100,121,98,51,70,89,73,55,102,86,116,113,97,107,108,100,116,114,79,113,99,49,118,98,116,53,54,75,90,81);
+  // API keys are loaded from window.ENV_GEMINI_API_KEY / window.ENV_GROQ_API_KEY,
+  // which are written into ./env.js by build.js (Vercel build step) from the
+  // GEMINI_API_KEY / GROQ_API_KEY project environment variables.
+  const GEMINI_API_KEY = window.ENV_GEMINI_API_KEY || '';
+  const GROQ_API_KEY   = window.ENV_GROQ_API_KEY   || '';
+  if (!GEMINI_API_KEY) console.warn('[Jarvis] ENV_GEMINI_API_KEY not set — env.js may be missing. AI features will be unavailable.');
+  if (!GROQ_API_KEY)   console.warn('[Jarvis] ENV_GROQ_API_KEY not set — Groq fallback will not work. Some AI features may be unavailable.');
   const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
   const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
   const GROQ_MODEL = 'llama-3.3-70b-versatile';
