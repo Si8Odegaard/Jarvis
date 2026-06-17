@@ -691,6 +691,7 @@ body:has(.modal-bg.show) { overflow: hidden; }
       .order('date', { ascending: true });
 
     if (error) { console.error('Load events error:', error); return; }
+    console.log("Supabase raw response data:", data);
     events = data || [];
 
     // Pre-populate on first load if empty
