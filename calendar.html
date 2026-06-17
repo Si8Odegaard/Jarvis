@@ -723,6 +723,7 @@ body:has(.modal-bg.show) { overflow: hidden; }
   }
 
   function eventsOnDate(dateStr) {
+    console.log("Checking eventsOnDate for dateStr:", dateStr, "Total events length:", events.length);
     return events.filter(e => e.date === dateStr);
   }
 
