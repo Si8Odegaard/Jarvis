@@ -11,10 +11,15 @@
   // API keys are loaded from window.ENV_GEMINI_API_KEY / window.ENV_GROQ_API_KEY,
   // which are written into ./env.js by build.js (Vercel build step) from the
   // GEMINI_API_KEY / GROQ_API_KEY project environment variables.
-  const GEMINI_API_KEY = window.ENV_GEMINI_API_KEY || '';
-  const GROQ_API_KEY   = window.ENV_GROQ_API_KEY   || '';
-  if (!GEMINI_API_KEY) console.warn('[Jarvis] ENV_GEMINI_API_KEY not set — env.js may be missing. AI features will be unavailable.');
-  if (!GROQ_API_KEY)   console.warn('[Jarvis] ENV_GROQ_API_KEY not set — Groq fallback will not work. Some AI features may be unavailable.');
+  //
+  // Read them via getters (NOT as top-level consts) so the value is captured
+  // at the moment of an API call, not at IIFE-load time. This makes chat.js
+  // immune to <script src="env.js"> appearing before/after <script src="chat.js">
+  // in the HTML — window.ENV_* may not be set yet when this IIFE first runs.
+  function getGeminiKey() { return window.ENV_GEMINI_API_KEY || ''; }
+  function getGroqKey()   { return window.ENV_GROQ_API_KEY   || ''; }
+  if (!getGeminiKey()) console.warn('[Jarvis] ENV_GEMINI_API_KEY not set — env.js may be missing. AI features will be unavailable.');
+  if (!getGroqKey())   console.warn('[Jarvis] ENV_GROQ_API_KEY not set — Groq fallback will not work. Some AI features may be unavailable.');
   const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
   const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
   const GROQ_MODEL = 'llama-3.3-70b-versatile';
@@ -411,7 +416,7 @@ If Silas mentions his weight, water intake, or how he's feeling, offer to log it
     // Try Gemini first, then Groq
     let res;
     try {
-      res = await fetchWithTimeout(GEMINI_URL + '?key=' + GEMINI_API_KEY, {
+      res = await fetchWithTimeout(GEMINI_URL + '?key=' + getGeminiKey(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
@@ -422,7 +427,7 @@ If Silas mentions his weight, water intake, or how he's feeling, offer to log it
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + GROQ_API_KEY
+          'Authorization': 'Bearer ' + getGroqKey()
         },
         body: JSON.stringify({
           model: GROQ_MODEL,
@@ -488,7 +493,7 @@ Return only the JSON array, no formatting wrappers like \`\`\`json.`;
     };
 
     try {
-      const res = await fetchWithTimeout(GEMINI_URL + '?key=' + GEMINI_API_KEY, {
+      const res = await fetchWithTimeout(GEMINI_URL + '?key=' + getGeminiKey(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
@@ -666,7 +671,7 @@ Return only the JSON array, no formatting wrappers like \`\`\`json.`;
     };
 
     const res = await fetchWithTimeout(
-      GEMINI_URL + '?key=' + GEMINI_API_KEY,
+      GEMINI_URL + '?key=' + getGeminiKey(),
       { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
       GEMINI_TIMEOUT_MS
     );
@@ -701,7 +706,7 @@ Return only the JSON array, no formatting wrappers like \`\`\`json.`;
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + GROQ_API_KEY
+        'Authorization': 'Bearer ' + getGroqKey()
       },
       body: JSON.stringify(body)
     });
