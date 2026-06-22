@@ -1421,7 +1421,7 @@
       }
 
       let currentVal = null, pbVal = null, pbDate = null;
-      let gapPct = null, gapCls = 'na', gapJucoPct = null, gapJucoCls = 'na';
+      let gapPct = null, gapCls = 'na', gapJucoPct = null, gapJucoCls = 'na', gapProPct = null, gapProCls = 'na';
 
       if (b.key === 'sprint_decay') {
         const latest = sprintDecaySessions.length ? sprintDecaySessions.sort((a,b) => b.date.localeCompare(a.date))[0] : null;
@@ -1463,12 +1463,12 @@
           if (Math.abs(pct) <= 20) return 'yellow';
           return 'red';
         }
-        const gapPct = calcGap(currentVal, b.d1, b.lowerBetter);
-        const gapCls = gapColor(currentVal, b.d1, b.lowerBetter, gapPct);
-        const gapJucoPct = calcGap(currentVal, b.juco, b.lowerBetter);
-        const gapJucoCls = gapColor(currentVal, b.juco, b.lowerBetter, gapJucoPct);
-        const gapProPct = calcGap(currentVal, b.pro, b.lowerBetter);
-        const gapProCls = gapColor(currentVal, b.pro, b.lowerBetter, gapProPct);
+        gapPct = calcGap(currentVal, b.d1, b.lowerBetter);
+        gapCls = gapColor(currentVal, b.d1, b.lowerBetter, gapPct);
+        gapJucoPct = calcGap(currentVal, b.juco, b.lowerBetter);
+        gapJucoCls = gapColor(currentVal, b.juco, b.lowerBetter, gapJucoPct);
+        gapProPct = calcGap(currentVal, b.pro, b.lowerBetter);
+        gapProCls = gapColor(currentVal, b.pro, b.lowerBetter, gapProPct);
       }
 
       const valStr = currentVal !== null ? currentVal.toFixed(b.key === 'sprint_decay' ? 1 : 2) + ' ' + b.unit : '--';

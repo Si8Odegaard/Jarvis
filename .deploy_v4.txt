@@ -1,0 +1,17 @@
+############################
+# CLEANUP: remove all debug capture files before deploy
+############################
+captures still present: 
+(should be empty above)
+
+############################
+# PRE-DEPLOY git status (should show body.html modified)
+############################
+ M body.html
+?? "\".audit_verify.txt\""
+?? .deploy_v4.txt
+
+############################
+# bash deploy.sh
+############################
+📦 Adding all files...

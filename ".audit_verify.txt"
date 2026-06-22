@@ -1,0 +1,40 @@
+############################
+# POST-DEPLOY GIT LOG (top 2)
+############################
+8fc55ec Deploy Mon Jun 22 17:18:04 CDT 2026
+d95de3b Deploy Mon Jun 22 16:57:36 CDT 2026
+
+############################
+# POST-DEPLOY LIVE VERIFY with cache-buster
+############################
+curl: (3) URL rejected: Port number was not a decimal number between 0 and 65535
+curl: (3) URL rejected: Port number was not a decimal number between 0 and 65535
+curl: (3) URL rejected: Port number was not a decimal number between 0 and 65535
+curl attempts: status_1=000 status_2=000 status_3=000
+
+############################
+# VERIFY: lines containing each fix
+############################
+
+[ A. HEAD SCRIPT ORDER — should see 3 script lines, no early chat.js before env.js ]
+  (awk failed, showing first 13 raw lines)
+
+[ B. DESTRUCTURE — must be 6 names, no rsRes ]
+grep: brackets ([ ]) not balanced
+
+[ C. BARE vs CONST gap assignments ]
+  bare gapPct count=0 (expect 0)
+  const gapPct count=0 (expect 1)
+  const gapCls count=0 (expect 1)
+  const gapJucoPct count=0 (expect 1)
+  const gapJucoCls count=0 (expect 1)
+  const gapProPct count=0 (expect 1)
+  const gapProCls count=0 (expect 1)
+
+[ D. ANY rsRes LEFTOVER (must be 0) ]
+  rsRes count=0
+
+############################
+# CLEANUP temp files
+############################
+cleanup done
