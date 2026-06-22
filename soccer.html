@@ -1763,11 +1763,13 @@ $('saveSessionBtn').addEventListener('click', async () => {
     await updateAppState();
     // Write last_soccer_session to app_state for cross-tab awareness
     var hasSprintWork = type === 'speed' || type === 'match' || (type === 'group' && subType === 'Full Training');
-    await sb.from('app_state').upsert({
-      key: 'last_soccer_session',
-      data: { date: today(), sessionType: type, hasSprintWork: hasSprintWork, durationMinutes: duration, completedAt: new Date().toISOString(), intensityRating: intensity },
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'key' }).catch(function() {});
+    try {
+      await sb.from('app_state').upsert({
+        key: 'last_soccer_session',
+        data: { date: today(), sessionType: type, hasSprintWork: hasSprintWork, durationMinutes: duration, completedAt: new Date().toISOString(), intensityRating: intensity },
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'key' });
+    } catch(e) {}
     // Recalculate ACWR and write to app_state
     calculateACWR(sb).catch(() => {});
     $('#sessionModal').classList.remove('show');
