@@ -2410,14 +2410,14 @@ document.querySelectorAll('.modal-bg').forEach(bg => {
   if(!planConfig){
     try {
       const { data: newPlan } = await sb.from('offseason_plan').insert({
-        start_date: OFFSEASON_PLAN.startDate,
+        start_date: OFFSEASON_START,
         end_date: PRESEASON_START,
         current_phase: 'foundation',
         phase_week: 1,
         mode: 'offseason'
       }).select().single();
-      planConfig = newPlan || { start_date:OFFSEASON_PLAN.startDate, mode:'offseason', id:0 };
-    } catch(e){ planConfig = { start_date:OFFSEASON_PLAN.startDate, mode:'offseason', id:0 }; }
+      planConfig = newPlan || { start_date:OFFSEASON_START, mode:'offseason', id:0 };
+    } catch(e){ planConfig = { start_date:OFFSEASON_START, mode:'offseason', id:0 }; }
   }
   renderPlan();
 

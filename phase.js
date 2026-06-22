@@ -221,4 +221,12 @@ if (typeof window !== 'undefined') {
 
     return { ...result, isOverride: true };
   };
+
+  // ── Phase date constants (exposed for HTML files) ──
+  // These are the canonical dates used by HTML tabs (notably soccer.html)
+  // when computing pre-season / off-season windows without round-tripping
+  // through Supabase. PHASE_CONFIG is module-scoped above, not on window —
+  // these two globals are the only escape hatch into it.
+  window.PRESEASON_START = PHASE_CONFIG.PRESEASON_DATE;
+  window.OFFSEASON_START = PHASE_CONFIG.START_DATE;
 }
