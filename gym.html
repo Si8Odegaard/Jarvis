@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="chat.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#050506">
@@ -783,5 +785,11 @@ function renderAll(){renderPhaseHeader();renderBanners();renderExercises();}
   renderAll();
 })();
 </script>
+  <script>
+    const JARVIS_SUPABASE_URL = 'https://cskbbioyniryonkukamw.supabase.co';
+    const JARVIS_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNza2Jia95bmlyeW9ua3VrYW13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NjE2MTYsImV4cCI6MjA5NDUzNzYxNn0.R3Vx3fA-iAc8LhNL3WPSa9-BxH_087c7VaIbrB3CBJM';
+    const sb = window.supabase.createClient(JARVIS_SUPABASE_URL, JARVIS_SUPABASE_KEY);
+    initJarvisChat(sb);
+  </script>
 </body>
 </html>
