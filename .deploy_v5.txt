@@ -15,3 +15,22 @@ leftover captures:
 # bash deploy.sh (creates empty commit + push)
 ############################
 📦 Adding all files...
+💾 Committing...
+[main f5dff9d] Deploy Mon Jun 22 23:16:11 CDT 2026
+ 3 files changed, 307 insertions(+), 3 deletions(-)
+ create mode 100644 .deploy_v5.txt
+🚀 Pushing to GitHub...
+To github.com:Si8Odegaard/Jarvis.git
+   beec31a..f5dff9d  main -> main
+✅ Pushed! Vercel is now auto-deploying. Check your Vercel URL in 30 seconds.
+
+############################
+# POST-DEPLOY git log (top 2 commits)
+############################
+f5dff9d Deploy Mon Jun 22 23:16:11 CDT 2026
+beec31a Deploy Mon Jun 22 17:31:24 CDT 2026
+8fc55ec Deploy Mon Jun 22 17:18:04 CDT 2026
+
+############################
+# sleep 50s for Vercel auto-build + edge cache invalidation
+############################

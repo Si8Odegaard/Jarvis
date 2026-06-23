@@ -160,6 +160,30 @@ label.field-label{
   background:rgba(255,255,255,.07); color:var(--text-1);
 }
 
+/* ── Intervals tab ── */
+.int-target-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.int-target-cell{ background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:14px 16px; }
+.int-target-eyebrow{ font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--text-3); }
+.int-target-val{ font-size:30px; font-weight:700; font-family:var(--mono); font-variant-numeric:tabular-nums; margin-top:4px; color:var(--text-1); letter-spacing:-.02em; }
+.int-target-sub{ font-size:11px; color:var(--text-3); margin-top:2px; }
+.int-reps-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.int-rep-label{ font-size:10px; font-weight:600; color:var(--text-3); text-transform:uppercase; letter-spacing:.06em; display:flex; flex-direction:column; gap:4px; }
+.int-rep-input{ width:100%; padding:9px 10px; background:rgba(0,0,0,.30); border:1px solid rgba(255,255,255,.08); border-radius:8px; color:var(--text-1); font-size:14px; font-family:var(--mono); font-weight:700; outline:none; }
+.int-rep-input:focus{ border-color:var(--good); }
+.int-rest-row{ font-size:11px; color:var(--text-2); margin-top:10px; }
+.int-recent-card{ background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:10px; padding:12px 14px; margin-bottom:8px; }
+.int-recent-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+.int-recent-date{ font-size:11px; color:var(--text-3); font-family:var(--mono); }
+.int-recent-type{ font-size:10px; font-weight:700; letter-spacing:.10em; text-transform:uppercase; color:var(--good); }
+.int-recent-reps{ font-size:16px; font-weight:700; font-family:var(--mono); color:var(--text-1); }
+.int-recent-meta{ font-size:11px; color:var(--text-2); margin-top:4px; display:flex; gap:14px; flex-wrap:wrap; }
+.int-recent-notes{ font-size:11px; color:var(--text-3); font-style:italic; margin-top:4px; }
+.int-target-compare{ margin-top:4px; font-size:10.5px; font-family:var(--mono); }
+@media (max-width:480px){
+  .int-target-grid{ grid-template-columns:1fr; }
+  .int-reps-grid{ grid-template-columns:1fr 1fr; }
+}
+
 /* ── test result display ── */
 .test-row{
   display:flex; justify-content:space-between; align-items:center;
@@ -523,6 +547,7 @@ body:has(.modal-bg.show){overflow:hidden}
     <button class="soccer-tab" data-stab="library">📚 Library</button>
     <button class="soccer-tab" data-stab="insights">🧠 Insights</button>
     <button class="soccer-tab" data-stab="technical">🔧 Technical</button>
+    <button class="soccer-tab" data-stab="intervals">⏱ Intervals</button>
   </div>
 
   <!-- ═══════════════════════════════════════════════
@@ -769,6 +794,85 @@ body:has(.modal-bg.show){overflow:hidden}
 
 <div class="toast" id="toast"></div>
 
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       TAB: INTERVALS
+  ═══════════════════════════════════════════════ -->
+  <div id="stab-intervals" class="hidden">
+
+    <!-- SECTION 1: CURRENT TARGETS -->
+    <div class="card" id="intTargetsCard"><div class="eyebrow">CURRENT WEEK TARGETS</div>
+      <div class="int-target-grid">
+        <div class="int-target-cell">
+          <div class="int-target-eyebrow">800M TARGET</div>
+          <div class="int-target-val" id="int800mTargetVal">—</div>
+          <div class="int-target-sub" id="int800mTargetSub">No target set</div>
+        </div>
+        <div class="int-target-cell">
+          <div class="int-target-eyebrow">400M TARGET</div>
+          <div class="int-target-val" id="int400mTargetVal">—</div>
+          <div class="int-target-sub" id="int400mTargetSub">No target set</div>
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <span class="pill pill-dim" id="intEquipmentPill">Equipment: —</span>
+      </div>
+      <div id="intAdjustmentReason" class="alert-card warn" style="display:none;margin-top:12px">
+        <div class="alert-card-title">⚠️ Adjustment Active</div>
+        <div id="intAdjustmentBody"></div>
+      </div>
+    </div>
+
+    <!-- SECTION 2: LOG INTERVAL SESSION -->
+    <div class="card mt12">
+      <div class="eyebrow">LOG INTERVAL SESSION</div>
+
+      <label class="field-label">Session Type</label>
+      <div class="seg" id="intSessionTypeSeg" style="margin-bottom:14px">
+        <button class="seg-btn active" data-type="800m">🏃 800m Repeats</button>
+        <button class="seg-btn" data-type="400m">🔥 400m Repeats</button>
+        <button class="seg-btn" data-type="mile_trial">⏱️ Mile Trial</button>
+        <button class="seg-btn" data-type="cooper">🏃 Cooper Test</button>
+        <button class="seg-btn" data-type="tempo">🚶 Tempo Run</button>
+      </div>
+
+      <!-- Dynamic rep input grid (for 800m / 400m) -->
+      <div id="intRepsContainer"></div>
+
+      <!-- Single inputs for other types -->
+      <div id="intMileContainer" class="hidden" style="margin-bottom:12px">
+        <label class="field-label">Mile Time (MM:SS)</label>
+        <input type="text" id="intMileInput" placeholder="e.g. 6:45">
+      </div>
+      <div id="intCooperContainer" class="hidden" style="margin-bottom:12px">
+        <label class="field-label">Cooper Test Distance (m)</label>
+        <input type="number" id="intCooperInput" placeholder="e.g. 2400" inputmode="numeric" min="500" max="5000">
+      </div>
+      <div id="intTempoContainer" class="hidden" style="margin-bottom:12px">
+        <label class="field-label" style="margin-bottom:4px">Duration (min)</label>
+        <input type="number" id="intTempoDuration" placeholder="e.g. 30" inputmode="numeric" min="5" max="120" style="margin-bottom:10px">
+        <label class="field-label">Average Pace (MM:SS / mile)</label>
+        <input type="text" id="intTempoPace" placeholder="e.g. 7:30">
+      </div>
+
+      <div style="margin-top:12px">
+        <label class="field-label">Notes (optional)</label>
+        <input type="text" id="intNotesInput" placeholder="How did it feel? Conditions, weather, etc.">
+      </div>
+
+      <!-- Fade preview (live) -->
+      <div id="intFadePreview" class="hidden" style="margin-top:12px"></div>
+
+      <button class="btn btn-primary btn-full mt12" id="intSaveBtn">Save Interval Session</button>
+    </div>
+
+    <!-- SECTION 3: RECENT INTERVAL SESSIONS -->
+    <div class="section-title mt12">Recent Interval Sessions</div>
+    <div id="intRecentSessions">
+      <div style="text-align:center;padding:24px;color:var(--text-3);font-size:13px">Loading…</div>
+    </div>
 
   </div>
 
@@ -1240,7 +1344,7 @@ document.querySelectorAll('.soccer-tab').forEach(btn => {
     document.querySelectorAll('.soccer-tab').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     const tab = btn.dataset.stab;
-    ['testing','sessions','plan','library','insights','technical'].forEach(t => {
+    ['testing','sessions','plan','library','insights','technical','intervals'].forEach(t => {
       const el = $('#stab-'+t); if(el) el.classList.toggle('hidden', t!==tab);
     });
     if(tab==='testing') renderTesting();
@@ -1249,6 +1353,7 @@ document.querySelectorAll('.soccer-tab').forEach(btn => {
     if(tab==='library') renderLibrary();
     if(tab==='insights') await renderInsights();
     if(tab==='technical') await renderTechnical();
+    if(tab==='intervals') await renderIntervals();
   });
 });
 
@@ -2439,6 +2544,337 @@ document.querySelectorAll('.modal-bg').forEach(bg => {
   calculateACWR(sb).catch(() => {});
 })();
 </script>
+  <!-- ===========================================================
+       INTERVAL SESSIONS - render + save logic
+       =========================================================== -->
+  <script>
+  // Module state
+  let intervalSessions = [];
+  let intervalTargets = null;
+  let intSelectedType = '800m';
+
+  // Time helpers (MM:SS <-> seconds)
+  function fmtSecsMMSS(s){
+    if(s == null || isNaN(s) || s < 0) return '—';
+    const m = Math.floor(s / 60);
+    const sec = Math.round(s % 60);
+    return `${m}:${String(sec).padStart(2,'0')}`;
+  }
+  function parseMMSStoSecs(str){
+    if(!str || typeof str !== 'string') return NaN;
+    const trimmed = str.trim();
+    const m = trimmed.match(/^(\d{1,2}):(\d{1,2})$/);
+    if(!m) return NaN;
+    const mins = parseInt(m[1], 10);
+    const secs = parseInt(m[2], 10);
+    if(isNaN(mins) || isNaN(secs) || secs >= 60 || mins < 0 || secs < 0) return NaN;
+    return mins * 60 + secs;
+  }
+
+  // Local toast helper (the #toast element already exists in DOM)
+  function showIntervalToast(msg){
+    const t = $('toast');
+    if(!t){ alert(msg); return; }
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  // Data loaders
+  async function loadIntervalTargets(){
+    try {
+      const { data } = await sb.from('app_state').select('data').eq('key','schedule_targets').maybeSingle();
+      if(data && data.data) intervalTargets = data.data;
+    } catch(e){ intervalTargets = null; }
+  }
+  async function loadIntervalSessions(){
+    try {
+      const { data } = await sb.from('interval_sessions').select('*').order('date',{ascending:false}).limit(10);
+      intervalSessions = data || [];
+    } catch(e){ intervalSessions = []; }
+  }
+
+  // Main render entry (wired by tab handler in the existing script)
+  async function renderIntervals(){
+    if(!intervalSessions.length && (intervalTargets === null)){
+      await Promise.allSettled([loadIntervalTargets(), loadIntervalSessions()]);
+    }
+    renderIntervalTargets();
+    renderIntervalRepsGrid();
+    renderIntervalRecent();
+  }
+
+  function getIntervalRepCount(type){
+    if(type === '800m'){
+      const v = parseInt(intervalTargets && intervalTargets.interval_800m_reps);
+      return v && v > 0 ? v : 3;
+    }
+    if(type === '400m'){
+      const v = parseInt(intervalTargets && intervalTargets.interval_400m_reps);
+      return v && v > 0 ? v : 4;
+    }
+    return 0;
+  }
+
+  // SECTION 1 - current targets display
+  function renderIntervalTargets(){
+    const t = intervalTargets || {};
+    if(t.interval_800m_target_seconds){
+      $('#int800mTargetVal').textContent = fmtSecsMMSS(t.interval_800m_target_seconds);
+      const rest = parseInt(t.interval_800m_rest_seconds);
+      const reps = parseInt(t.interval_800m_reps);
+      const restStr = (rest && rest > 0) ? `${rest}s rest` : '120s rest';
+      const repsStr = (reps && reps > 0) ? `${reps} reps` : '3 reps';
+      $('#int800mTargetSub').textContent = `${repsStr} · ${restStr}`;
+    } else {
+      $('#int800mTargetVal').textContent = '—';
+      $('#int800mTargetSub').textContent = 'No target set';
+    }
+    if(t.interval_400m_target_seconds){
+      $('#int400mTargetVal').textContent = fmtSecsMMSS(t.interval_400m_target_seconds);
+      const reps = parseInt(t.interval_400m_reps);
+      $('#int400mTargetSub').textContent = (reps && reps > 0) ? `${reps} reps` : '4 reps';
+    } else {
+      $('#int400mTargetVal').textContent = '—';
+      $('#int400mTargetSub').textContent = 'No target set';
+    }
+    const equip = t.equipment_mode || 'unknown';
+    const equipLabels = { full: '🏟️ Full Facility', bodyweight: '🏠 Bodyweight Only', home_gym: '🏋️ Home Gym' };
+    $('#intEquipmentPill').textContent = `Equipment: ${equipLabels[equip] || equip}`;
+    if(t.adjustment_reason){
+      $('#intAdjustmentReason').style.display = 'block';
+      $('#intAdjustmentBody').textContent = t.adjustment_reason;
+    } else {
+      $('#intAdjustmentReason').style.display = 'none';
+    }
+  }
+
+  // SECTION 2 - dynamic session-type UI
+  function renderIntervalRepsGrid(){
+    const isRepeats = intSelectedType === '800m' || intSelectedType === '400m';
+    $('#intRepsContainer').classList.toggle('hidden', !isRepeats);
+    $('#intMileContainer').classList.toggle('hidden', intSelectedType !== 'mile_trial');
+    $('#intCooperContainer').classList.toggle('hidden', intSelectedType !== 'cooper');
+    $('#intTempoContainer').classList.toggle('hidden', intSelectedType !== 'tempo');
+    $('#intFadePreview').classList.add('hidden');
+    if(!isRepeats) return;
+    const repCount = getIntervalRepCount(intSelectedType);
+    const rest = parseInt(intervalTargets && intervalTargets.interval_800m_rest_seconds);
+    const restStr = (rest && rest > 0) ? `${rest}s` : '120s';
+    let html = `<label class="field-label">REP TIMES</label>`;
+    html += `<div class="int-reps-grid">`;
+    for(let i = 1; i <= repCount; i++){
+      html += `<div class="int-rep-label">Rep ${i}<input type="text" class="int-rep-input" data-rep="${i}" placeholder="MM:SS" inputmode="numeric"></div>`;
+    }
+    html += `</div>`;
+    html += `<div class="int-rest-row">Rest: <strong>${restStr}</strong> between reps (from schedule_targets)</div>`;
+    $('#intRepsContainer').innerHTML = html;
+  }
+
+  // Session type segmented selector
+  document.querySelectorAll('#intSessionTypeSeg .seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#intSessionTypeSeg .seg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      intSelectedType = btn.dataset.type;
+      renderIntervalRepsGrid();
+    });
+  });
+
+  // Live fade feedback as user types rep times
+  document.addEventListener('input', (e) => {
+    if(e.target && e.target.matches && e.target.matches('.int-rep-input')){
+      updateIntervalFadePreview();
+    }
+  });
+
+  function updateIntervalFadePreview(){
+    const inputs = document.querySelectorAll('.int-rep-input');
+    if(!inputs.length){ $('#intFadePreview').classList.add('hidden'); return; }
+    let first = NaN, last = NaN;
+    inputs.forEach(inp => {
+      const s = parseMMSStoSecs(inp.value);
+      if(isNaN(s)) return;
+      if(isNaN(first)) first = s;
+      last = s;
+    });
+    if(isNaN(first) || isNaN(last)){ $('#intFadePreview').classList.add('hidden'); return; }
+    const fade = last - first;
+    let color, msg, alertCls;
+    if(fade < 8){ color = 'var(--good)'; msg = 'Strong session 💪'; alertCls = 'info'; }
+    else if(fade <= 15){ color = 'var(--warn)'; msg = 'Acceptable fade'; alertCls = 'warn'; }
+    else { color = 'var(--bad)'; msg = 'Significant fade — rest may need adjustment'; alertCls = 'danger'; }
+    $('#intFadePreview').classList.remove('hidden');
+    $('#intFadePreview').innerHTML = `<div class="alert-card ${alertCls}" style="margin:0"><div class="alert-card-title">Fade Preview: <span style="color:${color};font-family:var(--mono)">+${fade}s</span> — ${msg}</div></div>`;
+  }
+
+  // Save interval session
+  $('intSaveBtn').addEventListener('click', async () => {
+    const btn = $('intSaveBtn');
+    btn.disabled = true;
+    const oldLabel = btn.textContent;
+    btn.textContent = 'Saving…';
+    try {
+      let repTimes = [];
+      let restSeconds = null;
+      const notesVal = $('#intNotesInput').value.trim();
+      const notes = notesVal ? notesVal : null;
+
+      if(intSelectedType === '800m' || intSelectedType === '400m'){
+        const inputs = document.querySelectorAll('.int-rep-input');
+        if(inputs.length === 0) throw new Error('No rep inputs configured');
+        const secs = [];
+        let missingOne = false;
+        inputs.forEach(inp => {
+          if(!inp.value || !inp.value.trim()){ missingOne = true; return; }
+          const s = parseMMSStoSecs(inp.value);
+          if(isNaN(s)) missingOne = true;
+          else secs.push(s);
+        });
+        if(missingOne) throw new Error('All rep times must be filled and in MM:SS format');
+        if(secs.length < 2) throw new Error('At least 2 rep times are required');
+        repTimes = secs;
+        if(intSelectedType === '800m'){
+          const restVal = parseInt(intervalTargets && intervalTargets.interval_800m_rest_seconds);
+          restSeconds = (restVal && restVal > 0) ? restVal : 120;
+        } else {
+          const restVal = parseInt(intervalTargets && intervalTargets.interval_400m_rest_seconds);
+          restSeconds = (restVal && restVal > 0) ? restVal : 90;
+        }
+      } else if(intSelectedType === 'mile_trial'){
+        const v = parseMMSStoSecs($('#intMileInput').value);
+        if(isNaN(v)) throw new Error('Mile time must be in MM:SS format (e.g. 6:45)');
+        repTimes = [v]; restSeconds = null;
+      } else if(intSelectedType === 'cooper'){
+        const v = parseInt($('#intCooperInput').value);
+        if(isNaN(v) || v < 100) throw new Error('Enter a valid Cooper Test distance in meters');
+        repTimes = [v]; restSeconds = null;
+      } else if(intSelectedType === 'tempo'){
+        const dur = parseInt($('#intTempoDuration').value);
+        const pace = parseMMSStoSecs($('#intTempoPace').value);
+        if(isNaN(dur) || dur < 1) throw new Error('Enter a valid duration in minutes');
+        if(isNaN(pace)) throw new Error('Pace must be in MM:SS format (e.g. 7:30)');
+        repTimes = [dur, pace];
+        restSeconds = null;
+      }
+
+      // Phase via window.getCurrentPhase() (already exposed by phase.js)
+      let phaseName = null;
+      if(window.getCurrentPhase){
+        try {
+          const phaseResult = await window.getCurrentPhase(sb);
+          if(phaseResult && phaseResult.phase) phaseName = phaseResult.phase;
+        } catch(e){}
+      }
+
+      // Recovery score from app_state key 'recovery_score_today' (per spec)
+      let recoveryScoreAtTime = null;
+      try {
+        const { data: stateRow } = await sb.from('app_state').select('data').eq('key','recovery_score_today').maybeSingle();
+        const v = stateRow && stateRow.data;
+        if(typeof v === 'number') recoveryScoreAtTime = v;
+        else if(v && typeof v === 'object' && typeof v.score === 'number') recoveryScoreAtTime = v.score;
+        else if(v != null){
+          const parsed = parseFloat(v);
+          if(!isNaN(parsed)) recoveryScoreAtTime = parsed;
+        }
+      } catch(e){}
+
+      const insertRow = {
+        date: today(),
+        session_type: intSelectedType,
+        rep_times: repTimes,
+        rest_seconds: restSeconds,
+        notes: notes,
+        phase: phaseName,
+        recovery_score_at_time: (recoveryScoreAtTime !== null && !isNaN(recoveryScoreAtTime)) ? Math.round(recoveryScoreAtTime) : null
+      };
+      const { error: insertErr } = await sb.from('interval_sessions').insert(insertRow);
+      if(insertErr) throw insertErr;
+
+      await loadIntervalSessions();
+      renderIntervalRecent();
+
+      // Reset form
+      document.querySelectorAll('.int-rep-input').forEach(inp => { inp.value = ''; });
+      if($('intMileInput')) $('intMileInput').value = '';
+      if($('intCooperInput')) $('intCooperInput').value = '';
+      if($('intTempoDuration')) $('intTempoDuration').value = '';
+      if($('intTempoPace')) $('intTempoPace').value = '';
+      $('intNotesInput').value = '';
+      $('#intFadePreview').classList.add('hidden');
+
+      showIntervalToast('Interval session logged ✅');
+    } catch(err){
+      showIntervalToast('Save failed: ' + (err && err.message ? err.message : 'unknown error'));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = oldLabel;
+    }
+  });
+
+  // SECTION 3 - recent sessions display
+  function renderIntervalRecent(){
+    const container = $('#intRecentSessions');
+    if(!intervalSessions.length){
+      container.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-3);font-size:13px;font-style:italic">No interval sessions logged yet</div>';
+      return;
+    }
+    container.innerHTML = intervalSessions.map(s => {
+      const dt = new Date((s.date || today()) + 'T00:00:00');
+      const mons = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const dateLabel = isNaN(dt.getTime()) ? (s.date || '—') : `${mons[dt.getMonth()]} ${dt.getDate()}, ${dt.getFullYear()}`;
+      const typeLabel = String(s.session_type || '').toUpperCase();
+      const reps = Array.isArray(s.rep_times) ? s.rep_times : [];
+      let repStr = '—';
+      if(reps.length === 1){
+        if(s.session_type === 'tempo') repStr = `${reps[0]} min @ ${fmtSecsMMSS(reps[1])} /mi`;
+        else if(s.session_type === 'cooper') repStr = `${reps[0]} m`;
+        else repStr = fmtSecsMMSS(reps[0]);
+      } else if(reps.length >= 2 && s.session_type === 'tempo'){
+        repStr = `${reps[0]} min @ ${fmtSecsMMSS(reps[1])} /mi`;
+      } else if(reps.length){
+        repStr = reps.map(r => fmtSecsMMSS(r)).join(' / ');
+      }
+      let fadeHtml = '';
+      if(reps.length >= 2 && (s.session_type === '800m' || s.session_type === '400m')){
+        const fade = reps[reps.length - 1] - reps[0];
+        let fadeColor = 'var(--good)', fadeMsg = '';
+        if(fade < 8){ fadeColor = 'var(--good)'; fadeMsg = 'Strong session 💪'; }
+        else if(fade <= 15){ fadeColor = 'var(--warn)'; fadeMsg = 'Acceptable fade'; }
+        else { fadeColor = 'var(--bad)'; fadeMsg = 'Significant fade — rest may need adjustment'; }
+        fadeHtml = `<div class="int-recent-meta"><span>Fade: <strong style="color:${fadeColor};font-family:var(--mono)">+${fade}s</strong> — ${fadeMsg}</span><span>Rest: ${s.rest_seconds != null ? s.rest_seconds + 's' : '—'}</span><span>Phase: ${esc(s.phase) || '—'}</span></div>`;
+      } else {
+        fadeHtml = `<div class="int-recent-meta">${s.rest_seconds != null ? '<span>Rest: ' + s.rest_seconds + 's</span>' : ''}<span>Phase: ${esc(s.phase) || '—'}</span>${s.recovery_score_at_time != null ? '<span>Recovery: ' + s.recovery_score_at_time + '/100</span>' : ''}</div>`;
+      }
+      let compareHtml = '';
+      if(s.session_type === '800m' && intervalTargets && intervalTargets.interval_800m_target_seconds && reps.length){
+        const target = parseInt(intervalTargets.interval_800m_target_seconds);
+        const actual = reps[0];
+        if(!isNaN(target)){
+          const diff = actual - target;
+          const hit = diff <= 0;
+          const color = hit ? 'var(--good)' : (diff <= 5 ? 'var(--warn)' : 'var(--bad)');
+          const verb = hit ? 'hit' : 'missed by';
+          compareHtml = `<div class="int-target-compare" style="color:${color}">Target was ${fmtSecsMMSS(target)} — you ${verb} ${fmtSecsMMSS(Math.abs(diff))}${hit ? '' : ' slower'}</div>`;
+        }
+      } else if(s.session_type === '400m' && intervalTargets && intervalTargets.interval_400m_target_seconds && reps.length){
+        const target = parseInt(intervalTargets.interval_400m_target_seconds);
+        const actual = reps[0];
+        if(!isNaN(target)){
+          const diff = actual - target;
+          const hit = diff <= 0;
+          const color = hit ? 'var(--good)' : (diff <= 3 ? 'var(--warn)' : 'var(--bad)');
+          const verb = hit ? 'hit' : 'missed by';
+          compareHtml = `<div class="int-target-compare" style="color:${color}">Target was ${fmtSecsMMSS(target)} — you ${verb} ${fmtSecsMMSS(Math.abs(diff))}${hit ? '' : ' slower'}</div>`;
+        }
+      }
+      const notesHtml = s.notes ? `<div class="int-recent-notes">“${esc(s.notes)}”</div>` : '';
+      return `<div class="int-recent-card"><div class="int-recent-head"><span class="int-recent-date">${esc(dateLabel)}</span><span class="int-recent-type">${esc(typeLabel)}</span></div><div class="int-recent-reps">${repStr}</div>${compareHtml}${fadeHtml}${notesHtml}</div>`;
+    }).join('');
+  }
+  </script>
+
   <script>
     const JARVIS_SUPABASE_URL = 'https://cskbbioyniryonkukamw.supabase.co';
     const JARVIS_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNza2Jia95bmlyeW9ua3VrYW13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NjE2MTYsImV4cCI6MjA5NDUzNzYxNn0.R3Vx3fA-iAc8LhNL3WPSa9-BxH_087c7VaIbrB3CBJM';
