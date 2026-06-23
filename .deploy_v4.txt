@@ -15,3 +15,48 @@ captures still present:
 # bash deploy.sh
 ############################
 📦 Adding all files...
+💾 Committing...
+[main beec31a] Deploy Mon Jun 22 17:31:24 CDT 2026
+ 3 files changed, 64 insertions(+), 7 deletions(-)
+ create mode 100644 "\".audit_verify.txt\""
+ create mode 100644 .deploy_v4.txt
+🚀 Pushing to GitHub...
+To github.com:Si8Odegaard/Jarvis.git
+   8fc55ec..beec31a  main -> main
+✅ Pushed! Vercel is now auto-deploying. Check your Vercel URL in 30 seconds.
+
+############################
+# POST-DEPLOY git log
+############################
+beec31a Deploy Mon Jun 22 17:31:24 CDT 2026
+8fc55ec Deploy Mon Jun 22 17:18:04 CDT 2026
+d95de3b Deploy Mon Jun 22 16:57:36 CDT 2026
+
+############################
+# sleep 45s for Vercel auto-build + edge propagation
+############################
+
+############################
+# POST-DEPLOY live verify on body.html
+############################
+
+  HTTP status: 200 (expect 200)
+  Served bytes:    78327
+
+  - Line 1424 outer let contains gapProPct/gapProCls: 0 (expect 1)
+  - bare gapPct = calcGap (...) count: 1 (expect 1)
+  - bare gapCls = gapColor (...) count: 1 (expect 1)
+  - bare gapJucoPct = calcGap (...) count: 1 (expect 1)
+  - bare gapJucoCls = gapColor (...) count: 1 (expect 1)
+  - bare gapProPct = calcGap (...) count: 1 (expect 1)
+  - bare gapProCls = gapColor (...) count: 1 (expect 1)
+  - any const gap* remaining: 0 (expect 0)
+  - destructure fixed (no rsRes): 0
+  - rsRes leftover: 0 (expect 0)
+  - head script order: supabase CDN before env.js before chat.js (count 1 each, env after supabase): 1
+
+############################
+# POST-DEPLOY literal block check — body.html serves gapProPct, gapProCls at line 1424 properly
+############################
+
+  hit-line: 1424:       let gapPct = null, gapCls = 'na', gapJucoPct = null, gapJucoCls = 'na', gapProPct = null, gapProCls = 'na';

@@ -1576,6 +1576,21 @@
           { key:'nutrition', data:{ recovery_score_today: recoveryToday, recovery_score_7day_avg: recovery7DayAvg }, updated_at: new Date().toISOString() }
         ], { onConflict: 'key' }).then(() => {}).catch(()=>{});
 
+        // ── 2b. Schedule Config + Recent Interval Sessions (consumed by auto-adjust rules) ──
+        let currentConfig = null;
+        try {
+          const { data: schedConfig } = await sb.from('schedule_config')
+            .select('*').order('week_start', { ascending: false }).limit(1).maybeSingle();
+          currentConfig = schedConfig || null;
+        } catch(e) {}
+
+        let intervals = [];
+        try {
+          const { data: recentIntervals } = await sb.from('interval_sessions')
+            .select('*').order('date', { ascending: false }).limit(4);
+          intervals = recentIntervals || [];
+        } catch(e) {}
+
         // ── 3. Training Load / ACWR ──
         const [{ data: sSess }, { data: wSess }] = await Promise.all([
           sb.from('soccer_sessions').select('*').gte('date',last28Str).order('date',{ascending:false}),
@@ -1631,6 +1646,9 @@
           key:'latest_weight', data:{ weight:latestWeight, gain_rate:weeklyGainRate }, updated_at: new Date().toISOString()
         }, { onConflict:'key' }).then(() => {}).catch(()=>{});
 
+        // ── 4b. Auto-Adjust Schedule (rules engine: ACWR, recovery, fade, mile, mass, phase) ──
+        const autoAdj = await autoAdjustSchedule(sb, currentConfig, intervals, recoveryToday, acwr, weights);
+
         // ── 5. Session Recommendation Engine ──
         const yesterday = briefingYesterday();
 
@@ -1654,7 +1672,7 @@
         if (window.writeMatchIntelligence) { await window.writeMatchIntelligence(sb).catch(() => {}); }
 
         // ── 5b. Generate Weekly Plan ──
-        const weeklyPlan = generateWeeklyPlan(phaseData);
+        const weeklyPlan = await generateWeeklyPlan(phaseData);
         await sb.from('app_state').upsert({
           key: 'weekly_plan',
           data: weeklyPlan,
@@ -1790,7 +1808,7 @@
             .select('*').eq('date', today).order('event_type', { ascending: true });
           todayCalendarEvents = calEvents || [];
         } catch(_) {}
-        return { phase:phaseData, recoveryToday, recovery7DayAvg, acwr, acwrStatus, latestWeight, weeklyGainRate, recommendation:rec, jarvisScore, jarvisComponents:{ recovery:recComp, nutrition:nutComp, load:loadComp, athletic:athComp }, prevJarvisScore:prevJS, d1Gaps, weeklyPlan, todayCalendarEvents };
+        return { phase:phaseData, recoveryToday, recovery7DayAvg, acwr, acwrStatus, latestWeight, weeklyGainRate, recommendation:rec, jarvisScore, jarvisComponents:{ recovery:recComp, nutrition:nutComp, load:loadComp, athletic:athComp }, prevJarvisScore:prevJS, d1Gaps, weeklyPlan, todayCalendarEvents, scheduleTargets: autoAdj ? autoAdj.targets : null };
       } catch(e) {
         console.error('computeDailyState error:', e);
         return null;
@@ -1800,8 +1818,210 @@
     // Expose globally so chat.js can refresh after logging
     window.computeDailyState = computeDailyState;
 
+    /* ── Auto-Adjust Schedule (rules engine) ── */
+    // 6 rules applied IN ORDER (first match wins). Returns { adjusted, targets, reason }.
+    // - Rule 1: ACWR > 1.5 → reduce 800m reps by 1 (min 2)
+    // - Rule 2: recovery < 40 → vacation_mode = true (rest day inserted)
+    // - Rule 3: last 2 '800m' sessions — fade > 15s both → +15s rest (max 180);
+    //                             fade < 8s both → -10s rest (min 90)
+    // - Rule 4: last 2 mile_run athletic_tests, improvement rate < 3s/wk → flag threshold
+    // - Rule 5: weight gain < 0.3 lbs/wk for 2+ consecutive weeks → +200 cal (max 3200)
+    // - Rule 6: Monday only → overwrite target baseline to match current phase
+    // Always writes schedule_targets to app_state. Only writes schedule_config when a rule fires.
+    // Silent skip (no throw) when currentConfig is null (no row exists yet).
+    async function autoAdjustSchedule(sb, currentConfig, intervals, recoveryScore, acwr, weights) {
+      if (!sb || !currentConfig) {
+        return { adjusted: false, targets: null, reason: null };
+      }
+
+      // Work on a shallow copy so we never mutate the caller's object
+      const config = { ...currentConfig };
+      const base800mReps = config.interval_800m_reps || 3;
+      const base800mRest = config.interval_800m_rest_seconds || 120;
+      const baseCalorieTarget = config.calorie_target || 2800;
+      let adjusted = false;
+      let reason = null;
+
+      // ── STALE VACATION MODE CLEAR (recovery recovered from prior bad day) ──
+      if (config.vacation_mode === true
+          && config.adjustment_reason === 'Recovery critical: rest day inserted'
+          && recoveryScore !== null && recoveryScore >= 55) {
+        config.vacation_mode = false;
+        config.adjustment_reason = null;
+        config.auto_adjusted = false;
+        // Persist reset immediately so the stale flag is cleared from DB even if no rule fires after
+        try {
+          await sb.from('schedule_config').upsert({
+            ...config,
+            auto_adjusted: false,
+            adjustment_reason: null,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'id' });
+        } catch(e) { console.warn('[Jarvis] autoAdjustSchedule upsert failed', e); }
+      }
+
+      // ── RULE 1 — ACWR override (highest priority tactical) ──
+      if (acwr > 1.5) {
+        const newReps = Math.max(2, base800mReps - 1);
+        if (newReps !== base800mReps) {
+          config.interval_800m_reps = newReps;
+          adjusted = true;
+          reason = 'ACWR critical: volume reduced';
+        }
+      }
+      // ── RULE 2 — Recovery override (rest day beats volume reduction) ──
+      else if (recoveryScore !== null && recoveryScore < 40) {
+        config.vacation_mode = true;
+        adjusted = true;
+        reason = 'Recovery critical: rest day inserted';
+      }
+      // ── RULES 3-5 — tactical refinements (sequence-wrapped so first match resolves) ──
+      else {
+        // ── RULE 3 — 800m fade detection on last 2 sessions ──
+        const last800 = (intervals || []).filter(s => s.session_type === '800m').slice(0, 2);
+        if (last800.length === 2) {
+          const fades = last800.map(s => {
+            if (!Array.isArray(s.rep_times) || s.rep_times.length < 2) return null;
+            return s.rep_times[s.rep_times.length - 1] - s.rep_times[0];
+          });
+          if (fades.every(f => f !== null && f > 15)) {
+            config.interval_800m_rest_seconds = Math.min(180, base800mRest + 15);
+            adjusted = true;
+            reason = 'Fade detected: rest interval increased';
+          } else if (fades.every(f => f !== null && f < 8)) {
+            config.interval_800m_rest_seconds = Math.max(90, base800mRest - 10);
+            adjusted = true;
+            reason = 'Strong repeats: rest interval decreased';
+          }
+        }
+
+        // ── RULE 4 — Mile progression rate (last 2 mile_run athletic_tests) ──
+        if (!adjusted) {
+          try {
+            const { data: mileTests } = await sb.from('athletic_tests')
+              .select('*').eq('test_type','mile_run')
+              .order('date', { ascending: false }).limit(2);
+            if (mileTests && mileTests.length === 2) {
+              const newer = mileTests[0];
+              const older = mileTests[1];
+              const improvement = older.value - newer.value; // positive = faster than before
+              const daysBetween = (new Date(newer.date + 'T00:00:00') - new Date(older.date + 'T00:00:00')) / 86400000;
+              if (daysBetween > 0) {
+                const rate = improvement / (daysBetween / 7); // seconds improved per week
+                if (rate < 3) {
+                  adjusted = true;
+                  reason = 'Mile behind target: threshold added';
+                }
+              }
+            }
+          } catch(e) { console.warn('[Jarvis] autoAdjustSchedule upsert failed', e); }
+
+          // ── RULE 4 PROPAGATION — cascade threshold flag to weekly_plan generator ──
+          if (adjusted && reason === 'Mile behind target: threshold added') {
+            try {
+              await sb.from('app_state').upsert({
+                key: 'threshold_saturday',
+                data: { active: true, reason: 'Mile behind target', set_date: new Date().toISOString().slice(0,10) },
+                updated_at: new Date().toISOString()
+              }, { onConflict: 'key' });
+            } catch(e) { console.warn('[Jarvis] threshold_saturday write failed', e); }
+          }
+        }
+
+        // ── RULE 5 — Mass gain slow for 2+ consecutive weeks (last 14 days of weight_logs) ──
+        if (!adjusted && Array.isArray(weights) && weights.length >= 4) {
+          try {
+            const today = new Date();
+            const sevenAgo = new Date(today); sevenAgo.setDate(sevenAgo.getDate() - 6);
+            const fourteenAgo = new Date(today); fourteenAgo.setDate(fourteenAgo.getDate() - 13);
+            const sevenAgoStr = toLocalDateStr(sevenAgo);
+            const fourteenAgoStr = toLocalDateStr(fourteenAgo);
+            const thisWeek = weights.filter(x => x.date >= sevenAgoStr);
+            const priorWeek = weights.filter(x => x.date >= fourteenAgoStr && x.date < sevenAgoStr);
+            const earliest = weights.filter(x => x.date >= fourteenAgoStr).sort((a,b) => a.date.localeCompare(b.date))[0];
+            if (thisWeek.length >= 1 && priorWeek.length >= 1 && earliest) {
+              const twAvg = thisWeek.reduce((s,r) => s + parseFloat(r.weight), 0) / thisWeek.length;
+              const pwAvg = priorWeek.reduce((s,r) => s + parseFloat(r.weight), 0) / priorWeek.length;
+              const twRate = twAvg - pwAvg;
+              const pwRate = pwAvg - parseFloat(earliest.weight);
+              if (pwRate < 0.3 && twRate < 0.3) {
+                config.calorie_target = Math.min(3200, baseCalorieTarget + 200);
+                adjusted = true;
+                reason = 'Mass gain slow: calories increased';
+              }
+            }
+          } catch(e) { console.warn('[Jarvis] autoAdjustSchedule upsert failed', e); }
+        }
+      }
+
+      // ── RULE 6 — Phase progression (Monday only): fallback when no higher-priority rule fired ──
+      if (!adjusted && new Date().getDay() === 1) {
+        try {
+          const pd = await window.getCurrentPhase(sb);
+          const phase = (pd && pd.phase) || 'Foundation';
+          const presets = {
+            'Foundation':     { '800t': 165, '800r': 120, '800n': 3, '400t': 82,  '400n': 4, vac: false },
+            'Strength-Speed': { '800t': 158, '800r': 120, '800n': 3, '400t': 79,  '400n': 4, vac: false },
+            'Power-Speed':    { '800t': 153, '800r': 120, '800n': 3, '400t': 76,  '400n': 5, vac: false },
+            'Taper':          { '800t': 158, '800r': 150, '800n': 2, '400t': 79,  '400n': 3, vac: false }
+          };
+          config.phase = phase;
+          if (phase === 'Pre-Season' || phase === 'In-Season') {
+            config.vacation_mode = true;
+          } else {
+            const p = presets[phase] || presets['Foundation'];
+            config.interval_800m_target_seconds = p['800t'];
+            config.interval_800m_rest_seconds  = p['800r'];
+            config.interval_800m_reps          = p['800n'];
+            config.interval_400m_target_seconds = p['400t'];
+            config.interval_400m_reps          = p['400n'];
+            config.vacation_mode                = p.vac;
+          }
+          adjusted = true;
+          if (!reason) reason = 'Phase baseline: ' + phase;
+        } catch(e) { console.warn('[Jarvis] autoAdjustSchedule upsert failed', e); }
+      }
+
+      // Persist to schedule_config ONLY when a rule fired
+      if (adjusted) {
+        try {
+          await sb.from('schedule_config').upsert({
+            ...config,
+            auto_adjusted: true,
+            adjustment_reason: reason,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'id' });
+        } catch(e) { console.warn('[Jarvis] autoAdjustSchedule upsert failed', e); }
+      }
+
+      // ALWAYS write schedule_targets to app_state so all tabs can read the current state
+      const targets = {
+        interval_800m_target_seconds: config.interval_800m_target_seconds ?? null,
+        interval_800m_rest_seconds:  config.interval_800m_rest_seconds ?? null,
+        interval_800m_reps:           config.interval_800m_reps ?? null,
+        interval_400m_target_seconds: config.interval_400m_target_seconds ?? null,
+        interval_400m_reps:           config.interval_400m_reps ?? null,
+        mile_target_seconds:          config.mile_target_seconds ?? null,
+        calorie_target:               config.calorie_target ?? null,
+        protein_target_grams:         config.protein_target_grams ?? null,
+        equipment_mode:               config.equipment_mode ?? null,
+        vacation_mode:                !!config.vacation_mode,
+        adjustment_reason:            adjusted ? reason : null,
+        last_updated:                 new Date().toISOString()
+      };
+      try {
+        await sb.from('app_state').upsert({
+          key: 'schedule_targets',
+          data: targets,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'key' });
+      } catch(e) { console.warn('[Jarvis] autoAdjustSchedule upsert failed', e); }
+
+      return { adjusted, targets, reason };
+    }
+
     /* ── Weekly Plan Generator ── */
-    function generateWeeklyPlan(phaseData) {
+    async function generateWeeklyPlan(phaseData) {
       const phase = phaseData?.phase || 'Foundation';
       const sessionCount = phaseData?.gymPhaseConfig?.sessionCount || 4;
       const phaseWeek = phaseData?.phaseWeek || 1;
@@ -1826,6 +2046,28 @@
       }
       if (phase === 'Pre-Season' || phase === 'In-Season') {
         baseWeek[6].sessions = [{ type: 'rest', label: 'Rest', focus: 'Recovery priority' }];
+      }
+
+      // ── THRESHOLD SATURDAY OVERRIDE (set by auto-adjust Rule 4 when mile target behind) ──
+      let thresholdSaturday = false;
+      try {
+        const r = await fetch(SUPABASE_URL + '/rest/v1/app_state?key=eq.threshold_saturday&select=data', {
+          headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY }
+        });
+        if (r.ok) {
+          const rows = await r.json();
+          if (rows && rows[0] && rows[0].data && rows[0].data.active === true) thresholdSaturday = true;
+        }
+      } catch(e) { console.warn('[Jarvis] generateWeeklyPlan threshold_saturday read failed', e); }
+      if (thresholdSaturday) {
+        const sat = baseWeek.find(d => d.day === 'Saturday');
+        if (sat && sat.sessions && sat.sessions.length > 0) {
+          sat.sessions[0] = {
+            type: 'speed',
+            label: 'Threshold Run',
+            focus: '20 min at 5:35-5:45/mile pace + 10 min easy cooldown (mile target behind — possession work paused this week)'
+          };
+        }
       }
 
       // Add today marker

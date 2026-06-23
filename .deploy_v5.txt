@@ -1,0 +1,17 @@
+############################
+# CLEANUP debug capture files before deploy
+############################
+leftover captures: 
+(should be empty above)
+
+############################
+# PRE-DEPLOY git status (expect: index.html modified only)
+############################
+ M .deploy_v4.txt
+ M index.html
+?? .deploy_v5.txt
+
+############################
+# bash deploy.sh (creates empty commit + push)
+############################
+📦 Adding all files...
