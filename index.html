@@ -1225,6 +1225,73 @@
       <div class="weekly-plan-scroll" id="weeklyPlanScroll"></div>
     </div>
 
+    <!-- ═══ SCHEDULE SETTINGS — schedule_targets reader + equipment/vacation toggles (added this iteration) ═══ -->
+    <div id="scheduleConfigCard" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:16px;margin-bottom:14px;">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#76746E;margin-bottom:10px;font-family:ui-monospace,'SF Mono',Menlo,monospace;">
+        THIS WEEK'S TARGETS
+      </div>
+
+      <!-- Row 1: Running -->
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:13px;line-height:1.7;font-family:ui-monospace,'SF Mono',Menlo,monospace;">
+        <span style="color:#76746E">800m</span><span id="schedTarget800m" style="color:#FAFAFA"></span>
+        <span style="color:#76746E">400m</span><span id="schedTarget400m" style="color:#FAFAFA"></span>
+        <span style="color:#76746E">Mile</span><span id="schedTargetMile" style="color:#FAFAFA"></span>
+      </div>
+
+      <div style="height:1px;background:rgba(255,255,255,0.06);margin:12px 0"></div>
+
+      <!-- Row 2: Body (nutrition) -->
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:13px;line-height:1.7;font-family:ui-monospace,'SF Mono',Menlo,monospace;">
+        <span style="color:#76746E">Calories</span><span id="schedTargetCalories" style="color:#FAFAFA"></span>
+        <span style="color:#76746E">Protein</span><span id="schedTargetProtein" style="color:#FAFAFA"></span>
+      </div>
+
+      <div style="height:1px;background:rgba(255,255,255,0.06);margin:12px 0"></div>
+
+      <!-- Row 3: Phase + Equipment tags -->
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px">
+        <span id="schedPhaseTag" style="display:none;padding:3px 10px;border-radius:999px;background:rgba(107,227,164,0.12);color:#6BE3A4;font-size:11px;font-weight:700;letter-spacing:.04em;font-family:ui-monospace,'SF Mono',Menlo,monospace;"></span>
+        <span id="schedEquipTag" style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;background:rgba(255,255,255,0.05);color:#76746E;font-size:11px;font-weight:700;letter-spacing:.04em;font-family:ui-monospace,'SF Mono',Menlo,monospace;"></span>
+      </div>
+
+      <!-- Auto-adjusted badge (mint green) -->
+      <div id="schedAdjustedBlock" style="display:none;padding:10px 12px;border-radius:10px;background:rgba(107,227,164,0.06);border:1px solid rgba(107,227,164,0.20);margin-top:8px;font-size:12px;line-height:1.4;">
+        <div style="font-weight:700;color:#6BE3A4">⚡ Auto-adjusted</div>
+        <div id="schedAdjustmentReason" style="color:#B8B6B0;margin-top:4px"></div>
+      </div>
+
+      <!-- Vacation mode amber banner -->
+      <div id="schedVacationBanner" style="display:none;padding:10px 12px;border-radius:10px;background:rgba(242,192,99,0.06);border:1px solid rgba(242,192,99,0.22);margin-top:8px;font-size:12px;line-height:1.4;color:#F2C063">
+        🏖️ <strong>Vacation Mode Active</strong> — Maintenance training only
+      </div>
+
+      <!-- Equipment Mode toggle (segmented buttons) -->
+      <div style="margin-top:14px">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#76746E;margin-bottom:6px">EQUIPMENT MODE</div>
+        <div id="schedEquipSeg" style="display:flex;gap:4px">
+          <button class="sched-seg" data-mode="full" style="flex:1;padding:9px 8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);color:#B8B6B0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s">🏟️ Full Facility</button>
+          <button class="sched-seg" data-mode="bodyweight" style="flex:1;padding:9px 8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);color:#B8B6B0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s">🏠 Bodyweight</button>
+          <button class="sched-seg" data-mode="home_gym" style="flex:1;padding:9px 8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);color:#B8B6B0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s">🏋️ Home Gym</button>
+        </div>
+      </div>
+
+      <!-- Vacation / Travel Mode toggle -->
+      <div style="margin-top:14px">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#76746E;margin-bottom:6px">VACATION / TRAVEL MODE</div>
+        <button id="schedVacationToggleBtn" style="width:100%;padding:11px 14px;border-radius:9px;background:rgba(255,255,255,0.05);color:#FAFAFA;border:1px solid rgba(255,255,255,0.10);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s">Activate Vacation Mode</button>
+        <div id="schedVacationDateInputs" style="display:none;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;width:100%" hidden>
+          <div>
+            <div style="font-size:10px;color:#76746E;margin-bottom:4px;letter-spacing:.04em">START</div>
+            <input type="date" id="schedVacationStart" style="background:rgba(0,0,0,0.30);border:1px solid rgba(255,255,255,0.08);color:#FAFAFA;font-family:inherit;font-size:13px;padding:8px;border-radius:8px;width:100%;outline:none">
+          </div>
+          <div>
+            <div style="font-size:10px;color:#76746E;margin-bottom:4px;letter-spacing:.04em">END</div>
+            <input type="date" id="schedVacationEnd" style="background:rgba(0,0,0,0.30);border:1px solid rgba(255,255,255,0.08);color:#FAFAFA;font-family:inherit;font-size:13px;padding:8px;border-radius:8px;width:100%;outline:none">
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="jarvis-section" id="jarvisSection">
       <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.18em;color:var(--text-tertiary);font-weight:700;margin-bottom:6px;">Jarvis Score</div>
       <div class="jarvis-score" id="jarvisScore">--</div>
@@ -3992,9 +4059,274 @@
 
     /* ── End Morning Briefing ── */
 
+    // ════════════════════════════════════════════════════════
+    //  SCHEDULE SETTINGS — read-only display + equipment/vacation toggles
+    //  Reads app_state.key = 'schedule_targets' and schedule_config active row
+    //  No modifications to computeDailyState / autoAdjustSchedule / generateWeeklyPlan
+    // ════════════════════════════════════════════════════════
+    let scheduleTargets = null;
+    let schedActiveRowId = null;
+
+    // MM:SS helper (per spec, defined at top of new block)
+    function fmtSecsMMSS(s){
+      if(s == null || isNaN(s) || s < 0) return '—';
+      const m = Math.floor(s / 60);
+      const sec = Math.round(s % 60);
+      return `${m}:${String(sec).padStart(2,'0')}`;
+    }
+
+    // Toast helper — creates element on demand (index.html has no #toast in DOM)
+    function showToast(msg){
+      let t = document.getElementById('toast');
+      if(!t){
+        t = document.createElement('div');
+        t.id = 'toast';
+        Object.assign(t.style, {
+          position:'fixed', bottom:'80px', left:'50%', transform:'translateX(-50%)',
+          background:'#0e0e10', border:'1px solid rgba(255,255,255,0.10)',
+          padding:'10px 20px', borderRadius:'12px', color:'#FAFAFA',
+          fontSize:'13px', fontWeight:'600', zIndex:'9999',
+          pointerEvents:'none', opacity:'0', transition:'opacity 0.3s',
+          fontFamily:'inherit', maxWidth:'90vw', textAlign:'center'
+        });
+        document.body.appendChild(t);
+      }
+      t.textContent = msg;
+      t.style.opacity = '1';
+      clearTimeout(t._hideTimer);
+      t._hideTimer = setTimeout(()=>{ t.style.opacity = '0'; }, 2500);
+    }
+
+    // Apply segmented-button visual state via inline styles (no CSS class needed)
+    function schedStyleSegBtn(btn, active){
+      Object.assign(btn.style, {
+        background: active ? 'rgba(107,227,164,0.12)' : 'rgba(255,255,255,0.04)',
+        color:      active ? '#6BE3A4'              : '#B8B6B0',
+        borderColor:active ? 'rgba(107,227,164,0.30)': 'rgba(255,255,255,0.08)'
+      });
+    }
+
+    // ── Loader (called once from boot() after loadMorningBriefing) ──
+    async function loadScheduleTargets(){
+      // 1. Read app_state.schedule_targets
+      try {
+        const { data: stateRow } = await supa.from('app_state')
+          .select('data').eq('key','schedule_targets').maybeSingle();
+        if(stateRow && stateRow.data) scheduleTargets = stateRow.data;
+      } catch(e){ console.warn('[Jarvis] schedule_targets load failed', e); scheduleTargets = null; }
+
+      // 2. Identify the currently-active schedule_config row so writes can target it
+      try {
+        const { data: cfg } = await supa.from('schedule_config')
+          .select('id,equipment_mode,vacation_mode,vacation_end_date,week_start,phase,auto_adjusted')
+          .order('week_start', { ascending: false })
+          .limit(1).maybeSingle();
+        if(cfg) schedActiveRowId = cfg.id;
+      } catch(e){ console.warn('[Jarvis] schedule_config id lookup failed', e); }
+
+      // 3. Auto-deactivate vacation if end date is in the past
+      if(scheduleTargets && scheduleTargets.vacation_mode && scheduleTargets.vacation_end_date){
+        const todayISO = new Date().toISOString().slice(0,10);
+        const endISO = scheduleTargets.vacation_end_date;
+        if(endISO < todayISO){
+          await deactivateVacuation(true);
+        }
+      }
+
+      // 4. Wire handlers + render
+      wireSchedHandlers();
+      renderScheduleSummary();
+    }
+
+    // ── Render — pure read-only display driven by `scheduleTargets` ──
+    function renderScheduleSummary(){
+      const t = scheduleTargets || {};
+
+      // Row 1: Running
+      $('#schedTarget800m').textContent = (t.interval_800m_reps && t.interval_800m_target_seconds)
+        ? `${t.interval_800m_reps}× ${fmtSecsMMSS(t.interval_800m_target_seconds)} with ${t.interval_800m_rest_seconds || 120}s rest`
+        : '—';
+      $('#schedTarget400m').textContent = (t.interval_400m_reps && t.interval_400m_target_seconds)
+        ? `${t.interval_400m_reps}× ${fmtSecsMMSS(t.interval_400m_target_seconds)}`
+        : '—';
+      $('#schedTargetMile').textContent = t.mile_target_seconds
+        ? fmtSecsMMSS(t.mile_target_seconds) : '—';
+
+      // Row 2: Body
+      $('#schedTargetCalories').textContent = t.calorie_target
+        ? `${t.calorie_target} kcal/day` : '—';
+      $('#schedTargetProtein').textContent = t.protein_target_grams
+        ? `${t.protein_target_grams} g/day` : '—';
+
+      // Row 3: Phase + Equipment tags
+      const phaseTag = $('#schedPhaseTag');
+      if(t.phase){
+        phaseTag.textContent = String(t.phase).toUpperCase();
+        phaseTag.style.display = 'inline-flex';
+      } else phaseTag.style.display = 'none';
+
+      const equipLabels = { full:'🏟️ Full Facility', bodyweight:'🏠 Bodyweight Only', home_gym:'🏋️ Home Gym' };
+      const mode = t.equipment_mode || 'unknown';
+      $('#schedEquipTag').textContent = `Equipment: ${equipLabels[mode] || mode}`;
+
+      // Auto-adjusted mint badge
+      if(t.adjustment_reason){
+        $('#schedAdjustedBlock').style.display = 'block';
+        $('#schedAdjustmentReason').textContent = t.adjustment_reason;
+      } else {
+        $('#schedAdjustedBlock').style.display = 'none';
+      }
+
+      // Vacation amber banner
+      $('#schedVacationBanner').style.display = t.vacation_mode ? 'block' : 'none';
+
+      // Equipment segmented buttons
+      const btns = document.querySelectorAll('#schedEquipSeg .sched-seg');
+      btns.forEach(b => schedStyleSegBtn(b, b.dataset.mode === mode));
+
+      // Vacation toggle button label/colors
+      const vacBtn = $('#schedVacationToggleBtn');
+      if(t.vacation_mode){
+        vacBtn.textContent = 'Deactivate Vacation Mode';
+        vacBtn.style.borderColor = 'rgba(255,107,107,0.30)';
+        vacBtn.style.color = '#FF6B6B';
+      } else {
+        vacBtn.textContent = 'Activate Vacation Mode';
+        vacBtn.style.borderColor = 'rgba(255,255,255,0.10)';
+        vacBtn.style.color = '#FAFAFA';
+      }
+      // Date inputs visible only while activating (per spec)
+      $('#schedVacationDateInputs').style.display = t.vacation_mode ? 'grid' : 'none';
+      if(t.vacation_end_date) $('#schedVacationEnd').value = t.vacation_end_date;
+      if(t.vacation_start_date) $('#schedVacationStart').value = t.vacation_start_date;
+    }
+
+    // ── Wire segment button + vacation button handlers (one-time) ──
+    function wireSchedHandlers(){
+      document.querySelectorAll('#schedEquipSeg .sched-seg').forEach(btn => {
+        btn.onclick = async () => {
+          const newMode = btn.dataset.mode;
+          document.querySelectorAll('#schedEquipSeg .sched-seg').forEach(b => schedStyleSegBtn(b, b === btn));
+
+          // 1. Write to schedule_config (active row)
+          try {
+            if(schedActiveRowId){
+              const { error: cfgErr } = await supa.from('schedule_config').upsert({
+                id: schedActiveRowId, equipment_mode: newMode
+              }, { onConflict: 'id' });
+              if(cfgErr) console.warn('[Jarvis] equipment mode write failed', cfgErr);
+            }
+          } catch(e){ console.warn('[Jarvis] equipment mode write failed', e); }
+
+          // 2. Write to app_state.schedule_targets
+          try {
+            const { data: st } = await supa.from('app_state')
+              .select('data').eq('key','schedule_targets').maybeSingle();
+            if(st && st.data){
+              const { error: stErr } = await supa.from('app_state').upsert({
+                key: 'schedule_targets',
+                data: { ...st.data, equipment_mode: newMode },
+                updated_at: new Date().toISOString()
+              }, { onConflict: 'key' });
+              if(stErr) console.warn('[Jarvis] schedule_targets equipment write failed', stErr);
+            }
+          } catch(e){ console.warn('[Jarvis] schedule_targets equipment write failed', e); }
+
+          // 3. Update local state + re-render
+          if(!scheduleTargets) scheduleTargets = {};
+          scheduleTargets.equipment_mode = newMode;
+          renderScheduleSummary();
+          showToast('Equipment mode updated ✅');
+        };
+      });
+
+      $('#schedVacationToggleBtn').onclick = async () => {
+        const isActive = !!(scheduleTargets && scheduleTargets.vacation_mode);
+        if(!isActive){
+          // Activating: require end date
+          const endVal = $('#schedVacationEnd').value;
+          if(!endVal){ showToast('Pick an end date first 📅'); return; }
+          const startVal = $('#schedVacationStart').value || new Date().toISOString().slice(0,10);
+          $('#schedVacationDateInputs').style.display = 'grid';
+          await activateVacuation(startVal, endVal);
+        } else {
+          await deactivateVacuation(false);
+        }
+      };
+    }
+
+    // ── Activation / Deactivation helpers ──
+    async function activateVacuation(startDate, endDate){
+      try {
+        if(schedActiveRowId){
+          const { error: cfgErr } = await supa.from('schedule_config').upsert({
+            id: schedActiveRowId,
+            vacation_mode: true,
+            vacation_end_date: endDate
+          }, { onConflict: 'id' });
+          if(cfgErr) console.warn('[Jarvis] schedule_config vacation write failed', cfgErr);
+        }
+      } catch(e){ console.warn('[Jarvis] schedule_config vacation write failed', e); }
+
+      try {
+        const { data: st } = await supa.from('app_state')
+          .select('data').eq('key','schedule_targets').maybeSingle();
+        if(st && st.data){
+          const { error: stErr } = await supa.from('app_state').upsert({
+            key: 'schedule_targets',
+            data: { ...st.data, vacation_mode: true, vacation_start_date: startDate, vacation_end_date: endDate },
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'key' });
+          if(stErr) console.warn('[Jarvis] schedule_targets vacation write failed', stErr);
+        }
+      } catch(e){ console.warn('[Jarvis] schedule_targets vacation write failed', e); }
+
+      if(!scheduleTargets) scheduleTargets = {};
+      scheduleTargets.vacation_mode = true;
+      scheduleTargets.vacation_start_date = startDate;
+      scheduleTargets.vacation_end_date = endDate;
+      renderScheduleSummary();
+      showToast(`Vacation mode activated — maintenance training only until ${endDate} ✅`);
+    }
+
+    async function deactivateVacuation(isAuto){
+      try {
+        if(schedActiveRowId){
+          const { error: cfgErr } = await supa.from('schedule_config').upsert({
+            id: schedActiveRowId,
+            vacation_mode: false,
+            vacation_end_date: null
+          }, { onConflict: 'id' });
+          if(cfgErr) console.warn('[Jarvis] schedule_config vacation deactivate failed', cfgErr);
+        }
+      } catch(e){ console.warn('[Jarvis] schedule_config vacation deactivate failed', e); }
+
+      try {
+        const { data: st } = await supa.from('app_state')
+          .select('data').eq('key','schedule_targets').maybeSingle();
+        if(st && st.data){
+          const { error: stErr } = await supa.from('app_state').upsert({
+            key: 'schedule_targets',
+            data: { ...st.data, vacation_mode: false, vacation_start_date: null, vacation_end_date: null },
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'key' });
+          if(stErr) console.warn('[Jarvis] schedule_targets vacation deactivate failed', stErr);
+        }
+      } catch(e){ console.warn('[Jarvis] schedule_targets vacation deactivate failed', e); }
+
+      if(scheduleTargets){
+        scheduleTargets.vacation_mode = false;
+        scheduleTargets.vacation_start_date = null;
+        scheduleTargets.vacation_end_date = null;
+      }
+      renderScheduleSummary();
+      showToast(isAuto ? 'Vacation mode auto-ended ✅' : 'Vacation mode deactivated ✅');
+    }
+
     async function boot() {
       await initStore();
       loadMorningBriefing(); // Fire-and-forget: briefing loads async
+      loadScheduleTargets(); // Fire-and-forget: schedule summary + toggles load async
       runRollover();
       runStreakCheck();
 
