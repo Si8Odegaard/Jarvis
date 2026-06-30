@@ -1487,9 +1487,6 @@ async function qfLoadGoals(){
 }
 
 async function qfCallGemini(desc){
-  const GEMINI_KEY = window.ENV_GEMINI_API_KEY || '';
-  if (!GEMINI_KEY) throw new Error('NO_KEY');
-  const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + GEMINI_KEY;
   const prompt = `You are a nutrition estimator for an 18-year-old male soccer player in heavy training. Estimate calories and protein for this meal/food description. Be realistic about typical portions for a young male athlete.
 
 Food description: "${desc}"
@@ -1505,23 +1502,61 @@ Respond ONLY with valid JSON, no markdown, no explanation:
   "notes": "brief note if portion was assumed or unclear"
 }`;
 
-  const response = await fetch(GEMINI_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: 'application/json' }
-    })
-  });
-  if (!response.ok) throw new Error('HTTP_' + response.status);
-  const result = await response.json();
-  const text = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  const clean = text.replace(/```json|```/g,'').trim();
-  if (!clean) throw new Error('EMPTY_RESPONSE');
-  const parsed = JSON.parse(clean);
-  if (!parsed || typeof parsed.total_calories !== 'number') throw new Error('BAD_PAYLOAD');
+  let parsed = null;
+  let provider = 'gemini';
+
+  // ── Attempt 1: Gemini ──
+  try {
+    const GEMINI_KEY = window.ENV_GEMINI_API_KEY || '';
+    if (!GEMINI_KEY) throw new Error('NO_KEY');
+    const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + GEMINI_KEY;
+    const response = await fetch(GEMINI_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseMimeType: 'application/json' }
+      })
+    });
+    if (!response.ok) throw new Error('HTTP_' + response.status);
+    const result = await response.json();
+    const text = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const clean = text.replace(/```json|```/g,'').trim();
+    if (!clean) throw new Error('EMPTY_RESPONSE');
+    parsed = JSON.parse(clean);
+    if (!parsed || typeof parsed.total_calories !== 'number') throw new Error('BAD_PAYLOAD');
+  } catch (geminiErr) {
+    // ── Attempt 2: Groq fallback ──
+    console.warn('[qf] Gemini failed, falling back to Groq:', geminiErr.message);
+    provider = 'groq';
+    const GROQ_KEY = window.ENV_GROQ_API_KEY || '';
+    if (!GROQ_KEY) throw new Error('GROQ_NO_KEY');
+    const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+    const groqResponse = await fetch(GROQ_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + GROQ_KEY
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: prompt }],
+        response_format: { type: 'json_object' }
+      })
+    });
+    if (!groqResponse.ok) throw new Error('HTTP_' + groqResponse.status);
+    const groqResult = await groqResponse.json();
+    const groqText = groqResult.choices?.[0]?.message?.content || '';
+    const cleanGroq = groqText.replace(/```json|```/g,'').trim();
+    if (!cleanGroq) throw new Error('EMPTY_RESPONSE');
+    parsed = JSON.parse(cleanGroq);
+    if (!parsed || typeof parsed.total_calories !== 'number') throw new Error('BAD_PAYLOAD');
+  }
+
+  console.log('[qf] estimate via:', provider);
   return parsed;
 }
+
 
 function qfRenderPreview(parsed, rawDesc){
   qfLastEstimate = parsed;
@@ -1571,8 +1606,10 @@ async function qfEstimateAndShow(){
     console.warn('[qf] qfEstimateAndShow:', e);
     $('qfError').textContent =
       e.message === 'NO_KEY' ? 'Gemini API key not set — check env.js / build settings' :
+      e.message === 'GROQ_NO_KEY' ? "Couldn't estimate — Gemini failed AND Groq key not set" :
       e.message === 'EMPTY_RESPONSE' ? "Couldn't estimate — try describing portions more specifically (e.g. '2 eggs' not 'eggs')" :
-      e.message && e.message.indexOf('HTTP_') === 0 ? "Couldn't estimate (Gemini " + e.message.replace('HTTP_','HTTP ') + ") — try again or rephrase" :
+      e.message && e.message.indexOf('HTTP_') === 0 ?
+        (e.message === 'HTTP_429' ? "Couldn't estimate — rate-limited on both providers. Try again in a minute." : "Couldn't estimate (HTTP " + e.message.slice(5) + ") — try again or rephrase") :
       "Couldn't estimate — try describing portions more specifically (e.g. '2 eggs' not 'eggs')";
     $('qfError').classList.remove('hidden');
     $('qfStatus').textContent = '';
