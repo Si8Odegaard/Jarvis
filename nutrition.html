@@ -1490,19 +1490,20 @@ async function qfCallGemini(desc){
   const GEMINI_KEY = window.ENV_GEMINI_API_KEY || '';
   if (!GEMINI_KEY) throw new Error('NO_KEY');
   const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + GEMINI_KEY;
-  const prompt =
-    'You are a nutrition estimator for an 18-year-old male soccer player in heavy training. ' +
-    'Estimate calories and protein for this meal/food description. ' +
-    'Be realistic about typical portions for a young male athlete.
+  const prompt = `You are a nutrition estimator for an 18-year-old male soccer player in heavy training. Estimate calories and protein for this meal/food description. Be realistic about typical portions for a young male athlete.
 
-' +
-    'Food description: "' + desc + '"\n\n' +
-    'Respond ONLY with valid JSON, no markdown, no explanation:
-' +
-    '{"items":[{"name":"food item name","calories":0,"protein_g":0}],' +
-    '"total_calories":0,"total_protein_g":0,' +
-    '"confidence":"high|medium|low",' +
-    '"notes":"brief note if portion was assumed or unclear"}';
+Food description: "${desc}"
+
+Respond ONLY with valid JSON, no markdown, no explanation:
+{
+  "items": [
+    {"name": "food item name", "calories": 000, "protein_g": 0}
+  ],
+  "total_calories": 000,
+  "total_protein_g": 0,
+  "confidence": "high|medium|low",
+  "notes": "brief note if portion was assumed or unclear"
+}`;
 
   const response = await fetch(GEMINI_URL, {
     method: 'POST',
