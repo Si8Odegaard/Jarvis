@@ -1,4 +1,4 @@
-const CACHE = 'dashboard-pwa-v9';
+const CACHE = 'dashboard-pwa-v10';
 const ASSETS = [
   './', './index.html', './manifest.json', './icon.svg',
   './topbar.js', './tabs.js', './gym.html', './stack.html', './nutrition.html', './soccer.html',
@@ -20,6 +20,7 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  if (new URL(event.request.url).origin !== self.location.origin) return;
   event.respondWith(
     caches.match(event.request).then((cached) => cached || fetch(event.request))
   );
