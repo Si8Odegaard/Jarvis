@@ -1292,6 +1292,27 @@
       </div>
     </div>
 
+    <!-- ═══ HOME FOOD QUICK-LOG WIDGET ═══ -->
+    <div id="foodWidgetCard" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:11px 14px;margin-bottom:14px;">
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:8px 10px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;line-height:1.6;align-items:center;">
+        <span style="color:#FAFAFA;font-weight:600;font-variant-numeric:tabular-nums;" id="fwlCalText">CAL — / 2700</span>
+        <span style="height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;display:block;">
+          <span id="fwlCalFill" style="display:block;height:100%;width:0%;background:#6BE3A4;border-radius:3px;transition:width .3s,background .3s;"></span>
+        </span>
+        <span style="color:#FAFAFA;font-weight:600;font-variant-numeric:tabular-nums;" id="fwlProtText">PROT — / 140g</span>
+        <span style="height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;display:block;">
+          <span id="fwlProtFill" style="display:block;height:100%;width:0%;background:#6BE3A4;border-radius:3px;transition:width .3s,background .3s;"></span>
+        </span>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:10px;">
+        <input id="fwlInput" type="text" placeholder="Log food quickly…" style="flex:1;padding:7px 10px;background:rgba(0,0,0,.30);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#FAFAFA;font-size:13px;font-family:inherit;outline:none;">
+        <button id="fwlGoBtn" style="padding:0 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#FAFAFA;font-size:14px;cursor:pointer;font-family:inherit;flex-shrink:0;">→</button>
+      </div>
+      <div style="margin-top:7px;">
+        <a href="nutrition.html" style="color:#76746E;font-size:11px;text-decoration:none;font-family:ui-monospace,'SF Mono',Menlo,monospace;">View full nutrition log →</a>
+      </div>
+    </div>
+
     <div class="jarvis-section" id="jarvisSection">
       <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.18em;color:var(--text-tertiary);font-weight:700;margin-bottom:6px;">Jarvis Score</div>
       <div class="jarvis-score" id="jarvisScore">--</div>
@@ -4323,10 +4344,52 @@
       showToast(isAuto ? 'Vacation mode auto-ended ✅' : 'Vacation mode deactivated ✅');
     }
 
+    // ── Home Food Quick-Log Widget ──
+    function fwlRenderBar(fillId, ratio) {
+      const fill = $(fillId);
+      if (!fill) return;
+      const pct = Math.min(1, Math.max(0, ratio || 0)) * 100;
+      fill.style.width = pct + '%';
+      fill.style.background = ratio < 0.9 ? '#6BE3A4' : ratio < 1.1 ? '#F2C063' : '#FF8A8A';
+    }
+
+    async function loadFoodWidgetTotals() {
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        const { data } = await supa.from('food_logs').select('calories,protein_g').eq('date', today);
+        let cal = 0, prot = 0;
+        if (data) for (const r of data) { cal += Number(r.calories) || 0; prot += Number(r.protein_g) || 0; }
+        const calT  = (scheduleTargets && Number(scheduleTargets.calorie_target))       || 2700;
+        const protT = (scheduleTargets && Number(scheduleTargets.protein_target_grams)) || 140;
+        $('fwlCalText').textContent  = 'CAL ' + cal + ' / ' + calT;
+        $('fwlProtText').textContent = 'PROT ' + prot + 'g / ' + protT + 'g';
+        fwlRenderBar('fwlCalFill',  cal  / calT);
+        fwlRenderBar('fwlProtFill', prot / protT);
+      } catch (e) {
+        console.warn('[fwl] load failed', e);
+        if ($('fwlCalText'))  $('fwlCalText').textContent  = 'CAL — / —';
+        if ($('fwlProtText')) $('fwlProtText').textContent = 'PROT — / —';
+      }
+    }
+
+    function fwlNavigate() {
+      const el = $('fwlInput');
+      const v = (el && el.value || '').trim();
+      if (!v) { if (el) el.focus(); return; }
+      window.location.href = 'nutrition.html?prefill=' + encodeURIComponent(v);
+    }
+
+    function wireFoodWidget() {
+      const input = $('fwlInput'); if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter') fwlNavigate(); });
+      const btn   = $('fwlGoBtn'); if (btn)   btn.addEventListener('click', fwlNavigate);
+    }
+
     async function boot() {
       await initStore();
       loadMorningBriefing(); // Fire-and-forget: briefing loads async
-      loadScheduleTargets(); // Fire-and-forget: schedule summary + toggles load async
+      loadScheduleTargets();  // Fire-and-forget: schedule summary + toggles load async
+      wireFoodWidget();        // Wire input → → button + Enter to nutrition.html?prefill=…
+      loadFoodWidgetTotals();  // Fire-and-forget: load today's food_logs sums
       runRollover();
       runStreakCheck();
 
