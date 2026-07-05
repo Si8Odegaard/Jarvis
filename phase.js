@@ -41,9 +41,9 @@ const GYM_PHASE_CONFIG = {
     sets: 4, accessorySets: 3,
     intensityPct: { min: 85, max: 92 },
     plyo_pairings: [
-      { lift: 'Smith Squat', plyo: 'Broad Jump', reps: 3 },
+      { lift: 'Barbell Back Squat', plyo: 'Broad Jump', reps: 3 },
       { lift: 'Bulgarian Split Squat', plyo: 'Single-Leg Bound', reps: 3 },
-      { lift: 'Smith Bench', plyo: 'Plyo Push-Up', reps: 5 }
+      { lift: 'Barbell Bench Press', plyo: 'Plyo Push-Up', reps: 5 }
     ],
     sessionCount: 3
   },

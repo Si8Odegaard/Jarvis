@@ -715,14 +715,19 @@ async function loadTodayCheckin() {
       // Query yesterday's daily_checkins for AI estimates
       try {
         const yest = new Date(); yest.setDate(yest.getDate() - 1);
-        const yestKey = `${yest.getFullYear()}-${String(yest.getMonth()+1).padStart(2,'0')}-${String(yest.getDate()).padStart(2,'0')}`;
-        const { data: yestData } = await sb.from('daily_checkins').select('protein_grams,estimated_calories').eq('date', yestKey).maybeSingle();
-        if (yestData && yestData.protein_grams > 0) {
-          const pEl = $('proteinGrams');
-          if (pEl && !pEl.value) {
-            pEl.value = yestData.protein_grams;
-            pEl.placeholder = 'Auto-filled from Jarvis: ' + yestData.protein_grams + 'g';
-            checkInState.protein_grams = yestData.protein_grams;
+        const yestKey = yest.getFullYear() + '-' + String(yest.getMonth()+1).padStart(2,'0') + '-' + String(yest.getDate()).padStart(2,'0');
+        // Pull yesterday's food_logs (AI-logged meals) and SUM calories + protein_g across all entries
+        const { data: yestRows } = await sb.from('food_logs').select('calories,protein_g').eq('date', yestKey);
+        if (yestRows && yestRows.length) {
+          const totalCal = Math.round(yestRows.reduce((s, r) => s + (parseFloat(r.calories)  || 0), 0));
+          const totalPro = Math.round(yestRows.reduce((s, r) => s + (parseFloat(r.protein_g) || 0), 0));
+          if (totalPro > 0) {
+            const pEl = $('proteinGrams');
+            if (pEl && !pEl.value) {
+              pEl.value = totalPro;
+              pEl.placeholder = 'Auto-filled from Jarvis: ' + totalPro + 'g (' + totalCal + ' kcal)';
+              checkInState.protein_grams = totalPro;
+            }
           }
         }
       } catch(_) {}
@@ -987,19 +992,47 @@ async function loadWeightTrend(){
 // ═══════════════════════════════════════════════
 async function loadCalorieProteinHistory(){
   try {
-    const { data } = await sb.from('daily_checkins')
-      .select('date,protein_grams,estimated_calories')
-      .order('date',{ascending:false}).limit(30);
-    if(!data || data.length < 2){
+    // 30-day window (today + 29 prior days)
+    const startDate = (function(){
+      const d = new Date();
+      d.setDate(d.getDate() - 29);
+      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    })();
+
+    // Pull food_logs rows in the 30-day window; SUM calories/protein_g per date in JS.
+    // Charts histogram actual AI-logged food, not stale check-in estimates.
+    const { data } = await sb.from('food_logs')
+      .select('date,calories,protein_g')
+      .gte('date', startDate);
+
+    // Aggregate to per-date totals: SUM(calories), SUM(protein_g) per date
+    const byDate = {};
+    (data || []).forEach(function(r){
+      const k = r.date;
+      if (!byDate[k]) byDate[k] = { calories: 0, protein_g: 0 };
+      byDate[k].calories  += parseFloat(r.calories)  || 0;
+      byDate[k].protein_g += parseFloat(r.protein_g) || 0;
+    });
+
+    // Build a full 30-day timeline (oldest → newest), zero-filling days with no log
+    const reversed = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const k = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      reversed.push(byDate[k] || { calories: 0, protein_g: 0 });
+    }
+
+    // Need at least 2 days with logged entries to draw a meaningful trend
+    if(Object.keys(byDate).length < 2){
       const svgP = document.getElementById('proteinHistorySvg');
       const svgC = document.getElementById('calorieHistorySvg');
       if(svgP) svgP.innerHTML = '<text x="200" y="40" text-anchor="middle" fill="#76746E" font-size="12">Log 2+ days of protein to see trend</text>';
       if(svgC) svgC.innerHTML = '<text x="200" y="40" text-anchor="middle" fill="#76746E" font-size="12">Tell Jarvis what you ate to see calorie estimates</text>';
       return;
     }
-    const reversed = data.reverse(); // oldest → newest
-    const proteins = reversed.map(r => r.protein_grams || 0);
-    const calories = reversed.map(r => r.estimated_calories || 0);
+    const proteins = reversed.map(r => r.protein_g || 0);
+    const calories = reversed.map(r => r.calories  || 0);
 
     // Protein sparkline
     const svgP = document.getElementById('proteinHistorySvg');

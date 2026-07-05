@@ -278,7 +278,7 @@ const SPLITS={
         coaching:'Horizontal power expression — the direct gym measure of first-step distance. Maximum intent every rep. Measure distance and compare monthly. Do this completely fresh, before anything else.'},
       {name:'Box Jump',type:'plyo',workWeight:0,inc:0,fixedSets:3,fixedReps:4,
         coaching:'Vertical CNS activation — primes fast-twitch recruitment before heavy loading. Focus on landing: soft knees, hip hinge, controlled absorption. Reset fully between reps.'},
-      {name:'Smith Machine Squat',type:'compound',workWeight:135,inc:5,
+      {name:'Barbell Back Squat',type:'compound',workWeight:115,inc:5,
         coaching:'Bilateral hip extension — the strength foundation of sprint mechanics. Per Mendiguchia 2014, every 10% relative strength gain in hip extension reduces ground contact time in acceleration. Heavy, controlled descent, explosive drive.'},
       {name:'Single-Leg RDL',type:'compound',workWeight:35,inc:2.5,
         coaching:'Hip stability under load — trains the stance-phase mechanics of sprinting and cutting. Weak single-leg hip stability is the root cause of groin injuries in midfielders. Feel the stretch, control the return.'},
@@ -291,7 +291,7 @@ const SPLITS={
     exercises:[
       {name:'Weighted Pull-Up',type:'compound',workWeight:0,inc:0,
         coaching:'Peak pulling strength — do this first while completely fresh. Add load via dumbbell between feet or belt. D1 midfielders average 15+ bodyweight pull-ups. Lat and upper back strength directly improves shielding, aerial duels, and header mechanics.'},
-      {name:'Smith Machine Bench Press',type:'compound',workWeight:115,inc:2.5,
+      {name:'Barbell Bench Press',type:'compound',workWeight:115,inc:2.5,
         coaching:'Contact strength — improves shielding ability and power in 50/50 challenges. Secondary benefit: shoulder girdle stability for throw-ins and goalkeeper distribution under pressure.'},
       {name:'Cable Row',type:'compound',workWeight:90,inc:2.5,
         coaching:'Horizontal pulling — balances pressing to protect shoulder health long-term. Scapular retraction strength is critical for heading mechanics and postural endurance in the 90th minute.'},
@@ -529,9 +529,9 @@ function renderExercises(){
     // Check if this lift is paired (Power-Speed)
     const pairing=pairings.find(p=>
       nameLower.includes(p.lift.toLowerCase())||ex.name===p.lift||
-      (p.lift==='Smith Squat'&&nameLower.includes('smith'))||
+      (p.lift==='Barbell Back Squat'&&nameLower.includes('back squat'))||
       (p.lift==='Bulgarian Split Squat'&&nameLower.includes('bulgarian'))||
-      (p.lift==='Smith Bench'&&nameLower.includes('bench'))
+      (p.lift==='Barbell Bench Press'&&nameLower.includes('bench press'))
     );
     const isPlyo=pairedPlyos.has(ex.name)||(pairing&&ex.type==='plyo');
 
@@ -617,7 +617,18 @@ function renderHistory(){
 function populateChartSelect(){
   const allEx=[];Object.values(SPLITS).forEach(d=>allEx.push(...d.exercises));
   const unique=[...new Map(allEx.map(e=>[e.name,e])).values()];
-  $('chartExSelect').innerHTML=unique.map(e=>`<option value="${esc(e.name)}">${esc(e.name)}</option>`).join('');
+  const activeOpts=unique.map(e=>`<option value="${esc(e.name)}">${esc(e.name)}</option>`).join('');
+  // Archived entries expose exercises that were swapped out of programming
+  // (e.g. Smith machine → barbell on 2026-07-06) so historical session_sets
+  // rows remain viewable in the Charts tab. The option `value` is the raw
+  // historical `exercise_name` string so getLogsForExercise() matches existing
+  // rows by exact equality; the display label is suffixed "(archived)" to
+  // flag that these are read-only/historical and not part of current splits.
+  const archivedOpts=[
+    {name:'Smith Machine Squat',        label:'Smith Machine Squat (archived)'},
+    {name:'Smith Machine Bench Press',  label:'Smith Machine Bench Press (archived)'}
+  ].map(a=>`<option value="${esc(a.name)}">${esc(a.label)}</option>`).join('');
+  $('chartExSelect').innerHTML=activeOpts + archivedOpts;
 }
 function renderCharts(){
   const exName=$('chartExSelect').value;if(!exName)return;
