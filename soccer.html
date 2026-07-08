@@ -548,6 +548,7 @@ body:has(.modal-bg.show){overflow:hidden}
     <button class="soccer-tab" data-stab="insights">🧠 Insights</button>
     <button class="soccer-tab" data-stab="technical">🔧 Technical</button>
     <button class="soccer-tab" data-stab="intervals">⏱ Intervals</button>
+    <button class="soccer-tab" data-stab="speed">🏃 Speed + Agility</button>
   </div>
 
   <!-- ═══════════════════════════════════════════════
@@ -1152,12 +1153,53 @@ body:has(.modal-bg.show){overflow:hidden}
     <div id="matchAiNote" style="margin-bottom:12px"></div>
     <button class="btn-primary" id="matchSaveBtn">Save & Generate AI Coaching Note</button>
   </div>
-</div>
+</div>  <div id="stab-speed" class="hidden">
 
-<div class="toast" id="toast"></div>
+    <!-- SECTION 1: TODAY'S SESSION -->
+    <div class="card" id="speedTodayCard">
+      <div class="eyebrow">TODAY'S SESSION · SPEED + AGILITY</div>
+      <div id="speedSessionContainer" style="margin-top:8px">
+        <div style="color:var(--text-3);font-size:13px">Loading phase…</div>
+      </div>
+    </div>
 
-<script>
-// ════════════════════════════════════════════════════════════
+    <!-- SECTION 2: 400M FINISHER -->
+    <div class="card" id="speedFinisherCard">
+      <div class="eyebrow">400M FINISHER</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text-3);margin:8px 0 10px 0">
+        Target pace: <span id="speedTargetPace" style="color:var(--text-1);font-weight:600">—</span> ·
+        <span id="speedRepCount" style="color:var(--text-1);font-weight:600">—</span> reps with ~2 min rest
+      </div>
+      <div id="speedRepsContainer" style="display:grid;gap:8px"></div>
+      <div id="speedFadePreview" class="hidden" style="margin-top:10px"></div>
+    </div>
+
+    <!-- SECTION 3: SAVE -->
+    <div class="card">
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+        <label style="font-family:var(--mono);font-size:11px;color:var(--text-3)">RPE (1–10):</label>
+        <input type="number" min="1" max="10" id="speedRpeInput" placeholder="7"
+          style="width:60px;padding:8px 10px;background:rgba(0,0,0,.30);border:1px solid rgba(255,255,255,.08);border-radius:8px;color:var(--text-1);font-family:var(--mono);font-size:13px;outline:none">
+        <input type="text" id="speedNotesInput" placeholder="Session notes (optional)"
+          style="flex:1;min-width:160px;padding:8px 10px;background:rgba(0,0,0,.30);border:1px solid rgba(255,255,255,.08);border-radius:8px;color:var(--text-1);font-size:13px;outline:none">
+      </div>
+      <button class="btn btn-primary" id="speedSaveBtn" style="margin-top:14px;width:100%">Save Speed + Agility Session</button>
+    </div>
+
+    <!-- SECTION 4: RECENT SESSIONS -->
+    <div class="card" id="speedRecentCard">
+      <div class="eyebrow">RECENT SPEED + AGILITY SESSIONS</div>
+      <div id="speedRecentContainer" style="margin-top:8px">
+        <div style="color:var(--text-3);font-size:13px">Loading…</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+  // ════════════════════════════════════════════════════════════
 //  SUPABASE
 // ════════════════════════════════════════════════════════════
 const SUPABASE_URL = 'https://cskbbioyniryonkukamw.supabase.co';
@@ -1354,6 +1396,7 @@ document.querySelectorAll('.soccer-tab').forEach(btn => {
     if(tab==='insights') await renderInsights();
     if(tab==='technical') await renderTechnical();
     if(tab==='intervals') await renderIntervals();
+    if(tab==='speed') await renderSpeedAgility();
   });
 });
 
@@ -2880,6 +2923,360 @@ document.querySelectorAll('.modal-bg').forEach(bg => {
     const JARVIS_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNza2Jia95bmlyeW9ua3VrYW13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NjE2MTYsImV4cCI6MjA5NDUzNzYxNn0.R3Vx3fA-iAc8LhNL3WPSa9-BxH_087c7VaIbrB3CBJM';
     const jarvisSb = window.supabase.createClient(JARVIS_SUPABASE_URL, JARVIS_SUPABASE_KEY);
     initJarvisChat(jarvisSb);
+  </script>
+  <script>
+    // ════════════════════════════════════════════════════════════
+    //  SPEED + AGILITY SESSIONS  (Priority 1 — 2026-07-05)
+    //
+    //  Third pill tab in soccer.html, mirroring the Intervals tab
+    //  pattern. New table: speed_sessions (id BIGSERIAL, RLS anon).
+    //  Reuses: sb client, esc()/today()/parseMMSStoSecs(), alert-card
+    //  CSS, --good/--warn/--bad color vars, and the .int-rep-input style.
+    //
+    //  Architecture notes:
+    //   - Section 2 rep inputs reuse .int-rep-input visually but the fade
+    //     preview query is scoped to #stab-speed so Intervals inputs (if
+    //     rendered) cannot cross-contaminate the calculation.
+    //   - 400m fade thresholds (<5s strong, 5–10s acceptable, >10s
+    //     significant) were locked in with the user before this edit as
+    //     a proportional translation of the Intervals 8s/15s 800m cutoffs.
+    //   - app_state.last_speed_session mirrors last_soccer_session's shape
+    //     for cross-tab signalling consistency.
+    // ════════════════════════════════════════════════════════════
+
+    // Per-phase drill list + finisher target pace (seconds).
+    // UNREVIEWED (2026-07-05)  Pre-Season + In-Season entries below were
+    // added by inference ("Power-Speed reduced" / "Taper reduced"), NOT
+    // from spec or Coach Mills' HCC plan. Drill selection, rep counts, and
+    // 75s target pacing are unverified heuristics. Render + logable today,
+    // BUT do NOT let them silently become "the plan" for match weeks.
+    //   ACTION: Revisit deliberately before Jul 28, ideally cross-checked
+    //   against what Mills expects day one of Pre-Season.
+    var SPEED_PHASE_CONFIG = {
+      'Foundation': {
+        targetPaceSeconds: 80, repCount: 4, finisherLabel: '4×400m', finisherTargetHuman: '80s target',
+        drills: [
+          { group: 'warmup', name: 'A-skip × 2 sets', detail: '20m each, focus on triple extension' },
+          { group: 'warmup', name: 'B-skip × 2 sets', detail: '20m each, focus on hip dissociation' },
+          { group: 'acceleration', name: '10m acceleration × 6', detail: 'full rest, fresh every rep' },
+          { group: 'agility', name: '5-10-5 agility × 4', detail: 'change of direction under control' },
+          { group: 'agility', name: 'Ladder drills × 3', detail: 'any pattern, focus on rhythm' },
+          { group: 'finisher', name: '4×400m', detail: '~80s target pace, ~2 min rest between reps' },
+          { group: 'cooldown', name: '10 min tempo', detail: 'cooldown run at talk pace' }
+        ]
+      },
+      'Strength-Speed': {
+        targetPaceSeconds: 76, repCount: 5, finisherLabel: '5×400m', finisherTargetHuman: '76s target',
+        drills: [
+          { group: 'warmup', name: 'A-skip × 2 sets', detail: '20m each' },
+          { group: 'warmup', name: 'B-skip × 2 sets', detail: '20m each' },
+          { group: 'acceleration', name: '10m acceleration × 6', detail: 'full rest, fresh every rep' },
+          { group: 'acceleration', name: '20m acceleration × 6', detail: 'extra load on top of 10m base' },
+          { group: 'agility', name: '5-10-5 agility × 4', detail: 'change of direction under control' },
+          { group: 'agility', name: 'Ladder drills × 3', detail: 'any pattern, focus on rhythm' },
+          { group: 'finisher', name: '5×400m', detail: '~76s target pace, ~2 min rest between reps' },
+          { group: 'cooldown', name: '10 min tempo', detail: 'cooldown run at talk pace' }
+        ]
+      },
+      'Power-Speed': {
+        targetPaceSeconds: 75, repCount: 5, finisherLabel: '5×400m', finisherTargetHuman: '74–77s target',
+        drills: [
+          { group: 'warmup', name: 'A-skip × 2 sets', detail: '20m each' },
+          { group: 'acceleration', name: '10m acceleration × 6', detail: 'peak intent, fully recovered' },
+          { group: 'acceleration', name: '20m acceleration × 6', detail: 'extend acceleration window' },
+          { group: 'agility', name: 'Reactive agility × 4', detail: 'partner/cue call, response > speed' },
+          { group: 'finisher', name: '5×400m finisher', detail: '74–77s target, fade <10s across the set' },
+          { group: 'cooldown', name: '10 min tempo', detail: 'cooldown run at talk pace' }
+        ]
+      },
+      'Taper': {
+        targetPaceSeconds: 75, repCount: 2, finisherLabel: '2×400m', finisherTargetHuman: '75s target',
+        drills: [
+          { group: 'warmup', name: 'A-skip × 1 set', detail: '20m' },
+          { group: 'warmup', name: 'B-skip × 1 set', detail: '20m' },
+          { group: 'acceleration', name: '10m acceleration × 4', detail: 'short sharp efforts only' },
+          { group: 'finisher', name: '2×400m', detail: '75s target, 5 min rest between reps' },
+          { group: 'cooldown', name: '10 min tempo', detail: 'cooldown run at talk pace' }
+        ]
+      },
+      'Pre-Season': {
+        targetPaceSeconds: 75, repCount: 3, finisherLabel: '3×400m', finisherTargetHuman: '75s target',
+        drills: [
+          { group: 'warmup', name: 'A-skip × 1 set', detail: '20m' },
+          { group: 'warmup', name: 'B-skip × 1 set', detail: '20m' },
+          { group: 'acceleration', name: '10m acceleration × 4', detail: 'sharp but small volume' },
+          { group: 'agility', name: 'Reactive agility × 3', detail: 'partner/cue call, response > speed' },
+          { group: 'finisher', name: '3×400m finisher', detail: '75s target, full recovery' },
+          { group: 'cooldown', name: '10 min tempo', detail: 'cooldown run at talk pace' }
+        ]
+      },
+      'In-Season': {
+        targetPaceSeconds: 75, repCount: 2, finisherLabel: '2×400m', finisherTargetHuman: 'race-pace',
+        drills: [
+          { group: 'warmup', name: 'A-skip × 1 set', detail: '20m' },
+          { group: 'acceleration', name: '10m acceleration × 4', detail: 'sharp but small volume' },
+          { group: 'finisher', name: '2×400m finisher', detail: 'maintain sharpness, not volume' },
+          { group: 'cooldown', name: '8 min tempo', detail: 'lighter cooldown, preserve freshness' }
+        ]
+      }
+    };
+
+    var SPEED_DRILL_COACHING = {
+      'warmup': 'Drills prime elastic storage in the posterior chain — A-skips develop triple extension, B-skips reinforce hip dissociation. The goal is neural activation, not speed. Slow is smooth, smooth becomes fast.',
+      'acceleration': 'Short sprint efforts develop rate of force development in the first-step window. Per Schmid et al. 2016, peak horizontal acceleration occurs within the first 20–30m of a sprint. Quality over quantity — stop early if mechanics break.',
+      'agility': 'Change-of-direction work develops reactive decision-making and deceleration capacity. Decision speed > foot speed; queue with a partner if possible. Maintain low hips through cuts — deceleration IS the workout.',
+      'finisher': '400m at the prescribed target with ~2 min rest. Builds aerobic ceiling while preserving neuromuscular freshness. Watch the fade across reps — flag if it crosses 10s.',
+      'cooldown': 'Tempo run at talk pace. Flushes the priming effect without adding meaningful fatigue to tomorrow\'s lift. Don\'t cut short — the recovery dividend shows up 18–24 hours later in bar speed.'
+    };
+
+    var speedAgilityCache = null;
+
+    function resolveSpeedConfig(phaseName){
+      return SPEED_PHASE_CONFIG[phaseName] || SPEED_PHASE_CONFIG['Foundation'];
+    }
+
+    function showSpeedToast(msg){
+      const t = $('toast');
+      if(!t){ console.log('[speed]', msg); return; }
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    async function renderSpeedAgility(){
+      let phaseName = 'Foundation';
+      try {
+        const p = await getCurrentPhase(sb);
+        phaseName = (p && p.phase) ? p.phase : 'Foundation';
+      } catch(e){ /* fall back to Foundation */ }
+
+      const cfg = resolveSpeedConfig(phaseName);
+      speedAgilityCache = { phase: phaseName, cfg };
+
+      // Section 1: drill checklist grouped by category.
+      const container = $('speedSessionContainer');
+      const groups = ['warmup','acceleration','agility','finisher','cooldown'];
+      container.innerHTML = groups.map(g => {
+        const items = cfg.drills.filter(d => d.group === g);
+        if(!items.length) return '';
+        const coaching = SPEED_DRILL_COACHING[g] || '';
+        const rows = items.map((d, i) =>
+          '<div class="speed-drill-row" style="display:flex;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border);gap:12px">' +
+            '<input type="checkbox" class="speed-drill-cb" data-group="' + esc(g) + '" data-name="' + esc(d.name) + '" id="speedDrill_' + esc(g) + '_' + i + '" style="margin-top:4px;cursor:pointer;accent-color:var(--good)">' +
+            '<label for="speedDrill_' + esc(g) + '_' + i + '" style="flex:1;cursor:pointer;color:var(--text-1)">' +
+              '<strong style="font-size:14px;font-weight:600">' + esc(d.name) + '</strong>' +
+              '<span style="display:block;font-family:var(--mono);font-size:11px;color:var(--text-3);margin-top:3px">' + esc(d.detail) + '</span>' +
+            '</label>' +
+          '</div>'
+        ).join('');
+        return (
+          '<div class="speed-drill-group" style="margin-bottom:6px">' +
+            (coaching ? '<div style="font-size:12px;color:var(--text-3);line-height:1.5;margin-bottom:8px;font-style:italic">' + esc(coaching) + '</div>' : '') +
+            rows +
+          '</div>'
+        );
+      }).join('') || '<div style="color:var(--text-3);font-size:13px">No drills configured for this phase.</div>';
+
+      // Section 2: finisher rep input grid (reuses .int-rep-input for styling).
+      $('speedTargetPace').textContent = cfg.finisherTargetHuman;
+      $('speedRepCount').textContent = cfg.repCount;
+      let repHtml = '';
+      for(let i = 1; i <= cfg.repCount; i++){
+        repHtml +=
+          '<div style="display:grid;grid-template-columns:48px 1fr auto;gap:10px;align-items:center">' +
+            '<span style="font-family:var(--mono);font-size:11px;color:var(--text-3)">Rep ' + i + '</span>' +
+            '<input type="text" class="int-rep-input" placeholder="MM:SS" data-rep="' + i + '">' +
+            '<span style="font-family:var(--mono);font-size:11px;color:var(--text-3)">' + esc(cfg.finisherTargetHuman) + '</span>' +
+          '</div>';
+      }
+      $('speedRepsContainer').innerHTML = repHtml;
+      // Wire live fade preview — scoped to #stab-speed so Intervals inputs (if rendered) cannot contaminate.
+      $('stab-speed').querySelectorAll('.int-rep-input').forEach(inp => {
+        inp.addEventListener('input', updateSpeedFadePreview);
+      });
+      updateSpeedFadePreview();
+
+      // Section 4: recent sessions.
+      await loadRecentSpeedSessions();
+    }
+
+    // 400m fade thresholds (TOTAL-set fade = last rep − first rep).
+    // Locked in with user before this edit:
+    //   <5s strong     (mint #6BE3A4 / --good)
+    //   5–10s acceptable (amber #F2C063 / --warn)
+    //   >10s significant fade (danger #FF6B6B / --bad)
+    function updateSpeedFadePreview(){
+      const panel = $('stab-speed');
+      if(!panel) return;
+      const inputs = panel.querySelectorAll('.int-rep-input');
+      if(!inputs.length){ $('speedFadePreview').classList.add('hidden'); return; }
+      let first = NaN, last = NaN;
+      inputs.forEach(inp => {
+        const s = parseMMSStoSecs(inp.value);
+        if(isNaN(s)) return;
+        if(isNaN(first)) first = s;
+        last = s;
+      });
+      if(isNaN(first) || isNaN(last) || first === last){
+        $('speedFadePreview').classList.add('hidden');
+        return;
+      }
+      const fade = last - first;
+      let color, msg, cls;
+      if(fade < 5){ color = 'var(--good)'; msg = 'Strong session 💪'; cls = 'info'; }
+      else if(fade <= 10){ color = 'var(--warn)'; msg = 'Acceptable fade'; cls = 'warn'; }
+      else { color = 'var(--bad)'; msg = 'Significant fade — rest may need adjustment'; cls = 'danger'; }
+      $('speedFadePreview').classList.remove('hidden');
+      $('speedFadePreview').innerHTML =
+        '<div class="alert-card ' + cls + '" style="margin:0">' +
+          '<div class="alert-card-title">400m Fade Preview: ' +
+            '<span style="color:' + color + ';font-family:var(--mono)">+' + fade + 's</span> — ' + msg +
+          '</div>' +
+        '</div>';
+    }
+
+    async function saveSpeedSession(){
+      const btn = $('speedSaveBtn');
+      if(!btn) return;
+      const oldLabel = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+      try {
+        if(!speedAgilityCache){ throw new Error('Session state not loaded — refresh the tab.'); }
+        const phase = speedAgilityCache.phase;
+        const cfg = speedAgilityCache.cfg;
+
+        // Collect drills_completed[] from the rendered checklist.
+        const drillsCompleted = [];
+        $('stab-speed').querySelectorAll('.speed-drill-cb').forEach(cb => {
+          drillsCompleted.push({
+            drill_name: cb.dataset.name,
+            group: cb.dataset.group,
+            completed: !!cb.checked
+          });
+        });
+
+        // Collect finisher_reps[] from inputs (seconds, integer).
+        const finisherReps = [];
+        $('stab-speed').querySelectorAll('.int-rep-input').forEach(inp => {
+          if(!inp.value || !inp.value.trim()) return;
+          const s = parseMMSStoSecs(inp.value);
+          if(!isNaN(s)) finisherReps.push(Math.round(s));
+        });
+
+        // RPE 1–10 (validation)
+        const rpeRaw = parseInt($('speedRpeInput').value, 10);
+        const rpe = (!isNaN(rpeRaw) && rpeRaw >= 1 && rpeRaw <= 10) ? rpeRaw : null;
+
+        // Notes (optional)
+        const notesRaw = $('speedNotesInput').value.trim();
+        const notes = notesRaw ? notesRaw : null;
+
+        // Insert into speed_sessions
+        const insertRow = {
+          date: today(),
+          phase: phase,
+          drills_completed: drillsCompleted,
+          finisher_reps: finisherReps,
+          finisher_target_seconds: cfg.targetPaceSeconds,
+          rpe: rpe,
+          notes: notes
+        };
+        const { error: insertErr } = await sb.from('speed_sessions').insert(insertRow);
+        if(insertErr) throw insertErr;
+
+        // Mirror last_soccer_session shape into app_state.last_speed_session
+        const completedCount = drillsCompleted.filter(d => d.completed).length;
+        const finisherAvg = finisherReps.length
+          ? Math.round(finisherReps.reduce((a,b)=>a+b,0) / finisherReps.length)
+          : null;
+        await sb.from('app_state').upsert({
+          key: 'last_speed_session',
+          data: {
+            date: today(),
+            phase: phase,
+            completedAt: new Date().toISOString(),
+            drillsCompletedCount: completedCount,
+            drillsTotal: drillsCompleted.length,
+            finisherAvgTime: finisherAvg,
+            finisherTargetSeconds: cfg.targetPaceSeconds,
+            rpe: rpe
+          },
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'key' });
+
+        showSpeedToast('Speed + Agility session saved');
+        btn.textContent = 'Saved ✓';
+        setTimeout(() => { renderSpeedAgility(); }, 600);
+      } catch(err){
+        showSpeedToast('Save failed: ' + (err && err.message ? err.message : 'unknown error'));
+      } finally {
+        setTimeout(() => {
+          btn.textContent = oldLabel;
+          btn.disabled = false;
+        }, 800);
+      }
+    }
+
+    async function loadRecentSpeedSessions(){
+      const container = $('speedRecentContainer');
+      if(!container) return;
+      container.innerHTML = '<div style="color:var(--text-3);font-size:13px">Loading…</div>';
+      try {
+        const { data: rows, error } = await sb.from('speed_sessions')
+          .select('*')
+          .order('date', { ascending: false })
+          .limit(5);
+        if(error) throw error;
+        if(!rows || !rows.length){
+          container.innerHTML = '<div style="color:var(--text-3);font-size:13px">No speed + agility sessions logged yet.</div>';
+          return;
+        }
+        container.innerHTML = rows.map(r => {
+          const drills = r.drills_completed || [];
+          const completed = drills.filter(d => d.completed).length;
+          const total = drills.length;
+          const reps = r.finisher_reps || [];
+          const avg = reps.length ? Math.round(reps.reduce((a,b)=>a+b,0)/reps.length) : null;
+          const target = r.finisher_target_seconds || null;
+          let finisherStr = '';
+          if(avg && target){
+            const delta = avg - target;
+            const deltaStr = delta > 2
+              ? ' <span style="color:var(--warn);font-weight:600">+' + delta + 's over</span>'
+              : (delta < -2 ? ' <span style="color:var(--good)">' + delta + 's under</span>' : '');
+            finisherStr = '<div style="font-family:var(--mono);font-size:11px;color:var(--text-3);margin-top:2px">400m avg ' + avg + 's · target ' + target + 's' + deltaStr + '</div>';
+          } else if(avg){
+            finisherStr = '<div style="font-family:var(--mono);font-size:11px;color:var(--text-3);margin-top:2px">400m avg ' + avg + 's</div>';
+          }
+          const rpePill = (r.rpe && r.rpe >= 1 && r.rpe <= 10)
+            ? '<span class="pill pill-dim" style="font-family:var(--mono);font-size:10px;padding:2px 8px">RPE ' + r.rpe + '/10</span>'
+            : '';
+          const phasePill = r.phase ? '<span class="pill pill-good" style="font-family:var(--mono);font-size:10px;padding:2px 8px">' + esc(r.phase) + '</span>' : '';
+          return (
+            '<div style="padding:10px 0;border-bottom:1px solid var(--border)">' +
+              '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+                '<span style="font-family:var(--mono);font-size:11px;color:var(--text-3)">' + esc(r.date) + '</span>' +
+                phasePill + rpePill +
+              '</div>' +
+              '<div style="margin-top:4px;font-size:14px"><strong>' + completed + '/' + total + ' drills</strong>' +
+                (total - completed > 0 ? ' <span style="color:var(--text-3);font-size:11px">(' + (total-completed) + ' skipped)</span>' : '') +
+              '</div>' +
+              finisherStr +
+              (r.notes ? '<div style="font-size:12px;color:var(--text-3);margin-top:4px;font-style:italic">' + esc(r.notes) + '</div>' : '') +
+            '</div>'
+          );
+        }).join('');
+      } catch(err){
+        container.innerHTML = '<div style="color:var(--bad);font-size:13px">Failed to load recent sessions.</div>';
+      }
+    }
+
+    // Wire save button (script runs after DOM parsing since it's at end of body).
+    (function initSpeedPlusAgility(){
+      const btn = $('speedSaveBtn');
+      if(btn) btn.addEventListener('click', saveSpeedSession);
+    })();
   </script>
 </body>
 </html>
