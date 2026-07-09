@@ -2803,7 +2803,8 @@ body.stack-embed main {
     const JARVIS_SUPABASE_URL = 'https://cskbbioyniryonkukamw.supabase.co';
     const JARVIS_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNza2Jia95bmlyeW9ua3VrYW13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NjE2MTYsImV4cCI6MjA5NDUzNzYxNn0.R3Vx3fA-iAc8LhNL3WPSa9-BxH_087c7VaIbrB3CBJM';
     const jarvisSb = window.supabase.createClient(JARVIS_SUPABASE_URL, JARVIS_SUPABASE_KEY);
-    
+  </script>
+
   <!-- ════════════════════════════════════════════════════════════
        MEAL REMINDER SUBSCRIPTION FLOW (Prompt 1, 2026-07-08)
        See push-subscriptions-schema.sql + sw.js + api/send-reminder.js
@@ -2902,7 +2903,8 @@ body.stack-embed main {
     btn.addEventListener('click', enableReminders);
   })();
   </script>
-initJarvisChat(jarvisSb);
+  <script>
+  initJarvisChat(jarvisSb);
   </script>
 </body>
 </html>
