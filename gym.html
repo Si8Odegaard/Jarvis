@@ -447,7 +447,23 @@ function getLogsForExercise(name){
   const exSets=allSets.filter(s=>{const sess=sessions.find(ss=>ss.id===s.session_id);return sess&&s.exercise_name===name;});
   const bySession={};exSets.forEach(s=>{if(!bySession[s.session_id])bySession[s.session_id]=[];bySession[s.session_id].push(s);});
   const result=[];
-  sessions.slice().reverse().forEach(sess=>{if(bySession[sess.id]){const ss=bySession[sess.id].sort((a,b)=>a.set_number-b.set_number);result.push({date:sess.date,session_id:sess.id,weight:ss[0]?.weight||0,sets:ss});}});
+  sessions.slice().reverse().forEach(sess=>{
+    if(bySession[sess.id]){
+      const ss=bySession[sess.id].sort((a,b)=>a.set_number-b.set_number);
+      // Top-set aggregation: weight = heaviest set of the session (drives overload bar,
+      // Epley 1RM target, and chart progression). reps = reps performed at that top weight
+      // (paired with weight for calc1RM, since Epley must use a (weight, reps) pair that
+      // actually co-occurred on a single set, not an averaged reps value). Among sets tying
+      // for max weight, prefer the set with higher rep count (typically the back-off set that
+      // still hit the top load). The full per-set array is preserved on `sets` for any caller
+      // that wants per-set detail.
+      const validSets=ss.filter(s=>s.weight!=null);
+      const maxWeight=validSets.length?Math.max(...validSets.map(s=>s.weight)):0;
+      const topSetsAtMax=validSets.filter(s=>s.weight===maxWeight);
+      const topSet=topSetsAtMax.reduce((best,s)=>(!best||(s.reps||0)>(best.reps||0))?s:best,null);
+      result.push({date:sess.date,session_id:sess.id,weight:maxWeight,reps:topSet?.reps||0,sets:ss});
+    }
+  });
   return result;
 }
 
@@ -551,7 +567,7 @@ function renderExercises(){
     // Epley-based target
     let epleyTarget='';
     if(lastSession&&ex.type==='compound'){
-      const est1RM=calc1RM(lastSession.weight,Math.round(lastSession.sets.reduce((s,r)=>s+r.reps,0)/lastSession.sets.length));
+      const est1RM=calc1RM(lastSession.weight,lastSession.reps);
       if(est1RM&&phaseConfig?.intensityPct){
         const targetMin=Math.round((est1RM*phaseConfig.intensityPct.min/100)/2.5)*2.5;
         const targetMax=Math.round((est1RM*phaseConfig.intensityPct.max/100)/2.5)*2.5;
@@ -635,7 +651,7 @@ function renderCharts(){
   const logs=getLogsForExercise(exName);
   if(!logs.length){$('weightChartSvg').innerHTML='<text x="200" y="40" text-anchor="middle" fill="#76746E" font-size="12">No data yet</text>';$('ormChartSvg').innerHTML='<text x="200" y="40" text-anchor="middle" fill="#76746E" font-size="12">No data yet</text>';$('ormStats').innerHTML='';return;}
   drawSparkline($('weightChartSvg'),logs.map(l=>l.weight),'#6BE3A4');
-  const orms=logs.map(l=>{const a=Math.round(l.sets.reduce((s,r)=>s+r.reps,0)/l.sets.length);return calc1RM(l.weight,a);}).filter(Boolean);
+  const orms=logs.map(l=>calc1RM(l.weight,l.reps)).filter(Boolean);
   if(orms.length)drawSparkline($('ormChartSvg'),orms,'#F2C063');
   const lastORM=orms[orms.length-1];
   $('ormStats').innerHTML=lastORM?`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--text-3);font-size:11px;font-family:var(--mono)">Est. 1RM</span><span style="font-weight:700;color:var(--good)">${lastORM} lbs</span></div><div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px"><span style="color:var(--text-3);font-size:11px;font-family:var(--mono)">Latest Weight</span><span style="font-weight:700">${logs[logs.length-1].weight} lbs</span></div>`:'';

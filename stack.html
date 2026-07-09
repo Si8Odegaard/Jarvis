@@ -7,6 +7,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#050506">
 <meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dashboard">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
 <title>Health — Supplements & Hydration</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="env.js"></script>
@@ -1033,6 +1039,23 @@ body.stack-embed main {
   <!-- SUPPLEMENTS SECTION -->
   <div id="section-stack" class="tab-section active">
 
+  <!-- PUSH NOTIFICATIONS (Priority 2 — 2026-07-08) -->
+  <div class="stack-card" id="remindersCard" style="margin-bottom:14px">
+    <div class="stack-head">
+      <div class="sf-eyebrow">PUSH NOTIFICATIONS</div>
+      <div class="sf-title" id="remindersTitle">Meal reminders</div>
+      <div class="stack-progress-text" id="remindersBody" style="font-size:12px;color:var(--text-secondary);line-height:1.5;margin-top:6px">
+        Get a heads-up if you haven't logged lunch or dinner yet.
+      </div>
+    </div>
+    <div id="remindersStatus" style="margin-top:10px;font-size:11px;font-family:var(--font-mono);color:var(--text-tertiary)">
+      Status: checking…
+    </div>
+    <button id="remindersEnableBtn" class="stack-add-btn" style="margin-top:12px;width:100%">
+      🔔 Enable meal reminders
+    </button>
+  </div>
+
   <div class="section-title">Daily Stack</div>
 
   <div class="stack-card">
@@ -1098,6 +1121,16 @@ body.stack-embed main {
   <div class="divider"><span>WATER</span></div>
 
   <div class="card">
+  <div class="eyebrow">MEAL REMINDERS</div>
+  <div style="font-size:13px;color:var(--text-3);margin:8px 0 12px 0;line-height:1.5">
+    Get a push notification on your phone if you forget to log a meal.
+    Requires installing the Dashboard as a Home Screen app (iOS only — iOS 16.4+).
+  </div>
+  <button class="btn btn-primary" id="enableRemindersBtn" style="width:100%">Enable Meal Reminders</button>
+  <div id="reminderStatus" style="margin-top:10px;font-size:12px;font-family:var(--mono);line-height:1.5"></div>
+</div>
+
+<div class="card">
     <div class="water-label" id="waterUnitLabel">BOTTLES DRANK TODAY</div>
     <div class="water-row">
       <span class="water-num" id="waterNum">0</span>
@@ -2770,7 +2803,106 @@ body.stack-embed main {
     const JARVIS_SUPABASE_URL = 'https://cskbbioyniryonkukamw.supabase.co';
     const JARVIS_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNza2Jia95bmlyeW9ua3VrYW13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NjE2MTYsImV4cCI6MjA5NDUzNzYxNn0.R3Vx3fA-iAc8LhNL3WPSa9-BxH_087c7VaIbrB3CBJM';
     const jarvisSb = window.supabase.createClient(JARVIS_SUPABASE_URL, JARVIS_SUPABASE_KEY);
-    initJarvisChat(jarvisSb);
+    
+  <!-- ════════════════════════════════════════════════════════════
+       MEAL REMINDER SUBSCRIPTION FLOW (Prompt 1, 2026-07-08)
+       See push-subscriptions-schema.sql + sw.js + api/send-reminder.js
+       ════════════════════════════════════════════════════════════ -->
+  <script>
+  (function initMealReminders(){
+    const btn = document.getElementById('enableRemindersBtn');
+    const statusEl = document.getElementById('reminderStatus');
+    if(!btn || !statusEl) return;
+
+    // VAPID public key is base64url — Push API needs a Uint8Array.
+    function urlBase64ToUint8Array(base64String){
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+      const raw = atob(base64);
+      const out = new Uint8Array(raw.length);
+      for(let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+      return out;
+    }
+
+    // iOS Safari silently resolves Notification.requestPermission to "denied"
+    // if the page wasn't added to Home Screen first — we have to catch that
+    // case and show the install steps ourselves.
+    function isInstalledPWA(){
+      if(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return true;
+      if(window.navigator && window.navigator.standalone === true) return true;
+      return false;
+    }
+
+    function setStatus(msg, kind){
+      const colors = { ok: 'var(--good)', warn: 'var(--warn)', bad: 'var(--bad)', dim: 'var(--text-3)' };
+      statusEl.innerHTML = '<div style="color:' + (colors[kind] || colors.dim) + '">' + msg + '</div>';
+    }
+
+    async function enableReminders(){
+      btn.disabled = true;
+      const oldLabel = btn.textContent;
+      btn.textContent = 'Enabling…';
+      try {
+        if(!isInstalledPWA()){
+          setStatus('Add this page to your Home Screen first (Safari → Share → Add to Home Screen), then re-open from the Home Screen icon. iOS 16.4+ requires the installed PWA for push to work.', 'warn');
+          return;
+        }
+        if(!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)){
+          setStatus('Push notifications aren\'t supported in this browser context.', 'bad');
+          return;
+        }
+        const perm = await Notification.requestPermission();
+        if(perm !== 'granted'){
+          if(perm === 'denied'){
+            setStatus('Permission denied. Enable in iOS Settings → Notifications → Dashboard.', 'bad');
+          } else {
+            setStatus('Permission dismissed (' + perm + '). Tap the button again to retry.', 'warn');
+          }
+          return;
+        }
+        const vapidKey = window.ENV_VAPID_PUBLIC_KEY;
+        if(!vapidKey){
+          setStatus('VAPID key not configured on the server. Set VAPID_PUBLIC_KEY in Vercel env vars and redeploy.', 'bad');
+          return;
+        }
+        const reg = await navigator.serviceWorker.ready;
+        let subscription = await reg.pushManager.getSubscription();
+        if(!subscription){
+          subscription = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidKey)
+          });
+        }
+        const subJson = subscription.toJSON();
+        const ua = navigator.userAgent || '';
+        let label = 'PWA';
+        if(/iPhone|iPad|iPod/.test(ua)) label = 'iOS PWA';
+        else if(/Android/.test(ua)) label = 'Android PWA';
+        else if(/Macintosh/.test(ua)) label = 'macOS PWA';
+        else if(/Windows/.test(ua)) label = 'Windows PWA';
+        const { error } = await jarvisSb.from('push_subscriptions').insert({
+          subscription_json: subJson,
+          user_label: label,
+          user_agent: ua,
+          active: true
+        });
+        if(error) throw error;
+        setStatus('✓ Reminders enabled. You\'ll get a test push within the next hour (the cron runs hourly for testing).', 'ok');
+        btn.textContent = 'Enabled ✓';
+      } catch(err){
+        const msg = (err && err.message) ? err.message : String(err);
+        setStatus('Failed: ' + msg, 'bad');
+        btn.textContent = oldLabel;
+      } finally {
+        btn.disabled = false;
+        if(btn.textContent === 'Enabling…') btn.textContent = oldLabel;
+      }
+    }
+
+    btn.addEventListener('click', enableReminders);
+  })();
+  </script>
+initJarvisChat(jarvisSb);
   </script>
 </body>
 </html>
