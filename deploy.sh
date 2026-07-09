@@ -1,6 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
+# Defensive cleanup: a previous crashed git process can leave .git/index.lock
+# behind, which silently blocks `git commit` (and turns the rest of this
+# script into a no-op that still prints success). Always clear it first.
+rm -f .git/index.lock
+
 echo "📦 Adding all files..."
 git add -A
 
