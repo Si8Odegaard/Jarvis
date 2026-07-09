@@ -1,11 +1,37 @@
 #!/bin/bash
+set -euo pipefail
+
 echo "📦 Adding all files..."
 git add -A
 
-echo "💾 Committing..."
-git commit -m "Deploy $(date)"
+echo "💾 Committing (with --allow-empty so a re-deploy on a clean tree still pushes)..."
+git commit --allow-empty -m "Deploy $(date)"
+
+COMMIT_HASH=$(git rev-parse HEAD)
+SHORT_HASH=$(git rev-parse --short HEAD)
+echo "📌 Commit hash: $COMMIT_HASH  (short: $SHORT_HASH)"
 
 echo "🚀 Pushing to GitHub..."
-git push origin main
+# Capture stdout+stderr WITHOUT letting set -e abort on a non-zero exit,
+# so we can inspect the actual result before declaring success.
+set +e
+PUSH_OUTPUT=$(git push origin main 2>&1)
+PUSH_EXIT=$?
+set -e
+echo "$PUSH_OUTPUT"
 
-echo "✅ Pushed! Vercel is now auto-deploying. Check your Vercel URL in 30 seconds."
+if [ "$PUSH_EXIT" -ne 0 ]; then
+  echo "❌ git push FAILED (exit $PUSH_EXIT). Vercel will NOT deploy." >&2
+  exit "$PUSH_EXIT"
+fi
+
+if echo "$PUSH_OUTPUT" | grep -q "Everything up-to-date"; then
+  echo "❌ git push was a silent no-op (Everything up-to-date). No new commit reached GitHub." >&2
+  echo "   This usually means the commit step produced no new object (check above)." >&2
+  exit 1
+fi
+
+echo ""
+echo "✅ Pushed $COMMIT_HASH to origin/main. Vercel is now auto-deploying."
+echo "   Open Vercel & confirm a deployment appears tied to: $COMMIT_HASH"
+echo "   Vercel deployments URL: https://vercel.com/dashboard → select 'Jarvis' → Deployments"
