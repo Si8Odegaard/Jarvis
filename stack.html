@@ -1,6 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
+<html lang="en">  <head>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="chat.js"></script>
 <meta charset="UTF-8">
@@ -1120,15 +1119,6 @@ body.stack-embed main {
 
   <div class="divider"><span>WATER</span></div>
 
-  <div class="card">
-  <div class="eyebrow">MEAL REMINDERS</div>
-  <div style="font-size:13px;color:var(--text-3);margin:8px 0 12px 0;line-height:1.5">
-    Get a push notification on your phone if you forget to log a meal.
-    Requires installing the Dashboard as a Home Screen app (iOS only — iOS 16.4+).
-  </div>
-  <button class="btn btn-primary" id="enableRemindersBtn" style="width:100%">Enable Meal Reminders</button>
-  <div id="reminderStatus" style="margin-top:10px;font-size:12px;font-family:var(--mono);line-height:1.5"></div>
-</div>
 
 <div class="card">
     <div class="water-label" id="waterUnitLabel">BOTTLES DRANK TODAY</div>
@@ -2811,8 +2801,8 @@ body.stack-embed main {
        ════════════════════════════════════════════════════════════ -->
   <script>
   (function initMealReminders(){
-    const btn = document.getElementById('enableRemindersBtn');
-    const statusEl = document.getElementById('reminderStatus');
+    const btn = document.getElementById('remindersEnableBtn');
+    const statusEl = document.getElementById('remindersStatus');
     if(!btn || !statusEl) return;
 
     // VAPID public key is base64url — Push API needs a Uint8Array.
