@@ -2895,19 +2895,27 @@ body.stack-embed main {
         setStatus('Step 2/4: Service worker ready', 'info');
 
         // ----- STEP 3/4: subscribe to push -----
-        setStatus('Step 3/4: Subscribing to push server…', 'info');
+        // The check + subscribe are split into two awaits with their own status
+        // so a failure surface exactly which one froze/hung (code-review feedback).
+        setStatus('Step 3/4: Checking existing push subscription…', 'info');
         let subscription;
         try {
           subscription = await reg.pushManager.getSubscription();
-          if(!subscription){
+        } catch (e) {
+          console.error('[enableReminders] pushManager.getSubscription threw:', e);
+          throw new Error('Push check failed: ' + ((e && e.message) || String(e)));
+        }
+        if(!subscription){
+          setStatus('Step 3/4: No existing subscription — subscribing to push server…', 'info');
+          try {
             subscription = await reg.pushManager.subscribe({
               userVisibleOnly: true,
               applicationServerKey: urlBase64ToUint8Array(vapidKey)
             });
+          } catch (e) {
+            console.error('[enableReminders] pushManager.subscribe threw:', e);
+            throw new Error('Push subscribe failed: ' + ((e && e.message) || String(e)));
           }
-        } catch (e) {
-          console.error('[enableReminders] pushManager.subscribe threw:', e);
-          throw new Error('Push subscribe failed: ' + ((e && e.message) || String(e)));
         }
         setStatus('Step 3/4: Push subscription obtained', 'info');
 
