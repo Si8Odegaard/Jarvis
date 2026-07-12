@@ -2825,7 +2825,7 @@ body.stack-embed main {
     }
 
     function setStatus(msg, kind){
-      const colors = { ok: 'var(--good)', warn: 'var(--warn)', bad: 'var(--bad)', dim: 'var(--text-3)' };
+      const colors = { ok: 'var(--good)', info: 'var(--info)', warn: 'var(--warn)', bad: 'var(--bad)', dim: 'var(--text-3)' };
       statusEl.innerHTML = '<div style="color:' + (colors[kind] || colors.dim) + '">' + msg + '</div>';
     }
 
@@ -2833,7 +2833,16 @@ body.stack-embed main {
       btn.disabled = true;
       const oldLabel = btn.textContent;
       btn.textContent = 'Enabling…';
+      // resetBtn is created BEFORE the try so the outer `finally` can always call it.
+      // The outer try/catch/finally always runs after any `return` or `throw` inside
+      // the try – even if an inner step's catch re-throws – so the button is
+      // guaranteed to leave the "Enabling…" state on every exit path.
+      const resetBtn = () => {
+        btn.disabled = false;
+        if (btn.textContent === 'Enabling…') btn.textContent = oldLabel;
+      };
       try {
+        // ----- precondition checks (synchronous; no per-step report needed) -----
         if(!isInstalledPWA()){
           setStatus('Add this page to your Home Screen first (Safari → Share → Add to Home Screen), then re-open from the Home Screen icon. iOS 16.4+ requires the installed PWA for push to work.', 'warn');
           return;
@@ -2842,7 +2851,19 @@ body.stack-embed main {
           setStatus('Push notifications aren\'t supported in this browser context.', 'bad');
           return;
         }
-        const perm = await Notification.requestPermission();
+
+        // ----- STEP 1/4: request browser permission -----
+        // "Before" status fires BEFORE the await so we can see it even on a hang;
+        // "After" status confirms the await resolved.
+        setStatus('Step 1/4: Requesting browser permission…', 'info');
+        let perm;
+        try {
+          perm = await Notification.requestPermission();
+        } catch (e) {
+          console.error('[enableReminders] requestPermission threw:', e);
+          throw new Error('Permission API threw: ' + ((e && e.message) || e));
+        }
+        setStatus('Step 1/4: Permission = ' + perm, 'info');
         if(perm !== 'granted'){
           if(perm === 'denied'){
             setStatus('Permission denied. Enable in iOS Settings → Notifications → Dashboard.', 'bad');
@@ -2851,45 +2872,82 @@ body.stack-embed main {
           }
           return;
         }
+
+        // ----- STEP 2a/4: VAPID public key (synchronous check) -----
         const vapidKey = window.ENV_VAPID_PUBLIC_KEY;
         if(!vapidKey){
           setStatus('VAPID key not configured on the server. Set VAPID_PUBLIC_KEY in Vercel env vars and redeploy.', 'bad');
           return;
         }
-        const reg = await navigator.serviceWorker.ready;
-        let subscription = await reg.pushManager.getSubscription();
-        if(!subscription){
-          subscription = await reg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(vapidKey)
-          });
+
+        // ----- STEP 2/4: service worker registration -----
+        // NOTE: `navigator.serviceWorker.ready` is a notorious iOS PWA hang source.
+        // If this freezes, the on-screen "before" status is the last visible
+        // message – and that's how we'll know EXACTLY which await is the culprit.
+        setStatus('Step 2/4: Waiting for service worker registration…', 'info');
+        let reg;
+        try {
+          reg = await navigator.serviceWorker.ready;
+        } catch (e) {
+          console.error('[enableReminders] serviceWorker.ready threw:', e);
+          throw new Error('Service worker registration failed: ' + ((e && e.message) || e));
         }
-        const subJson = subscription.toJSON();
-        const ua = navigator.userAgent || '';
-        let label = 'PWA';
-        if(/iPhone|iPad|iPod/.test(ua)) label = 'iOS PWA';
-        else if(/Android/.test(ua)) label = 'Android PWA';
-        else if(/Macintosh/.test(ua)) label = 'macOS PWA';
-        else if(/Windows/.test(ua)) label = 'Windows PWA';
-        const { error } = await jarvisSb.from('push_subscriptions').insert({
-          subscription_json: subJson,
-          user_label: label,
-          user_agent: ua,
-          active: true
-        });
-        if(error) throw error;
+        setStatus('Step 2/4: Service worker ready', 'info');
+
+        // ----- STEP 3/4: subscribe to push -----
+        setStatus('Step 3/4: Subscribing to push server…', 'info');
+        let subscription;
+        try {
+          subscription = await reg.pushManager.getSubscription();
+          if(!subscription){
+            subscription = await reg.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(vapidKey)
+            });
+          }
+        } catch (e) {
+          console.error('[enableReminders] pushManager.subscribe threw:', e);
+          throw new Error('Push subscribe failed: ' + ((e && e.message) || String(e)));
+        }
+        setStatus('Step 3/4: Push subscription obtained', 'info');
+
+        // ----- STEP 4/4: save subscription to database -----
+        setStatus('Step 4/4: Saving subscription to database…', 'info');
+        try {
+          const subJson = subscription.toJSON();
+          const ua = navigator.userAgent || '';
+          let label = 'PWA';
+          if(/iPhone|iPad|iPod/.test(ua)) label = 'iOS PWA';
+          else if(/Android/.test(ua)) label = 'Android PWA';
+          else if(/Macintosh/.test(ua)) label = 'macOS PWA';
+          else if(/Windows/.test(ua)) label = 'Windows PWA';
+          const { error } = await jarvisSb.from('push_subscriptions').insert({
+            subscription_json: subJson,
+            user_label: label,
+            user_agent: ua,
+            active: true
+          });
+          if (error) throw error;
+        } catch (e) {
+          console.error('[enableReminders] supabase insert threw:', e);
+          const msg = (e && e.message) ? e.message : (e && e.code ? ('DB error ' + e.code) : String(e));
+          throw new Error('DB save failed: ' + msg);
+        }
+
+        // ----- SUCCESS -----
         setStatus('✓ Reminders enabled. You\'ll get a test push within the next hour (the cron runs hourly for testing).', 'ok');
+        // Set the success label BEFORE the finally runs so the reset check
+        // (`if (btn.textContent === 'Enabling…')`) sees the new label and leaves it alone.
         btn.textContent = 'Enabled ✓';
-      } catch(err){
+
+      } catch (err){
         const msg = (err && err.message) ? err.message : String(err);
-        setStatus('Failed: ' + msg, 'bad');
-        btn.textContent = oldLabel;
+        console.error('[enableReminders] failed:', msg);
+        setStatus('Failed at: ' + msg, 'bad');
       } finally {
-        btn.disabled = false;
-        if(btn.textContent === 'Enabling…') btn.textContent = oldLabel;
+        resetBtn();
       }
     }
-
     btn.addEventListener('click', enableReminders);
   })();
   </script>
