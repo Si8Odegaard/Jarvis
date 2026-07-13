@@ -1,6 +1,15 @@
 // ════════════════════════════════════════════════════════════
 //  SERVICE WORKER — dashboard PWA + push notifications
 //
+//  v12 — ships the missing icon PNGs (2026-07-08):
+//   - adds ./icon-192.png (192x192, RGBA) and ./icon-512.png (512x512, RGBA)
+//     to fix cache.addAll() install failure. The PNGs were referenced in
+//     both this ASSETS array and manifest.json but never committed, so
+//     install rejected, skipWaiting() never ran, the SW died at 'redundant',
+//     and navigator.serviceWorker.ready hung forever on iOS PWA.
+//   - activates the existing logic that drops any old CACHE on mismatch,
+//     so prior half-installed (redundant) v11 SWs are pruned automatically.
+//
 //  v11 — adds Web Push support (Priority 2, 2026-07-08):
 //   - push event handler reads JSON payload {title, body, url}
 //     and shows a notification via self.registration.showNotification
@@ -16,7 +25,7 @@
 //  instead of silently failing.
 // ════════════════════════════════════════════════════════════
 
-const CACHE = 'dashboard-pwa-v11';
+const CACHE = 'dashboard-pwa-v12';
 const ASSETS = [
   './', './index.html', './manifest.json', './icon.svg',
   './icon-192.png', './icon-512.png',
