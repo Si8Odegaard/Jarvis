@@ -3,7 +3,7 @@
 // -----------------------------------------------------------------------------
 // Reads API keys and VAPID public key from Vercel project environment
 // variables and writes ./env.js (loaded via <script src="env.js"> in
-// index.html, body.html, soccer.html, and consumed at runtime by
+// index.html, and consumed at runtime by
 // chat.js and the push-subscription flow in stack.html).
 //
 // Required env vars (set in Vercel → Settings → Environment Variables):

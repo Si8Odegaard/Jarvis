@@ -25,11 +25,11 @@
 //  instead of silently failing.
 // ════════════════════════════════════════════════════════════
 
-const CACHE = 'dashboard-pwa-v12';
+const CACHE = 'dashboard-pwa-v13';
 const ASSETS = [
   './', './index.html', './manifest.json', './icon.svg',
   './icon-192.png', './icon-512.png',
-  './topbar.js', './tabs.js', './gym.html', './stack.html', './nutrition.html', './soccer.html',
+  './topbar.js', './tabs.js', './stack.html', './nutrition.html',
 ];
 
 self.addEventListener('install', (event) => {

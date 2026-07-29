@@ -1554,7 +1554,7 @@
   <script src="topbar.js" defer></script>
   <script src="utils.js"></script>
   <script src="chat.js"></script>
-  <script src="phase.js"></script>
+
   <script>
   (function () {
     'use strict';
@@ -1596,8 +1596,7 @@
     /* ── Morning Briefing State ── */
     let briefingData = null;
     const START_WEIGHT = 135;
-    // Phase authority: all phase logic lives in phase.js
-    // Use window.getCurrentPhase(sb) for phase data
+
 
     function briefingToday() {
       const d = new Date();
@@ -1618,7 +1617,8 @@
       const sorenessMap = { none: 100, mild: 75, moderate: 50, severe: 25 };
 
       try {
-        // ── 1. Phase (phase.js writes to app_state, just call it) ──
+
+        /* ── phase.js deleted — phaseData disabled ──
         const phaseData = await window.getCurrentPhase(sb);
 
         // Always write fresh gym_phase_config (bypass 24h cache)
@@ -1630,6 +1630,8 @@
             updated_at: new Date().toISOString()
           }, { onConflict: 'key' }).then(() => {}).catch(() => {});
         }
+        ── end phase.js block ──*/
+        const phaseData = null;
 
         // ── 2. Recovery Score from daily_checkins (last 7 days) ──
         const { data: checkins } = await sb.from('daily_checkins').select('*').order('date',{ascending:false}).limit(7);
@@ -1759,19 +1761,21 @@
         // Refresh match intelligence from calendar events (writes match_in_48_hours, match_in_24_hours_recovery, next_match_date)
         if (window.writeMatchIntelligence) { await window.writeMatchIntelligence(sb).catch(() => {}); }
 
-        // ── 5b. Generate Weekly Plan ──
+        /* ── 5b. Generate Weekly Plan — disabled (phase.js deleted) ──
         const weeklyPlan = await generateWeeklyPlan(phaseData);
         await sb.from('app_state').upsert({
           key: 'weekly_plan',
           data: weeklyPlan,
           updated_at: new Date().toISOString()
         }, { onConflict: 'key' }).then(() => {}).catch(()=>{});
+        ── end weekly plan block ──*/
+        const weeklyPlan = null;
 
         const { data: matchData } = await sb.from('app_state').select('data').eq('key','match_in_48_hours').maybeSingle();
         const matchIn48 = matchData?.data?.value === true || matchData?.data === true;
 
         let rec = { primarySession:'Rest', gymSplit:null, secondarySession:null, reasoning:'', restrictions:[] };
-        const phaseName = phaseData?.phase || 'Foundation';
+        const phaseName = /* phaseData?.phase || */ 'Foundation'; // hardcoded — phase.js deleted
         const recScore = recoveryToday;
 
         if (matchIn48) {
@@ -1896,7 +1900,7 @@
             .select('*').eq('date', today).order('event_type', { ascending: true });
           todayCalendarEvents = calEvents || [];
         } catch(_) {}
-        return { phase:phaseData, recoveryToday, recovery7DayAvg, acwr, acwrStatus, latestWeight, weeklyGainRate, recommendation:rec, jarvisScore, jarvisComponents:{ recovery:recComp, nutrition:nutComp, load:loadComp, athletic:athComp }, prevJarvisScore:prevJS, d1Gaps, weeklyPlan, todayCalendarEvents, scheduleTargets: autoAdj ? autoAdj.targets : null };
+        return { phase:null, recoveryToday, recovery7DayAvg, acwr, acwrStatus, latestWeight, weeklyGainRate, recommendation:rec, jarvisScore, jarvisComponents:{ recovery:recComp, nutrition:nutComp, load:loadComp, athletic:athComp }, prevJarvisScore:prevJS, d1Gaps, weeklyPlan, todayCalendarEvents, scheduleTargets: autoAdj ? autoAdj.targets : null };
       } catch(e) {
         console.error('computeDailyState error:', e);
         return null;
@@ -2042,7 +2046,7 @@
         }
       }
 
-      // ── RULE 6 — Phase progression (Monday only): fallback when no higher-priority rule fired ──
+      /* ── RULE 6 — Phase progression (Monday only): disabled — phase.js deleted ──
       if (!adjusted && new Date().getDay() === 1) {
         try {
           const pd = await window.getCurrentPhase(sb);
@@ -2069,6 +2073,7 @@
           if (!reason) reason = 'Phase baseline: ' + phase;
         } catch(e) { console.warn('[Jarvis] autoAdjustSchedule upsert failed', e); }
       }
+      ── end RULE 6 ──*/
 
       // Persist to schedule_config ONLY when a rule fired
       if (adjusted) {
@@ -3142,8 +3147,9 @@
         // Use the 7-day avg directly if available, otherwise use today's
         const avgRecovery = recovery7DayAvg || recoveryToday;
 
-        // Phase — get from shared authority (phase.js)
+
         let phase;
+        /* ── phase.js deleted — disabled ──
         if(window.getCurrentPhase){
           const pr = await window.getCurrentPhase(supa);
           if(pr){
@@ -3156,6 +3162,7 @@
             };
           }
         }
+        ── end phase.js block ──*/
         if(!phase) phase = { mode:'offseason', name:'Foundation', week:1, totalWeeks:2, daysLeft:14, dayOfOffseason:55, goal:'', daysToPreseason:55 };
 
         // Today's recommendation (simplified for brief)
@@ -3175,7 +3182,7 @@
           todayRec = 'Check Plan tab';
         }
 
-        // Gym day rotation (synchronized with gym.html via utils.js)
+
         
         briefingData = {
           today, phase, recoveryToday, recovery7DayAvg, avgRecovery,
