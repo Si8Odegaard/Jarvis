@@ -2113,125 +2113,6 @@
       return { adjusted, targets, reason };
     }
 
-    /* ── Weekly Plan Generator ── */
-    async function generateWeeklyPlan(phaseData) {
-      const phase = phaseData?.phase || 'Foundation';
-      const sessionCount = phaseData?.gymPhaseConfig?.sessionCount || 4;
-      const phaseWeek = phaseData?.phaseWeek || 1;
-      const daysToPreseason = phaseData?.daysToPreseason || '?';
-
-      const baseWeek = [
-        { day: 'Monday',    sessions: [{ type: 'gym', label: 'Lower Power', focus: 'Acceleration — horizontal power and hip extension' }] },
-        { day: 'Tuesday',   sessions: [{ type: 'field', label: 'Technical Quality', focus: 'Perception-action coupling, decision speed under pressure, receiving on the move' }] },
-        { day: 'Wednesday', sessions: [{ type: 'gym', label: 'Upper Athletic', focus: 'Shielding strength, aerial ability, shoulder health' }] },
-        { day: 'Thursday',  sessions: [{ type: 'speed', label: 'Speed + Agility', focus: '10m acceleration, 5-10-5, agility ladder, lateral quickness — your primary weakness' }] },
-        { day: 'Friday',    sessions: [{ type: 'gym', label: 'Lateral Power & Single Leg', focus: 'First-step quickness, frontal plane strength, agility foundation' }] },
-        { day: 'Saturday',  sessions: [{ type: 'field', label: 'Possession + Patterns', focus: 'High intensity, longer duration, match-realistic pressure and decisions' }] },
-        { day: 'Sunday',    sessions: sessionCount >= 4
-          ? [{ type: 'gym', label: 'Full Body Power', focus: 'Rotational power, loaded carries, relative strength benchmark' }]
-          : [{ type: 'rest', label: 'Rest', focus: 'Full recovery' }] }
-      ];
-
-      // Phase modifiers
-      if (phase === 'Taper') {
-        baseWeek[6].sessions = [{ type: 'rest', label: 'Rest', focus: 'Neural freshness — full recovery before pre-season' }];
-        baseWeek[5].sessions = [{ type: 'field', label: 'Light Technical', focus: '20-25 mins only — sharp touches, no fatigue' }];
-      }
-      if (phase === 'Pre-Season' || phase === 'In-Season') {
-        baseWeek[6].sessions = [{ type: 'rest', label: 'Rest', focus: 'Recovery priority' }];
-      }
-
-      // ── THRESHOLD SATURDAY OVERRIDE (set by auto-adjust Rule 4 when mile target behind) ──
-      let thresholdSaturday = false;
-      try {
-        const r = await fetch(SUPABASE_URL + '/rest/v1/app_state?key=eq.threshold_saturday&select=data', {
-          headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY }
-        });
-        if (r.ok) {
-          const rows = await r.json();
-          if (rows && rows[0] && rows[0].data && rows[0].data.active === true) thresholdSaturday = true;
-        }
-      } catch(e) { console.warn('[Jarvis] generateWeeklyPlan threshold_saturday read failed', e); }
-      if (thresholdSaturday) {
-        const sat = baseWeek.find(d => d.day === 'Saturday');
-        if (sat && sat.sessions && sat.sessions.length > 0) {
-          sat.sessions[0] = {
-            type: 'speed',
-            label: 'Threshold Run',
-            focus: '20 min at 5:35-5:45/mile pace + 10 min easy cooldown (mile target behind — possession work paused this week)'
-          };
-        }
-      }
-
-      // Add today marker
-      const todayDayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date().getDay()];
-      baseWeek.forEach(d => d.isToday = d.day === todayDayName);
-
-      return { week: phaseWeek, phase, daysToPreseason, days: baseWeek };
-    }
-
-    /* ── Weekly Calendar Renderer ── */
-    function getTodayGymSplit(weeklyPlan) {
-      if (!weeklyPlan) return null;
-      const todayEntry = weeklyPlan.days ? weeklyPlan.days.find(d => d.isToday) : null;
-      if (!todayEntry) return null;
-      const gymSession = todayEntry.sessions.find(s => s.type === 'gym');
-      return gymSession ? gymSession.label : null;
-    }
-
-    function renderWeeklyCalendar() {
-      const section = document.getElementById('weeklyPlanSection');
-      const phaseEl = document.getElementById('weeklyPlanPhase');
-      const scrollEl = document.getElementById('weeklyPlanScroll');
-      if (!section || !phaseEl || !scrollEl) return;
-
-      // Read from app_state (set by computeDailyState) or use briefingData
-      let plan = null;
-      if (briefingData?.weeklyPlan) {
-        plan = briefingData.weeklyPlan;
-      }
-
-      if (!plan || !plan.days) {
-        section.style.display = 'none';
-        return;
-      }
-
-      section.style.display = 'block';
-      phaseEl.innerHTML = 'Week <em>' + plan.week + '</em> of <em>' + plan.phase + '</em> — ' + plan.daysToPreseason + ' days to pre-season';
-
-      const typeIcons = { gym: '🏋️', field: '⚽', speed: '🏃', match: '🏟️', rest: '—' };
-      scrollEl.innerHTML = '';
-
-      plan.days.forEach(d => {
-        const col = document.createElement('div');
-        col.className = 'week-day-col' + (d.isToday ? ' today' : '');
-
-        const nameEl = document.createElement('div');
-        nameEl.className = 'week-day-name';
-        nameEl.textContent = d.day.slice(0,3).toUpperCase();
-        col.appendChild(nameEl);
-
-        const sessionsEl = document.createElement('div');
-        sessionsEl.className = 'week-day-sessions';
-
-        d.sessions.forEach(s => {
-          const pill = document.createElement('div');
-          pill.className = 'week-session-pill ' + s.type;
-          const icon = document.createElement('span');
-          icon.className = 'week-session-icon';
-          icon.textContent = typeIcons[s.type] || '•';
-          const label = document.createElement('span');
-          label.textContent = s.label;
-          pill.appendChild(icon);
-          pill.appendChild(label);
-          sessionsEl.appendChild(pill);
-        });
-
-        col.appendChild(sessionsEl);
-        scrollEl.appendChild(col);
-      });
-    }
-
     /* ── Morning Briefing Loader ── */
 
 
@@ -3216,7 +3097,6 @@
       renderStatusGrid();
       renderRestrictions();
       renderD1Gaps();
-      renderWeeklyCalendar();
       renderAlerts();
       renderWeeklySnapshot();
       renderACWR();
@@ -3282,17 +3162,6 @@
       }
       brief += `<span class="brief-highlight">${daysToPS} days to pre-season</span>. `;
 
-            // Gym from weekly plan
-      const todayGymSplit = getTodayGymSplit(d.weeklyPlan);
-      const gymIcons = {'Lower Power':'🏋️','Upper Athletic':'💪','Lateral Power & Single Leg':'🦵','Full Body Power':'⚡','Rest':'😴'};
-      if (todayGymSplit) {
-        const gymIcon = gymIcons[todayGymSplit] || '🏋️';
-        brief += `<br>🏟️ Field: ${d.todayRec}`;
-      if (todayGymSplit) {
-        const gymIcon2 = gymIcons[todayGymSplit] || '🏋️';
-        brief += ` · ${gymIcon2} Gym: <span class="brief-highlight">${todayGymSplit}</span>.`;
-      }
-      }
       brief += ` `;
       // Recovery score with one-word status
       const recScore = d.recoveryToday ?? '--';
@@ -4090,7 +3959,7 @@
     // ════════════════════════════════════════════════════════
     //  SCHEDULE SETTINGS — read-only display + equipment/vacation toggles
     //  Reads app_state.key = 'schedule_targets' and schedule_config active row
-    //  No modifications to computeDailyState / autoAdjustSchedule / generateWeeklyPlan
+    //  No modifications to computeDailyState / autoAdjustSchedule
     // ════════════════════════════════════════════════════════
     let scheduleTargets = null;
     let schedActiveRowId = null;
