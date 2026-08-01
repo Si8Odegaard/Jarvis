@@ -390,14 +390,6 @@ input[type="number"].error { border-color:var(--danger); }
       <input type="number" id="profileFrequency" placeholder="e.g., 4" min="1" max="7">
     </div>
     <div class="form-group">
-      <label>Phase</label>
-      <div class="btn-group" id="phaseGroup">
-        <button type="button" data-value="bulk">Bulk</button>
-        <button type="button" data-value="cut">Cut</button>
-        <button type="button" data-value="maintenance">Maintenance</button>
-      </div>
-    </div>
-    <div class="form-group">
       <label>Goal Weight (lbs)</label>
       <input type="number" id="profileGoalWeight" placeholder="e.g., 165">
     </div>
@@ -432,7 +424,6 @@ let profileState = {
   age: null,
   height_in: null,
   trainingFrequency: 4,
-  phase: 'maintenance',
   goal_weight_lbs: null
 };
 
@@ -443,10 +434,6 @@ function todayKey() {
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 function scoreClass(s) { return s >= 70 ? 'good' : s >= 55 ? 'warn' : 'bad'; }
-
-// lbs → kg conversion for math only
-function lbsToKg(lbs) { return lbs / 2.20462; }
-
 // Detect today's training split (mirrors gym tab logic)
 function todaySplit() {
   const anchor = new Date('2026-05-12T00:00:00');
@@ -759,72 +746,24 @@ async function loadRecoveryScore() {
 }
 
 // ═══════════════════════════════════════════════
-//  PROTEIN TARGET — training-day-aware
-//  2.0g/kg training days (0.91g/lb), 1.6g/kg rest days (0.73g/lb)
+//  PROTEIN TARGET — fixed 145-155g/day (flat, no training/rest/match variation)
 // ═══════════════════════════════════════════════
 async function updateProteinTarget() {
   try {
-    let weightLbs = null;
-    let weightSource = '';
-
-    // 1. Try nutrition_profile (our own settings)
-    const { data: profile } = await sb.from('nutrition_profile').select('*').maybeSingle();
-    if (profile && profile.weight_lbs) {
-      weightLbs = parseFloat(profile.weight_lbs);
-      weightSource = `based on your ${weightLbs} lb profile`;
-    }
-
-    // 2. Try weight_logs as fallback
-    if (!weightLbs) {
-      const { data: wLog } = await sb.from('weight_logs').select('weight').order('date',{ascending:false}).limit(1).maybeSingle();
-      if (wLog && wLog.weight) {
-        weightLbs = parseFloat(wLog.weight);
-        weightSource = `from your latest weight log (${weightLbs} lbs)`;
-      }
-    }
-
-    // 3. Hard fallback
-    if (!weightLbs || isNaN(weightLbs)) {
-      weightLbs = 150;
-      weightSource = 'default — set your weight in ⚙️ Profile Settings';
-    }
-
-    // Training-day-aware: 2.0g/kg training, 1.6g/kg rest
-    const weightKg = weightLbs / 2.205;
-    const isTrainingDay = todaySplit() !== 'Rest';
-    const multiplier = isTrainingDay ? 2.0 : 1.6;
-    const label = isTrainingDay ? 'training day · 2.0g/kg' : 'rest day · 1.6g/kg';
-    let target = Math.round(weightKg * multiplier);
-
-    // Match day adjustments
-    const in48 = appStateData['match_in_48_hours'];
-    const in24Recovery = appStateData['match_in_24_hours_recovery'];
-    const phase = appStateData['current_offseason_phase'] || 'Foundation';
-    let matchBoost = '';
-    if (in48 === true || in48 === 'true') {
-      // Match in 48hrs — slight protein reduction, carbs take priority
-      target = Math.round(weightKg * 1.8);
-      matchBoost = ' (match in 48h — carb priority)';
-    } else if (in24Recovery === true || in24Recovery === 'true') {
-      // Post-match recovery — elevated protein
-      target = Math.round(weightKg * 2.2);
-      matchBoost = ' (post-match recovery)';
-    }
-
-    // Phase adjustments
-    if (phase === 'Power-Speed') target = Math.round(target * 1.05);
-    if (phase === 'Taper') target = Math.round(target * 0.95);
+    // Fixed target: midpoint of 145-155g range
+    const target = 150;
+    const label = 'fixed 145–155g/day';
 
     $('proteinTarget').textContent = target + 'g';
     const noteEl = $('proteinWeightNote');
-    if (noteEl) noteEl.textContent = weightSource + ' — ' + label + matchBoost;
+    if (noteEl) noteEl.textContent = 'Target: 145–155g protein per day (flat — no training/rest variation)';
 
     // Set protein input placeholder with target
     const pEl = $('proteinGrams');
     if (pEl) pEl.placeholder = 'Target: ' + target + 'g';
 
-    // Update adaptive targets banner
-    renderAdaptiveTargets(target, weightLbs);
+    // Update adaptive targets banner (pass null for weightLbs since we no longer calc from bodyweight)
+    renderAdaptiveTargets(target, null);
 
     const { data: checkins } = await sb.from('daily_checkins').select('protein_grams').order('date',{ascending:false}).limit(7);
     if (checkins && checkins.length) {
@@ -839,96 +778,59 @@ async function updateProteinTarget() {
 }
 
 // ═══════════════════════════════════════════════
-//  TDEE — all-American units
-//  Height in inches, weight in lbs, age in years
-//  Mifflin-St Jeor (metric internally, display in kcal)
-//  ADAPTIVE: self-corrects from 4-week weight trend
+//  CALORIE TARGET — fixed ranges with time-based ramp
+//  Base: 2,900–3,000 kcal/day
+//  After 14 days of food_logs data → ramped: 3,200–3,400 kcal/day
 // ═══════════════════════════════════════════════
-async function updateTDEE() {
+async function updateCalorieTarget() {
   try {
-    const { data: profile } = await sb.from('nutrition_profile').select('*').maybeSingle();
-    if (!profile || !profile.age || !profile.height_in || !profile.weight_lbs) {
-      $('tdeeValue').textContent = 'Set profile ⚙️';
-      $('tdeeRange').textContent = 'Tap ⚙️ to enter your weight, height & age';
-      return;
+    // Detect ramp: days since first food_logs entry
+    const { data: firstLog } = await sb.from('food_logs').select('date').order('date',{ascending:true}).limit(1);
+    let daysSinceFirstLog = 0;
+    if (firstLog?.date) {
+      const firstDate = new Date(firstLog.date + 'T00:00:00');
+      const todayDate = new Date(todayKey() + 'T00:00:00');
+      daysSinceFirstLog = Math.floor((todayDate - firstDate) / 86400000);
     }
-    const weightKg = lbsToKg(parseFloat(profile.weight_lbs));
-    const heightCm = parseFloat(profile.height_in) * 2.54;
-    const bmr = 10 * weightKg + 6.25 * heightCm - 5 * parseFloat(profile.age) + 5;
-    let tdee = Math.round(bmr * 1.55);
+    const isRamped = daysSinceFirstLog >= 14;
 
-    // ── Adaptive correction from 4-week weight trend ──
-    const { data: weights } = await sb.from('weight_logs').select('weight,date').order('date',{ascending:false}).limit(28);
-    let adjustment = 0, reason = '';
-    if (weights && weights.length >= 6) {
-      const wVals = weights.map(w => parseFloat(w.weight)).reverse();
-      const weeks = Math.max(1, (wVals.length - 1) / 7);
-      const weeklyDelta = (wVals[wVals.length-1] - wVals[0]) / weeks;
-      const phase = profile.phase || 'maintenance';
-
-      if (phase === 'bulk') {
-        if (weeklyDelta < 0.2)      { adjustment = +250; reason = `Weight flat/losing during bulk — TDEE bumped +${adjustment} kcal to force surplus`; }
-        else if (weeklyDelta > 2.0) { adjustment = -200; reason = `Gaining too fast (>2 lbs/week) — TDEE reduced ${adjustment} kcal to steady gains`; }
-        else if (weeklyDelta >= 0.5) { reason = `Gaining ${weeklyDelta.toFixed(1)} lbs/week — on track for bulk`; }
-      } else if (phase === 'cut') {
-        if (weeklyDelta > -0.2)     { adjustment = -250; reason = `Weight flat/rising during cut — TDEE cut ${Math.abs(adjustment)} kcal to force deficit`; }
-        else if (weeklyDelta < -2.0) { adjustment = +200; reason = `Losing too fast (>2 lbs/week) — TDEE added +${adjustment} kcal to protect muscle`; }
-        else                        { reason = `Losing ${Math.abs(weeklyDelta).toFixed(1)} lbs/week — cut progressing well`; }
-      } else {
-        if (Math.abs(weeklyDelta) > 1.0) {
-          adjustment = weeklyDelta > 0 ? -200 : +200;
-          reason = `Weight drifting — TDEE ${adjustment>0?'+'+adjustment:adjustment} kcal toward maintenance`;
-        } else { reason = `Weight stable (±1 lb/week) — TDEE estimate holding`; }
-      }
-      tdee += adjustment;
+    let min, max, label;
+    if (isRamped) {
+      min = 3200; max = 3400;
+      label = 'Ramped (14+ days of food logs)';
+    } else {
+      min = 2900; max = 3000;
+      label = 'Starting (' + (14 - daysSinceFirstLog) + ' days until ramp)';
     }
 
-    $('tdeeValue').textContent = tdee + ' kcal';
-    if (adjustment !== 0) $('tdeeValue').style.color = 'var(--warning)';
-    else $('tdeeValue').style.color = 'var(--success)';
-
-    let min = tdee, max = tdee;
-    if (profile.phase === 'bulk') { min = tdee + 300; max = tdee + 500; }
-    if (profile.phase === 'cut')  { min = tdee - 500; max = tdee - 300; }
-
-    // Match day carb loading: +40% carb target & +15% calorie increase
-    // Post-match recovery: +10% calorie target
+    // Match day adjustments
     const in48 = appStateData['match_in_48_hours'];
     const in24 = appStateData['match_in_24_hours_recovery'];
     if (in48 === true || in48 === 'true') {
-      tdee = Math.round(tdee * 1.15);
       min = Math.round(min * 1.15);
       max = Math.round(max * 1.15);
     }
     if (in24 === true || in24 === 'true') {
-      tdee = Math.round(tdee * 1.10);
       min = Math.round(min * 1.10);
       max = Math.round(max * 1.10);
     }
 
+    $('tdeeValue').textContent = Math.round((min + max) / 2) + ' kcal';
+    $('tdeeValue').style.color = isRamped ? 'var(--success)' : 'var(--warning)';
     $('tdeeRange').textContent = `Target: ${min} – ${max} kcal`;
 
+    // Fetch profile for downstream use (renderMatchBanners carb-loading calc)
+    const { data: profile } = await sb.from('nutrition_profile').select('*').maybeSingle();
+    if (profile) profileState = profile;
+
     const adjEl = $('tdeeAdjustment');
-    if (adjEl && reason) {
-      adjEl.textContent = reason;
-      adjEl.style.color = adjustment !== 0 ? 'var(--warning)' : 'var(--text-secondary)';
+    if (adjEl) {
+      adjEl.textContent = isRamped
+        ? `Ramped calorie target — ${daysSinceFirstLog} days of food logging.`
+        : `Starting calorie target — ramp to 3,200–3,400 after 14 days of food logs (${14 - daysSinceFirstLog} days remaining).`;
+      adjEl.style.color = isRamped ? 'var(--success)' : 'var(--text-secondary)';
     }
-
-    // Store TDEE estimate in Supabase for historical tracking
-    sb.from('tdee_estimates').upsert({
-      date: todayKey(),
-      bmr: Math.round(bmr),
-      tdee: tdee,
-      weight_lbs: parseFloat(profile.weight_lbs),
-      target_min: min,
-      target_max: max,
-      adjustment_reason: reason || null
-    }, { onConflict: 'date' }).then(({ error }) => {
-      if (error) console.warn('TDEE save error:', error);
-    });
-
-    profileState = profile;
-  } catch(e) { console.error(e); }
+  } catch(e) { console.error('Calorie target error:', e); }
 }
 
 // ═══════════════════════════════════════════════
@@ -974,7 +876,7 @@ async function loadRecoveryChart(){
 
 // ═══════════════════════════════════════════════
 //  4-WEEK WEIGHT TREND SPARKLINE
-//  (TDEE adaptation text handled by updateTDEE)
+//  (Calorie ramp logic handled by updateCalorieTarget)
 // ═══════════════════════════════════════════════
 async function loadWeightTrend(){
   try {
@@ -1063,59 +965,64 @@ async function loadCalorieProteinHistory(){
 
 // ═══════════════════════════════════════════════
 //  NUTRITION-AWARE COMPOSITION DIAGNOSIS
+//  Uses canonical gain-rate flag from app_state.latest_weight (set by index.html)
+//  Flat bulk target — no phase-dependent branching
 // ═══════════════════════════════════════════════
 async function updateDiagnosis(){
   try {
     const { data: checkins } = await sb.from('daily_checkins').select('*').order('date',{ascending:false}).limit(7);
-    const { data: weights } = await sb.from('weight_logs').select('weight').order('date',{ascending:false}).limit(14);
-    const { data: profile } = await sb.from('nutrition_profile').select('*').maybeSingle();
 
     if(!checkins || checkins.length < 3){
       $('diagnosisContent').innerHTML = '<span style="color:var(--text-tertiary);font-size:13px">Check in for 3+ days to see diagnosis</span>';
       return;
     }
 
-    const proteinTarget = profile?.weight_lbs ? Math.round(profile.weight_lbs * 0.82) : 150;
+    // Protein: flat 145-155g target (same as updateProteinTarget)
+    const proteinTarget = 150;
     const proteinHits = checkins.filter(c => c.protein_grams >= proteinTarget).length;
     const lowProtein = proteinHits < checkins.length * 0.5;
 
-    let weightDelta = null;
-    if(weights && weights.length >= 4){
-      const recent = weights.slice(0, Math.min(weights.length, 4));
-      const wVals = recent.map(w=>parseFloat(w.weight));
-      weightDelta = wVals[0] - wVals[wVals.length-1];
-    }
+    // Weight trend: read canonical weekly gain rate from app_state
+    const weightData = appStateData['latest_weight'];
+    const weeklyGainRate = (weightData && typeof weightData === 'object') ? weightData.gain_rate : null;
+    const gainFlag = (weightData && typeof weightData === 'object') ? weightData.gain_flag : null;
+    const gainMsg = (weightData && typeof weightData === 'object') ? weightData.gain_message : null;
 
     const avgRecovery = Math.round(checkins.reduce((s,c)=>s+calculateRecoveryScore(c),0)/checkins.length);
     let conclusion = '', recommendation = '';
-    const phase = profile?.phase || 'maintenance';
 
-    if(phase==='bulk' && weightDelta!==null && weightDelta<-1){
-      conclusion = "You're losing weight during a bulk phase.";
-      recommendation = lowProtein?'Protein intake is below target — increase to protect muscle.':'Increase calorie surplus by 200-300 kcal/day.';
-    } else if(phase==='cut' && weightDelta!==null && weightDelta>1){
-      conclusion = 'Weight is increasing during a cut phase.';
-      recommendation = 'Reduce intake by 200-300 kcal/day or increase activity.';
+    if(gainFlag==='too_slow' && lowProtein){
+      conclusion = 'Gaining too slowly and protein is below target.';
+      recommendation = 'Increase calories +300–400 kcal/day and hit the 145–155g protein target.';
+    } else if(gainFlag==='too_slow'){
+      conclusion = 'Weekly gain rate is below target.';
+      recommendation = gainMsg || 'Increase calorie surplus by 300–400 kcal/day.';
+    } else if(gainFlag==='too_fast' && lowProtein){
+      conclusion = 'Gaining weight fast but protein intake is low — may be adding fat, not muscle.';
+      recommendation = 'Pull back calories slightly and prioritize 145–155g protein/day.';
+    } else if(gainFlag==='too_fast'){
+      conclusion = 'Gaining faster than target range.';
+      recommendation = gainMsg || 'Reduce daily calories by ~200–300.';
     } else if(avgRecovery<55 && lowProtein){
       conclusion = 'Recovery is compromised — fatigue may be masking progress.';
-      recommendation = 'Prioritise sleep (8+ hours) and increase protein intake.';
-    } else if(lowProtein && phase==='bulk'){
-      conclusion = 'Protein consistently below target — muscle growth compromised.';
-      recommendation = 'Hit your daily target. Aim for 0.91g/lb on training days.';
-    } else if(weightDelta!==null && Math.abs(weightDelta)<1 && checkins.length>=5){
-      conclusion = phase==='maintenance'?'Weight is stable — maintenance on track.':'Weight stable on a '+phase+' — adjust intake.';
-      recommendation = phase==='maintenance'?'Consistency is your edge — keep going.':'Adjust calories by 200-300 kcal to see movement.';
-    } else if(avgRecovery>=70 && !lowProtein){
+      recommendation = 'Prioritise sleep (8+ hours) and increase protein intake to 145–155g/day.';
+    } else if(lowProtein){
+      conclusion = 'Protein consistently below 150g target — muscle growth may be limited.';
+      recommendation = 'Hit the daily 145–155g target. Consistency over perfection.';
+    } else if(gainFlag==='on_track' && avgRecovery>=70){
       conclusion = 'Everything looks balanced — strong momentum.';
-      recommendation = 'Your protein, recovery, and weight trend are aligned.';
+      recommendation = 'Your protein, recovery, and weight trend are aligned. Stay the course.';
+    } else if(gainFlag==='on_track'){
+      conclusion = 'Weight gain is on track.';
+      recommendation = 'Keep hitting 145–155g protein and 2,900–3,400 kcal/day.';
     } else {
       conclusion = 'Building your dataset — more check-ins will sharpen insights.';
-      recommendation = 'Keep submitting daily check-ins and logging weight.';
+      recommendation = 'Keep submitting daily check-ins and logging weight consistently.';
     }
 
     const recoveryClass = avgRecovery>=70?'pill-good':avgRecovery>=55?'pill-warn':'pill-bad';
-    const dirLabel = weightDelta!==null?(weightDelta>0?'↑':weightDelta<0?'↓':'→'):'';
-    const dirClass = weightDelta!==null?(Math.abs(weightDelta)>1?'pill-warn':'pill-dim'):'pill-dim';
+    const gainClass = gainFlag==='on_track'?'pill-good':gainFlag?'pill-warn':'pill-dim';
+    const gainLabel = weeklyGainRate!==null ? (weeklyGainRate>=0?'+':'')+weeklyGainRate.toFixed(1)+' lbs/wk' : 'no data';
 
     $('diagnosisContent').innerHTML = `
       <div style="font-weight:600;color:var(--text-primary);margin-bottom:6px">${conclusion}</div>
@@ -1123,7 +1030,7 @@ async function updateDiagnosis(){
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <span class="pill ${recoveryClass}" style="font-size:10px">Recovery ${avgRecovery}/100</span>
         <span class="pill pill-dim" style="font-size:10px">Protein ${proteinHits}/${checkins.length} days</span>
-        ${weightDelta!==null?'<span class="pill '+dirClass+'" style="font-size:10px">Weight '+dirLabel+' '+Math.abs(weightDelta).toFixed(1)+' lbs</span>':''}
+        <span class="pill ${gainClass}" style="font-size:10px">Gain ${gainLabel}</span>
       </div>`;
   } catch(e){ console.error('Diagnosis error:', e); }
 }
@@ -1135,7 +1042,7 @@ let appStateData = {};
 async function loadAppState() {
   try {
     const keys = ['match_in_48_hours','match_in_24_hours_recovery','next_match_date',
-      'gym_lower_body_blocked','body','acwr','today_session_count',
+      'gym_lower_body_blocked','latest_weight','acwr','today_session_count',
       'current_offseason_phase','equipment_available',
       'schedule_targets'];
     const { data } = await sb.from('app_state').select('key,data').in('key', keys);
@@ -1161,11 +1068,9 @@ function renderAdaptiveTargets(proteinTarget, weightLbs) {
   const in48 = appStateData['match_in_48_hours'];
   const in24 = appStateData['match_in_24_hours_recovery'];
   const recoveryScore = parseInt(appStateData['recovery_score_today']?.score) || 70;
-  const baseTDEE = Math.round(weightLbs * 16);
-  const calorieTarget = baseTDEE + 300;
 
   let html = '<span style="color:var(--success);font-weight:700">Protein today: ' + proteinTarget + 'g</span>';
-  html += ' &middot; <span style="color:var(--text-secondary)">Calories today: ~' + calorieTarget + ' kcal</span>';
+  html += ' &middot; <span style="color:var(--text-secondary)">Target: 2,900–3,400 kcal</span>';
 
   if (in48 === true || in48 === 'true') {
     html += '<div class="match-banner carb" style="margin-top:8px;padding:8px 12px;font-size:12px">';
@@ -1237,37 +1142,32 @@ function renderMatchBanners() {
 }
 
 // ═══════════════════════════════════════════════
-//  WEEKLY GAIN RATE INTEGRATION
+//  WEEKLY GAIN RATE — reads canonical flag from index.html
+//  (app_state.latest_weight with gain_rate, gain_flag, gain_message)
 // ═══════════════════════════════════════════════
 function renderGainRate() {
   const el = $('gainRateDisplay');
   if (!el) return;
 
-  // Read from app_state body data (set by body.html)
-  const bodyData = appStateData['body'];
-  const gainRate = (bodyData && typeof bodyData === 'object') ? bodyData.weekly_gain_rate : null;
+  // Read canonical data from app_state.latest_weight (set by index.html's computeDailyState)
+  const weightData = appStateData['latest_weight'];
+  const rate = (weightData && typeof weightData === 'object') ? weightData.gain_rate : null;
+  const flag = (weightData && typeof weightData === 'object') ? weightData.gain_flag : null;
+  const message = (weightData && typeof weightData === 'object') ? weightData.gain_message : null;
 
-  if (gainRate === null || gainRate === undefined) {
+  if (rate === null || rate === undefined || flag === null) {
     el.innerHTML = '';
     return;
   }
 
-  const rate = parseFloat(gainRate);
-  let cls, status, rec;
-  if (rate >= 0.5 && rate <= 1.0) {
-    cls = 'good'; status = 'Optimal lean mass gain rate'; rec = '';
-  } else if (rate >= 0 && rate < 0.5) {
-    cls = 'warn'; status = 'Too slow — increase calories'; rec = 'Suggest increasing daily calories by 150–200.';
-  } else if (rate > 1.0 && rate <= 1.5) {
-    cls = 'warn'; status = 'Borderline — monitor closely'; rec = '';
-  } else if (rate > 1.5) {
-    cls = 'bad'; status = 'Likely gaining fat — reduce surplus'; rec = 'Suggest reducing daily calories by 150–200.';
-  } else {
-    cls = 'warn'; status = 'Losing weight — increase calories'; rec = 'Suggest increasing daily calories by 150–200.';
-  }
+  const cls = flag === 'on_track' ? 'good' : 'warn';
+  const status = flag === 'on_track' ? 'On track — lean mass gain rate' :
+                 flag === 'too_slow' ? 'Too slow — increase calories' :
+                 'Gaining too fast — pull back slightly';
+  const rec = message || '';
 
   el.innerHTML = `<div class="gain-rate ${cls}">
-    <strong>Current gain rate: ${rate.toFixed(1)} lbs/week</strong> — Target: 0.5–1.0 lbs for lean mass. ${status}. ${rec}
+    <strong>Current gain rate: ${rate.toFixed(1)} lbs/week</strong> — Target: 0.5–1.5 lbs for lean mass. ${status}. ${rec}
   </div>`;
 }
 
@@ -1385,10 +1285,6 @@ async function generateWeeklySummary() {
 function initSettingsModal() {
   $('settingsBtn').addEventListener('click', () => $('settingsModal').classList.add('show'));
   $('closeSettings').addEventListener('click', () => $('settingsModal').classList.remove('show'));
-  const phaseBtns = document.querySelectorAll('#phaseGroup button');
-  phaseBtns.forEach(btn => {
-    btn.addEventListener('click', () => { phaseBtns.forEach(b=>b.classList.remove('active')); btn.classList.add('active'); });
-  });
   $('saveSettings').addEventListener('click', async () => {
     const btn = $('saveSettings');
     const origText = btn.textContent;
@@ -1408,7 +1304,6 @@ function initSettingsModal() {
         age:                parseInt($('profileAge').value) || null,
         height_in:          parseFloat($('profileHeightIn').value) || null,
         training_frequency: parseInt($('profileFrequency').value) || 4,
-        phase:              document.querySelector('#phaseGroup .active')?.dataset.value || 'maintenance',
         goal_weight_lbs:    parseFloat($('profileGoalWeight').value) || null
       };
 
@@ -1424,7 +1319,7 @@ function initSettingsModal() {
 
       setTimeout(() => {
         $('settingsModal').classList.remove('show');
-        Promise.all([updateProteinTarget(), updateTDEE()]).finally(() => {
+        Promise.all([updateProteinTarget(), updateCalorieTarget()]).finally(() => {
           btn.textContent = origText;
           btn.style.background = '';
           btn.style.color = '';
@@ -1457,8 +1352,6 @@ async function prefillSettingsModal() {
     if (data.height_in)     $('profileHeightIn').value  = data.height_in;
     if (data.training_frequency) $('profileFrequency').value = data.training_frequency;
     if (data.goal_weight_lbs)   $('profileGoalWeight').value = data.goal_weight_lbs;
-    const phaseBtn = document.querySelector(`#phaseGroup button[data-value="${data.phase}"]`);
-    if (phaseBtn) phaseBtn.classList.add('active');
     profileState = data;
   } catch(e) {}
 }
@@ -1901,7 +1794,7 @@ function qfToast(msg){
   await renderSleepCoaching();
   // Now update protein/TDEE with match-day adjustments from appStateData
   updateProteinTarget();
-  updateTDEE();
+  updateCalorieTarget();
 })();
 </script>
 </body>

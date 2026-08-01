@@ -1336,6 +1336,7 @@
 
     <div class="quick-log-row" id="quickLogRow">
       <button class="quick-log-btn" id="quickWeightBtn">⚖️ Log Weight</button>
+      <div style="font-size:10px;color:var(--text-tertiary);text-align:center;margin-top:4px">Weekly trend matters more than daily — <br>same day/time, morning, after bathroom, before eating</div>
       <button class="quick-log-btn" id="quickWaterBtn">💧 Add Water</button>
       <button class="quick-log-btn" id="quickCheckinBtn">🌅 Check-in</button>
       <button class="quick-log-btn" id="quickSessionBtn">⚽ Log Session</button>
@@ -1717,12 +1718,12 @@
           key:'acwr', data:{ value:acwr, status:acwrStatus, acute:Math.round(acuteLoad), chronic:Math.round(chronicLoad) }, updated_at: new Date().toISOString()
         }, { onConflict:'key' }).then(() => {}).catch(()=>{});
 
-        // ── 4. Weight + Gain Rate ──
+        // ── 4. Weight + Gain Rate (explicit week-over-week averaging) ──
         const { data: weights } = await sb.from('weight_logs').select('*').order('date',{ascending:false}).limit(14);
         let latestWeight = null, weeklyGainRate = null;
         if (weights && weights.length > 0) {
           latestWeight = parseFloat(weights[0].weight);
-          const twoWeeksAgoStr = toLocalDateStr(new Date(today+'T00:00:00'));
+          // Compare this week's average (last 7 days) vs prior week's average (days 8-14)
           const twoWeeksBack = new Date(today+'T00:00:00'); twoWeeksBack.setDate(twoWeeksBack.getDate()-13);
           const t2Str = toLocalDateStr(twoWeeksBack);
           const thisWeek = weights.filter(w => w.date >= weekStart);
@@ -1732,8 +1733,20 @@
           if (aw && lw) weeklyGainRate = Math.round((aw - lw)*10)/10;
         }
 
+        // Threshold classification (canonical — nutrition.html reads this flag directly)
+        let gainFlag = null, gainMessage = null;
+        if (weeklyGainRate !== null) {
+          if (weeklyGainRate < 0.5) {
+            gainFlag = 'too_slow'; gainMessage = 'Suggest adding ~300–400 kcal/day to hit target gain rate.';
+          } else if (weeklyGainRate <= 1.5) {
+            gainFlag = 'on_track'; gainMessage = 'On track — lean mass gain rate.';
+          } else {
+            gainFlag = 'too_fast'; gainMessage = 'Suggest reducing daily calories by ~200–300.';
+          }
+        }
+
         await sb.from('app_state').upsert({
-          key:'latest_weight', data:{ weight:latestWeight, gain_rate:weeklyGainRate }, updated_at: new Date().toISOString()
+          key:'latest_weight', data:{ weight:latestWeight, gain_rate:weeklyGainRate, gain_flag:gainFlag, gain_message:gainMessage }, updated_at: new Date().toISOString()
         }, { onConflict:'key' }).then(() => {}).catch(()=>{});
 
         // ── 4b. Auto-Adjust Schedule (rules engine: ACWR, recovery, fade, mile, mass, phase) ──
