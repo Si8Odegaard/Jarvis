@@ -1,5 +1,5 @@
 // =============================================================
-// Dashboard bottom tab bar — Home / Stack / Gym / Water
+// Dashboard bottom tab bar — Home / Health / Nutrition
 // Include after topbar.js on index.html:
 //   <script src="tabs.js" defer></script>
 // =============================================================

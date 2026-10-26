@@ -1,6 +1,13 @@
 // ════════════════════════════════════════════════════════════
 //  SERVICE WORKER — dashboard PWA + push notifications
 //
+//  v15 — drops the Workout tab (2026-10-26):
+//   - ./workout.html removed from ASSETS. The file is deleted, and a
+//     missing asset makes cache.addAll() reject, which fails install and
+//     leaves the previous SW serving forever.
+//   - cache version bumped so clients pick up the new ASSETS list; the
+//     activate handler prunes the stale cache.
+//
 //  v12 — ships the missing icon PNGs (2026-07-08):
 //   - adds ./icon-192.png (192x192, RGBA) and ./icon-512.png (512x512, RGBA)
 //     to fix cache.addAll() install failure. The PNGs were referenced in
@@ -25,7 +32,7 @@
 //  instead of silently failing.
 // ════════════════════════════════════════════════════════════
 
-const CACHE = 'dashboard-pwa-v13';
+const CACHE = 'dashboard-pwa-v15';
 const ASSETS = [
   './', './index.html', './manifest.json', './icon.svg',
   './icon-192.png', './icon-512.png',
