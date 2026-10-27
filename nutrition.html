@@ -92,7 +92,7 @@ svg.ch{width:100%;height:auto;display:block}
 .tr span{text-align:right;color:var(--t1);font-family:var(--mono);font-size:11.5px}
 .tr span:first-child{text-align:left;font-family:var(--font);color:var(--t2);font-size:12px}
 .tr.h span{color:var(--t3);font-size:9.5px;font-family:var(--mono)}
-.wk{grid-template-columns:1.1fr 1.1fr .9fr 1fr 1fr 1.3fr}
+.wk{grid-template-columns:1fr 1fr .85fr .85fr .9fr .9fr 1.15fr}
 .st{grid-template-columns:1.2fr 1fr .9fr .9fr 1fr 1.2fr}
 .g{color:var(--good)!important}.w{color:var(--warn)!important}.b{color:var(--bad)!important}.dim{color:var(--t4)!important}
 details{background:var(--card2);border:1px solid var(--b);border-radius:12px}
@@ -116,41 +116,26 @@ details[open] summary::after{transform:rotate(180deg)}
 
   <div class="nav">
     <button class="nbtn" id="prevD" aria-label="Previous day">‹</button>
-    <div class="nmid" id="todayD"><b id="navDate">—</b><span id="navType">—</span></div>
+    <div class="nmid" id="todayD"><b id="navDate">—</b><span class="eyebrow">tap for today</span></div>
     <button class="nbtn" id="nextD" aria-label="Next day">›</button>
   </div>
 
-  <!-- Day totals -->
+  <!-- One set of totals + weigh-in per day -->
   <section class="card">
-    <div class="card-h"><h2>Day totals</h2><span class="eyebrow" id="feedsLbl">—</span></div>
-    <div id="prog"></div>
-    <div id="dayNote"></div>
-  </section>
-
-  <!-- Weight -->
-  <section class="card">
-    <div class="card-h"><h2>Morning weight</h2><span class="eyebrow">lb · same conditions daily</span></div>
-    <div class="row r2" style="margin-bottom:0">
-      <div><label class="f">Weight (lb)</label><input type="number" id="wtIn" step="0.1" min="60" max="400" inputmode="decimal"></div>
+    <div class="card-h"><h2>Today's totals</h2><span class="eyebrow" id="dayState">—</span></div>
+    <div class="row r3">
+      <div><label class="f">Calories</label><input type="number" id="enKc" min="0" inputmode="numeric" placeholder="3200"></div>
+      <div><label class="f">Carbs (g)</label><input type="number" id="enC" min="0" inputmode="numeric" placeholder="420"></div>
+      <div><label class="f">Protein (g)</label><input type="number" id="enP" min="0" inputmode="numeric" placeholder="130"></div>
+    </div>
+    <div class="row r2">
+      <div><label class="f">Morning weight (lb)</label><input type="number" id="wtIn" step="0.1" min="60" max="400" inputmode="decimal"></div>
       <div><label class="f">vs start</label><div id="wtDelta" style="padding:10px 0;color:var(--t1);font:600 15px var(--mono)">—</div></div>
     </div>
-  </section>
-
-  <!-- Add entry -->
-  <section class="card">
-    <div class="card-h"><h2>Log food</h2><span class="eyebrow">adds to the day</span></div>
-    <div class="row r2">
-      <div><label class="f">Meal</label>
-        <select id="enLbl"><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option><option>Shake</option><option>Pre-game</option><option>Day total</option></select></div>
-      <div><label class="f">Calories</label><input type="number" id="enKc" min="0" inputmode="numeric" placeholder="800"></div>
-    </div>
-    <div class="row r2">
-      <div><label class="f">Carbs (g)</label><input type="number" id="enC" min="0" inputmode="numeric" placeholder="100"></div>
-      <div><label class="f">Protein (g)</label><input type="number" id="enP" min="0" inputmode="numeric" placeholder="35"></div>
-    </div>
-    <button class="btn" id="enAdd">+ Add</button>
-    <div id="entList" style="margin-top:6px"></div>
-    <div class="sub" style="margin-top:6px">Prefer one number? Pick “Day total” and enter the full day once.</div>
+    <button class="btn" id="daySave">Save</button>
+    <div class="sub" style="margin-top:8px">One set of numbers per day — saving replaces this day rather than adding to it. Leave the three blank to clear the totals.</div>
+    <div id="prog" style="margin-top:14px"></div>
+    <div id="dayNote"></div>
   </section>
 
   <!-- On-track -->
@@ -192,8 +177,8 @@ details[open] summary::after{transform:rotate(180deg)}
     <div class="det-body">
       <div class="row r2"><div><label class="f">Calories min</label><input type="number" id="tKmin" inputmode="numeric"></div><div><label class="f">Calories max</label><input type="number" id="tKmax" inputmode="numeric"></div></div>
       <div class="row r2"><div><label class="f">Protein min (g)</label><input type="number" id="tPmin" inputmode="numeric"></div><div><label class="f">Protein max (g)</label><input type="number" id="tPmax" inputmode="numeric"></div></div>
-      <div class="row r3"><div><label class="f">Carbs high day</label><input type="number" id="tCh" inputmode="numeric"></div><div><label class="f">Carbs lower day</label><input type="number" id="tCl" inputmode="numeric"></div><div><label class="f">Start wt (lb)</label><input type="number" id="tW0" step="0.1" inputmode="decimal"></div></div>
-      <div class="sub">Calories and protein come from your plan (3,000–3,300 kcal to start, 120–140 g over 4 feeds, +0.25–0.5 lb/wk). The carb targets are starting estimates, so tune them. High-carb days: Mon, Thu, Fri, Sat and game day (Tue).</div>
+      <div class="row r2"><div><label class="f">Daily average carb goal (g)</label><input type="number" id="tCavg" inputmode="numeric" placeholder="optional"></div><div><label class="f">Start wt (lb)</label><input type="number" id="tW0" step="0.1" inputmode="decimal"></div></div>
+      <div class="sub">Calories and protein come from your plan (3,000–3,300 kcal, 120–140 g protein, +0.25–0.5 lb/wk). Carbs are tracked, not graded — leave the carb goal blank until you want a weekly average comparison.</div>
     </div>
   </details>
 
@@ -211,9 +196,8 @@ if (/[?&]embed=1/.test(location.search)) document.body.classList.add('embed');
 const BLOCK_START = '2026-10-26';
 const BLOCK_WEEKS = 4;
 const SESSIONS_PLANNED = 6;            // Mon–Sat in the Week 1 layout
-const DEFAULT_TARGETS = { kmin:3000, kmax:3300, pmin:120, pmax:140, ch:420, cl:340, w0:143, feeds:4 };
-// weekday → [carb day type, session]
-const DAYINFO = { 1:['hi','Upper A'], 2:['hi','Game day'], 3:['lo','Technical'], 4:['hi','Lower A'], 5:['hi','Bike 15:15'], 6:['hi','Strength B'], 0:['lo','Off'] };
+// cavg is an optional weekly-average carb goal; null means "not set".
+const DEFAULT_TARGETS = { kmin:3000, kmax:3300, pmin:120, pmax:140, cavg:null, w0:143 };
 const LIFT_DAYS = [4,6];               // post-lift carb+protein meal within ~2 h
 
 /* =========================================================
@@ -244,9 +228,16 @@ const weekStart = (w) => addDays(START,(w-1)*7);
 const LS = 'ot_nutrition_v1', LS_HOME = 'ot_home_v1';
 let S, HOME = {}, homeRemote = false;
 const blank = () => ({ v:1, updated:0, days:{}, t:Object.assign({}, DEFAULT_TARGETS) });
-function load(){ try { const r = JSON.parse(localStorage.getItem(LS)); if (r && r.days) { const b = blank(); r.t = Object.assign(b.t, r.t||{}); return Object.assign(b, r); } } catch(e){} return blank(); }
+// Older saved state carries per-day carb goals (ch/cl) and a feeds count that no
+// longer exist. Known keys are kept, anything else is dropped, cavg is optional.
+function migrate(t){
+  const b = Object.assign({}, DEFAULT_TARGETS), src = (t && typeof t === 'object') ? t : {};
+  Object.keys(b).forEach((k)=>{ if (k!=='cavg' && src[k]!=null && src[k]!=='') b[k] = src[k]; });
+  b.cavg = (src.cavg!=null && src.cavg!=='') ? +src.cavg : null;
+  return b;
+}
+function load(){ try { const r = JSON.parse(localStorage.getItem(LS)); if (r && r.days) { const b = blank(); r.t = migrate(r.t); return Object.assign(b, r); } } catch(e){} return blank(); }
 function readHome(){ try { const r = JSON.parse(localStorage.getItem(LS_HOME)); return r && r.days ? r : null; } catch(e){ return null; } }
-const day = (k) => S.days[k] || (S.days[k] = { entries:[], w:null });
 let sel = todayKey();
 
 let pushT = null;
@@ -263,7 +254,7 @@ async function pull(){
   try {
     const remote = await getRow('offseason_nutrition');
     if (remote && remote.updated > S.updated) {
-      const b = blank(); remote.t = Object.assign(b.t, remote.t||{});
+      const b = blank(); remote.t = migrate(remote.t);
       S = Object.assign(b, remote);
       try { localStorage.setItem(LS, JSON.stringify(S)); } catch(e){}
     } else if (!remote || remote.updated < S.updated) { await push(); }
@@ -302,21 +293,20 @@ function tot(k){
   if (r) r.entries.forEach(e=>{ o.kc+=e.kc; o.c+=e.c; o.p+=e.p; if (e.p>0) o.f++; o.n++; });
   return o;
 }
-const carbTarget = (k) => DAYINFO[parse(k).getDay()][0]==='hi' ? S.t.ch : S.t.cl;
 function train(k){
   const r = HOME[k], o = { n:0, load:0, sprint:0, vol:0 };
   if (r && r.sessions) r.sessions.forEach(s=>{ o.n++; o.load+=(s.rpe||0)*(s.min||0); o.sprint+=(s.sr||0)*(s.sd||0); o.vol+=(s.vl||0); });
   return o;
 }
 function weekStats(w){
-  const ws = weekStart(w), o = { days:0, kc:0, p:0, c:0, pHit:0, cHit:0, wts:[], n:0, load:0, sprint:0, vol:0 };
+  const ws = weekStart(w), o = { days:0, kc:0, p:0, c:0, pHit:0, wts:[], n:0, load:0, sprint:0, vol:0 };
   for (let i=0;i<7;i++){
     const k = key(addDays(ws,i)), t = tot(k), tr = train(k), rec = S.days[k];
-    if (t.kc>0){ o.days++; o.kc+=t.kc; o.p+=t.p; o.c+=t.c; if (t.p>=S.t.pmin) o.pHit++; if (t.c>=0.9*carbTarget(k)) o.cHit++; }
+    if (t.kc>0){ o.days++; o.kc+=t.kc; o.p+=t.p; o.c+=t.c; if (t.p>=S.t.pmin) o.pHit++; }
     if (rec && rec.w!=null) o.wts.push(rec.w);
     o.n+=tr.n; o.load+=tr.load; o.sprint+=tr.sprint; o.vol+=tr.vol;
   }
-  o.avgK = o.days ? o.kc/o.days : null; o.avgP = o.days ? o.p/o.days : null;
+  o.avgK = o.days ? o.kc/o.days : null; o.avgP = o.days ? o.p/o.days : null; o.avgC = o.days ? o.c/o.days : null;
   o.avgW = o.wts.length ? o.wts.reduce((a,b)=>a+b,0)/o.wts.length : null;
   return o;
 }
@@ -339,46 +329,52 @@ function assess(endK){
    RENDER
    ========================================================= */
 function renderHeader(){
-  const d = parse(sel), w = weekOf(d), inB = w>=1 && w<=BLOCK_WEEKS, di = DAYINFO[d.getDay()];
+  const d = parse(sel), w = weekOf(d), inB = w>=1 && w<=BLOCK_WEEKS;
   $('hdrEyebrow').textContent = (inB ? 'Phase 1 · Week '+w+' of '+BLOCK_WEEKS : 'Outside Phase 1') + ' · ' + DOW[d.getDay()]+', '+MON[d.getMonth()]+' '+d.getDate();
   $('navDate').textContent = (sel===todayKey() ? 'Today · ' : '') + DOW[d.getDay()]+' '+MON[d.getMonth()]+' '+d.getDate();
-  $('navType').innerHTML = '<span class="tag '+di[0]+'">'+(di[0]==='hi'?'high-carb':'lower-carb')+'</span> · '+di[1];
 }
 function bar(pct, cls, marks){
   return '<div class="bar '+(cls||'')+'"><i style="width:'+Math.min(100,pct)+'%"></i>'+(marks||'')+'</div>';
 }
+// Feedback on the day's totals: calories and protein get a verdict, carbs are
+// just reported (no per-day carb target any more).
 function renderProg(){
-  const t = tot(sel), T = S.t, ct = carbTarget(sel), d = parse(sel);
+  const t = tot(sel), T = S.t, d = parse(sel);
   const kMax = T.kmax;
   const kCls = t.kc>=T.kmin && t.kc<=T.kmax ? 'good' : (t.kc>T.kmax ? 'over' : '');
   const pCls = t.p>=T.pmin && t.p<=T.pmax*1.15 ? 'good' : '';
-  const cCls = t.c>=0.9*ct ? 'good' : '';
-  const fat = Math.max(0,(t.kc - 4*t.c - 4*t.p)/9);
-  $('feedsLbl').textContent = 'Protein feeds '+t.f+'/'+T.feeds;
+  const logged = t.kc>0 || t.c>0 || t.p>0;
+  $('dayState').textContent = logged ? 'saved' : 'not logged';
   $('prog').innerHTML =
     '<div class="pr"><div class="pr-top"><span class="pr-name">Calories</span><span class="pr-val">'+fmt(t.kc)+' / '+fmt(T.kmin)+'–'+fmt(T.kmax)+'</span></div>'
     + bar(t.kc/kMax*100, kCls, '<u style="left:'+(T.kmin/kMax*100)+'%"></u>')
-    + '<div class="sub">'+(t.kc<T.kmin ? fmt(T.kmin-t.kc)+' kcal to reach the floor' : t.kc<=T.kmax ? 'In range' : fmt(t.kc-T.kmax)+' over the top of the range')+'</div></div>'
+    + '<div class="sub">'+(t.kc<=0 ? 'Nothing logged yet' : t.kc<T.kmin ? fmt(T.kmin-t.kc)+' kcal to reach the floor' : t.kc<=T.kmax ? 'In range' : fmt(t.kc-T.kmax)+' over the top of the range')+'</div></div>'
     + '<div class="pr"><div class="pr-top"><span class="pr-name">Protein</span><span class="pr-val">'+fmt(t.p)+' g / '+T.pmin+'–'+T.pmax+'</span></div>'
     + bar(t.p/T.pmax*100, pCls, '<u style="left:'+(T.pmin/T.pmax*100)+'%"></u>')
-    + '<div class="sub">'+(t.p<T.pmin ? fmt(T.pmin-t.p)+' g to the floor · spread over '+T.feeds+' feeds' : 'Protein target met')+'</div></div>'
-    + '<div class="pr"><div class="pr-top"><span class="pr-name">Carbs</span><span class="pr-val">'+fmt(t.c)+' / '+ct+' g</span></div>'
-    + bar(t.c/ct*100, cCls)
-    + '<div class="sub">'+(DAYINFO[d.getDay()][0]==='hi' ? 'High-carb day' : 'Lower-carb day')+(t.kc>0 ? ' · implied fat ≈ '+fmt(fat)+' g' : '')+'</div></div>';
-  let note = '';
-  if (LIFT_DAYS.indexOf(d.getDay())>-1) note = 'Lift day: get a carb + protein meal in within about 2 hours after training.';
-  else if (d.getDay()===2) note = 'Game day: carbs up around the game, and log the evening meal after.';
+    + '<div class="sub">'+(t.p<=0 ? 'Nothing logged yet' : t.p<T.pmin ? fmt(T.pmin-t.p)+' g to go' : 'Protein target met')+'</div></div>'
+    + '<div class="pr"><div class="pr-top"><span class="pr-name">Carbs</span><span class="pr-val">'+fmt(t.c)+' g</span></div></div>';
+  const note = LIFT_DAYS.indexOf(d.getDay())>-1 ? 'Lift day: get a carb + protein meal in within about 2 hours after training.' : '';
   $('dayNote').innerHTML = note ? '<div class="note">'+esc(note)+'</div>' : '';
 }
-function renderWeight(){
-  const r = day(sel); $('wtIn').value = r.w ?? '';
-  $('wtDelta').textContent = r.w!=null ? ((r.w-S.t.w0>=0?'+':'')+(r.w-S.t.w0).toFixed(1)+' lb') : '—';
+// Pre-fill the form from whatever is stored for the selected day. A day saved by
+// the old multi-entry UI is shown as the sum of its entries.
+function renderForm(){
+  const t = tot(sel), r = S.days[sel];
+  $('enKc').value = t.kc>0 ? Math.round(t.kc) : '';
+  $('enC').value  = t.c>0 ? Math.round(t.c) : '';
+  $('enP').value  = t.p>0 ? Math.round(t.p) : '';
+  $('wtIn').value = (r && r.w!=null) ? r.w : '';
+  $('wtDelta').textContent = (r && r.w!=null) ? ((r.w-S.t.w0>=0?'+':'')+(r.w-S.t.w0).toFixed(1)+' lb') : '—';
 }
-function renderEntries(){
-  const es = day(sel).entries;
-  $('entList').innerHTML = es.length ? es.map((e,i)=>
-    '<div class="ent"><div><div style="color:var(--t1);font-weight:600">'+esc(e.lbl)+' · '+fmt(e.kc)+' kcal</div><div class="m">C '+fmt(e.c)+' g · P '+fmt(e.p)+' g</div></div><button class="x" data-i="'+i+'" aria-label="Delete">×</button></div>').join('')
-    : '<div class="empty">Nothing logged for this day.</div>';
+// Save replaces the day: exactly one 'Day total' entry, or no entry at all.
+function saveDay(){
+  const kc = num($('enKc').value), c = num($('enC').value), p = num($('enP').value), w = num($('wtIn').value);
+  const any = (kc!=null && kc>0) || (c!=null && c>0) || (p!=null && p>0);
+  const rec = S.days[sel] || (S.days[sel] = { entries:[], w:null });
+  rec.entries = any ? [{ lbl:'Day total', kc:kc||0, c:c||0, p:p||0, t:Date.now() }] : [];
+  rec.w = w;
+  if (!rec.entries.length && rec.w==null) delete S.days[sel];
+  save(); renderAll();
 }
 
 function signalsHtml(a, ws){
@@ -403,7 +399,7 @@ function adviceFor(a){
   if (a.avgK!=null && a.avgK < T.kmin-100) return ['w','You\'re averaging '+fmt(a.avgK)+' kcal, under the '+fmt(T.kmin)+' floor. Hit the plan before you change the plan; a slow trend is probably an intake problem.'];
   if (a.rate<0) return ['b','Weight is trending down ('+a.rate.toFixed(2)+' lb/wk) while training. Add roughly 250–300 kcal/day, mostly carbs around the Mon/Thu/Fri/Sat sessions.'];
   if (a.rate<0.25) return ['w','Gaining slower than +0.25 lb/wk. Suggested nudge: add about 150–250 kcal/day, mostly carbs around lifts.'];
-  if (a.rate>0.5) return ['w','Gaining faster than +0.5 lb/wk. Suggested nudge: trim about 150–200 kcal/day (extra fat and carbs on lower-carb days first).'];
+  if (a.rate>0.5) return ['w','Gaining faster than +0.5 lb/wk. Suggested nudge: trim about 150–200 kcal/day (from extra fat first).'];
   return ['g','In the +0.25 to +0.5 lb/wk window. Hold calories where they are.'];
 }
 function renderTrack(){
@@ -459,7 +455,7 @@ function renderCharts(){
 }
 
 function renderWeeks(){
-  let h = '<div class="tr h wk"><span>Week</span><span>kcal</span><span>P g</span><span>Wt avg</span><span>Δ lb</span><span>Load (n)</span></div>';
+  let h = '<div class="tr h wk"><span>Week</span><span>kcal</span><span>P g</span><span>C avg</span><span>Wt avg</span><span>Δ lb</span><span>Load (n)</span></div>';
   let prevAvg = null;
   const cur = Math.min(BLOCK_WEEKS, Math.max(1, weekOf(parse(todayKey()))));
   for (let w=1; w<=BLOCK_WEEKS; w++){
@@ -470,12 +466,16 @@ function renderWeeks(){
     h += '<div class="tr wk"><span>Wk '+w+(w===cur?' ●':'')+'</span>'
       + '<span class="'+(o.avgK==null?'dim':(o.avgK>=S.t.kmin&&o.avgK<=S.t.kmax*1.05?'g':'w'))+'">'+(o.avgK==null?'—':fmt(o.avgK))+'</span>'
       + '<span class="'+(o.avgP==null?'dim':(o.avgP>=S.t.pmin?'g':'w'))+'">'+(o.avgP==null?'—':fmt(o.avgP))+'</span>'
+      + '<span class="'+(o.avgC==null?'dim':'')+'">'+(o.avgC==null?'—':fmt(o.avgC))+'</span>'
       + '<span>'+(o.avgW==null?'—':o.avgW.toFixed(1))+'</span>'
       + '<span class="'+dc+'">'+(dl==null?'—':(dl>=0?'+':'')+dl.toFixed(1))+'</span>'
       + '<span>'+(o.n?fmt(o.load)+' ('+o.n+')':'—')+'</span></div>';
     if (o.avgW!=null) prevAvg = o.avgW;
   }
-  $('wkTbl').innerHTML = h + '<div class="sub" style="margin-top:8px">Week 1 Δ is measured from your start weight. Weight Δ target is +0.25 to +0.5 lb/wk. Load = RPE × min from the Home tab.</div>';
+  const curStats = weekStats(cur);
+  let foot = 'Week 1 Δ is measured from your start weight. Weight Δ target is +0.25 to +0.5 lb/wk. Load = RPE × min from the Home tab. C avg is carbs per logged day.';
+  if (S.t.cavg!=null && curStats.avgC!=null) foot += ' Carbs: avg '+fmt(curStats.avgC)+' g vs goal '+fmt(S.t.cavg)+' g (week '+cur+', weekly average).';
+  $('wkTbl').innerHTML = h + '<div class="sub" style="margin-top:8px">'+esc(foot)+'</div>';
 }
 function renderStream(){
   const end = parse(sel); let h = '<div class="tr h st"><span>Day</span><span>kcal</span><span>C g</span><span>P g</span><span>Wt</span><span>Load</span></div>';
@@ -485,7 +485,7 @@ function renderStream(){
     if (!any){ h += '<div class="tr st"><span class="dim">'+DOW[d.getDay()].slice(0,1)+DOW[d.getDay()].slice(1,3).toLowerCase()+' '+(d.getMonth()+1)+'/'+d.getDate()+'</span><span class="dim">·</span><span class="dim">·</span><span class="dim">·</span><span class="dim">·</span><span class="dim">·</span></div>'; continue; }
     h += '<div class="tr st"><span>'+DOW[d.getDay()].slice(0,1)+DOW[d.getDay()].slice(1,3).toLowerCase()+' '+(d.getMonth()+1)+'/'+d.getDate()+'</span>'
       + '<span class="'+(t.kc?(t.kc>=S.t.kmin&&t.kc<=S.t.kmax?'g':'w'):'dim')+'">'+(t.kc?fmt(t.kc):'—')+'</span>'
-      + '<span class="'+(t.kc?(t.c>=0.9*carbTarget(k)?'g':'w'):'dim')+'">'+(t.kc?fmt(t.c):'—')+'</span>'
+      + '<span class="'+(t.kc?'':'dim')+'">'+(t.kc?fmt(t.c):'—')+'</span>'
       + '<span class="'+(t.kc?(t.p>=S.t.pmin?'g':'w'):'dim')+'">'+(t.kc?fmt(t.p):'—')+'</span>'
       + '<span>'+(r && r.w!=null ? r.w.toFixed(1) : '—')+'</span>'
       + '<span>'+(tr.n?fmt(tr.load):'—')+'</span></div>';
@@ -493,7 +493,8 @@ function renderStream(){
   $('stream').innerHTML = h;
 }
 function renderTargets(){
-  const T = S.t; $('tKmin').value=T.kmin; $('tKmax').value=T.kmax; $('tPmin').value=T.pmin; $('tPmax').value=T.pmax; $('tCh').value=T.ch; $('tCl').value=T.cl; $('tW0').value=T.w0;
+  const T = S.t; $('tKmin').value=T.kmin; $('tKmax').value=T.kmax; $('tPmin').value=T.pmin; $('tPmax').value=T.pmax; $('tW0').value=T.w0;
+  $('tCavg').value = T.cavg!=null ? T.cavg : '';
 }
 
 /* =========================================================
@@ -503,22 +504,13 @@ $('prevD').addEventListener('click',()=>{ sel = key(addDays(parse(sel),-1)); ren
 $('nextD').addEventListener('click',()=>{ sel = key(addDays(parse(sel),1)); renderAll(); });
 $('todayD').addEventListener('click',()=>{ sel = todayKey(); renderAll(); });
 
-$('wtIn').addEventListener('change',()=>{ day(sel).w = num($('wtIn').value); save(); renderAll(); });
+$('daySave').addEventListener('click', saveDay);
 
-$('enAdd').addEventListener('click',()=>{
-  const kc = num($('enKc').value)||0, c = num($('enC').value)||0, p = num($('enP').value)||0;
-  if (kc<=0){ $('enKc').focus(); return; }
-  day(sel).entries.push({ lbl:$('enLbl').value, kc, c, p, t:Date.now() });
-  ['enKc','enC','enP'].forEach(i=>$(i).value='');
-  // advance the label to the next likely meal
-  const sl = $('enLbl'); if (sl.selectedIndex < 3) sl.selectedIndex++;
-  save(); renderAll();
-});
-$('entList').addEventListener('click',(e)=>{ const b = e.target.closest('.x'); if(!b) return; day(sel).entries.splice(+b.dataset.i,1); save(); renderAll(); });
-
-[['tKmin','kmin'],['tKmax','kmax'],['tPmin','pmin'],['tPmax','pmax'],['tCh','ch'],['tCl','cl'],['tW0','w0']].forEach(p=>{
+[['tKmin','kmin'],['tKmax','kmax'],['tPmin','pmin'],['tPmax','pmax'],['tW0','w0']].forEach(p=>{
   $(p[0]).addEventListener('change',()=>{ const v = num($(p[0]).value); if (v!=null && v>0) S.t[p[1]] = v; save(); renderAll(); });
 });
+// Optional carb goal: blank clears it rather than resetting it to a number.
+$('tCavg').addEventListener('change',()=>{ const v = num($('tCavg').value); S.t.cavg = (v!=null && v>0) ? v : null; save(); renderAll(); });
 
 $('csvBtn').addEventListener('click',()=>{
   const ks = Object.keys(S.days).concat(Object.keys(HOME)).filter((v,i,a)=>a.indexOf(v)===i).sort();
@@ -532,7 +524,7 @@ $('csvBtn').addEventListener('click',()=>{
    ========================================================= */
 function renderAll(){
   if (!homeRemote) { const h = readHome(); if (h) HOME = h.days; }
-  renderHeader(); renderProg(); renderWeight(); renderEntries(); renderTrack(); renderCharts(); renderWeeks(); renderStream(); renderTargets();
+  renderHeader(); renderForm(); renderProg(); renderTrack(); renderCharts(); renderWeeks(); renderStream(); renderTargets();
 }
 S = load();
 const h0 = readHome(); if (h0) HOME = h0.days;

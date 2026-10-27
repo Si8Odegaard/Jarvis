@@ -28,7 +28,6 @@
   // ──────────────── STATE ────────────────
   let supa = null;
   let athleteName = 'Silas';
-  let startWeight = 135;
   let activeModel = 'gemini';
   let conversation = [];
   let isLoading = false;
@@ -310,11 +309,6 @@
       state[row.key] = row.data;
     }
 
-    // Start weight comes from the Nutrition tab's Targets, not the 135 lb default,
-    // so anything quoted back reflects what was actually entered.
-    const nutTargets = state.offseason_nutrition && state.offseason_nutrition.t;
-    if (nutTargets && nutTargets.w0) startWeight = nutTargets.w0;
-
     return {
       state,
       checkins: checkinsRes.data || [],
@@ -331,7 +325,8 @@
       return `You are Jarvis, a Premier League academy performance coach working exclusively with Silas, an 18-year-old box-to-box midfielder. Your athlete trains at Planet Fitness (no barbell, no squat rack, no sled). Pre-season starts August 1, 2026. Give specific, data-driven coaching advice. Never recommend equipment he doesn't have.`;
     }
 
-    const weight = state.latest_weight?.weight || state.latest_weight || 135;
+    // No hardcoded fallback: an empty weight reads "not logged" instead of 135 lb.
+    const weight = state.latest_weight?.weight || (typeof state.latest_weight === 'number' ? state.latest_weight : null);
     const phase = state.current_offseason_phase || 'Foundation';
     const phaseWeek = state.current_phase_week || state.phase_week || 1;
     const daysToPreseason = state.days_to_preseason || 'unknown';
@@ -343,7 +338,7 @@
     const recReason = state.recommended_session_today?.reasoning || '';
     const recRestrictions = state.recommended_session_today?.restrictions?.join(', ') || 'none';
     const gainRate = state.latest_weight?.gain_rate || state.weekly_gain_rate || 'not logged';
-    const gainTarget = ((weight || 135) * 0.006).toFixed(1);
+    const gainTarget = weight ? (weight * 0.006).toFixed(1) : 'not logged';
     const js = state.jarvis_score?.score || state.jarvis_score || 'not computed';
     const match48Bool = state.match_in_48_hours === true || state.match_in_48_hours === 'true' || state.match_in_48_hours?.value === true;
     const match24Bool = state.match_in_24_hours_recovery === true || state.match_in_24_hours_recovery === 'true' || state.match_in_24_hours_recovery?.value === true;
@@ -364,7 +359,7 @@
 
 SILAS'S PROFILE:
 - Position: Box-to-box and defensive midfielder
-- Current weight: ${weight}lbs — target 150-155lbs
+- Current weight: ${weight ? weight + 'lbs' : 'not logged'} — target 150-155lbs
 - Primary weaknesses: acceleration, first-step quickness
 - Strengths: endurance, work rate, technical base
 - Equipment: Planet Fitness only (Smith machine, dumbbells, cables, leg press, pull-up bar, resistance bands — NO barbell, NO squat rack, NO sled)
@@ -405,62 +400,8 @@ COACHING VOICE AND RULES:
 - If recovery score is below 55, always factor that in first before prescribing training.
 - The goal of every recommendation is: get Silas recruited to D1 from JUCO, then pro.
 
-FOOD LOGGING:
-If Silas describes food he ate, make a secondary analysis to estimate protein and calories, then confirm with him before logging. Format: "That sounds like roughly [N]g protein and [N] calories. Want me to log that?"
-
 DATA LOGGING FROM CONVERSATION:
-If Silas mentions his weight or how he's feeling, offer to log it. Say "Want me to log that?" and if he confirms, write to the appropriate Supabase table.`;
-  }
-
-  // ──────────────── FOOD NUTRITION ESTIMATION ────────────────
-  async function estimateFoodNutrition(foodDescription) {
-    const prompt = `You are a sports nutrition calculator for a ${startWeight}-${startWeight + 20}lb male athlete in a caloric surplus trying to gain muscle. Estimate the protein grams and total calories in this food description. Be generous with portions since this is an athlete. Return ONLY a valid JSON object with exactly these keys: protein_grams (number), calories (number), confidence (high or medium or low), follow_up_question (string or null — only include a follow-up question if confidence is low and one specific question would significantly improve the estimate). Food description: ${foodDescription}. Return only the JSON object, no other text, no markdown.`;
-
-    const body = {
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.3, maxOutputTokens: 256 }
-    };
-
-    // Try Gemini first, then Groq
-    let res;
-    try {
-      res = await fetchWithTimeout(GEMINI_URL + '?key=' + getGeminiKey(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      }, GEMINI_TIMEOUT_MS);
-    } catch (_) {
-      // Fallback to Groq
-      res = await fetch(GROQ_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + getGroqKey()
-        },
-        body: JSON.stringify({
-          model: GROQ_MODEL,
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.3,
-          max_tokens: 256
-        })
-      });
-    }
-
-    if (!res.ok) throw new Error('Nutrition estimation API failed');
-
-    const data = await res.json();
-
-    // Parse response from either provider
-    let text = '';
-    if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-      text = data.candidates[0].content.parts[0].text;
-    } else if (data.choices?.[0]?.message?.content) {
-      text = data.choices[0].message.content;
-    }
-
-    // Clean and parse JSON
-    text = text.trim().replace(/^```json?\s*/i, '').replace(/```\s*$/i, '').trim();
-    return JSON.parse(text);
+If Silas mentions how he's feeling, offer to log it. Say "Want me to log that?" and if he confirms, write to the appropriate Supabase table.`;
   }
 
   // ──────────────── AI EXERCISE PARSING ────────────────
@@ -519,57 +460,13 @@ Return only the JSON array, no formatting wrappers like \`\`\`json.`;
     }
   }
 
-  // ──────────────── SHARED NUTRITION STATE ────────────────
-  // The Nutrition tab stores its day records under app_state key
-  // 'offseason_nutrition'. Anything logged from chat is mirrored there so the
-  // tab shows what was actually entered instead of its own older copy.
-  async function updateNutritionState(mutate) {
-    if (!supa) return null;
-    const { data: row } = await supa.from('app_state').select('data').eq('key', 'offseason_nutrition').maybeSingle();
-    const nut = (row && row.data) || {};
-    nut.v = nut.v || 1;
-    nut.days = nut.days || {};
-    mutate(nut);
-    nut.updated = Date.now();
-    await supa.from('app_state').upsert(
-      { key: 'offseason_nutrition', data: nut, updated_at: new Date().toISOString() },
-      { onConflict: 'key' }
-    );
-    return nut;
-  }
-
   // ──────────────── NATURAL LANGUAGE DATA LOGGING ────────────────
   async function detectAndLog(userText) {
     if (!supa) return null;
     const today = etToday();
     const logs = [];
 
-    // Water tracking was removed — the offseason plan has no hydration target.
-
-    // Weight: "weighed X", "weight is X", "scale said X"
-    const weightMatch = userText.match(/(?:weighed|weight\s+is|scale\s+said|weigh\s+in\s+at)\s+(\d+\.?\d*)\s*(?:lbs?|pounds?)?/i) ||
-                        userText.match(/(\d+\.?\d*)\s*(?:lbs?|pounds?)\s*(?:today|this\s+morning|now)/i);
-    if (weightMatch && parseFloat(weightMatch[1]) > 50) {
-      const w = parseFloat(weightMatch[1]);
-      try {
-        // Canonical current weight, quoted by every surface (no stale default).
-        await supa.from('app_state').upsert(
-          { key: 'latest_weight', data: { weight: w, date: today, updated: Date.now() }, updated_at: new Date().toISOString() },
-          { onConflict: 'key' }
-        );
-        // Mirror into the Nutrition tab's own record so its charts/tables show it.
-        await updateNutritionState((nut) => {
-          const d = nut.days[today] || (nut.days[today] = { entries: [], w: null });
-          d.w = w;
-        });
-        try {
-          await supa.from('weight_logs').upsert({ date: today, weight: w }, { onConflict: 'date' });
-        } catch (_) { /* legacy table, may not exist */ }
-        const diff = w - startWeight;
-        const sign = diff >= 0 ? '+' : '';
-        logs.push(`\u2696\uFE0F Logged weight: ${w}lbs (${sign}${diff.toFixed(1)} from ${startWeight}lbs). ${diff > 0 ? 'Mass gain on track — every pound is functional power on the pitch.' : 'Keep eating — muscle takes fuel.'}`);
-      } catch (_) { logs.push(`\u2696\uFE0F Weight logged (offline).`); }
-    }
+    // Food and weight are logged in the Fuel tab only — chat no longer guesses them.
 
     // Soccer session: "did X minutes of [type]", "trained for X minutes"
     const soccerMatch = userText.match(/(?:did|trained|ball\s+work|session)\s+(?:for\s+)?(\d+)\s*(?:min|minutes?)/i) ||
@@ -750,16 +647,7 @@ Return only the JSON array, no formatting wrappers like \`\`\`json.`;
 
     const typingEl = showTyping();
 
-    // ═══ STEP 1: Check for food description ═══
-    const foodTrigger = /\b(?:ate|had|eating|consumed|meal|breakfast|lunch|dinner|snack|protein\s+shake|food|chicken|rice|pasta|eggs|steak|burger|sandwich|whey|oatmeal|cereal|tuna|salmon|turkey|beef|pork)\b/i;
-    let foodResult = null;
-    if (foodTrigger.test(userText) && userText.length > 15) {
-      try {
-        foodResult = await estimateFoodNutrition(userText);
-      } catch (_) { /* Silently fail — continue to main AI */ }
-    }
-
-    // ═══ STEP 2: Natural language logging ═══
+    // ═══ STEP 1: Natural language logging ═══
     let logResult = null;
     try {
       logResult = await detectAndLog(userText);
@@ -769,7 +657,7 @@ Return only the JSON array, no formatting wrappers like \`\`\`json.`;
       }
     } catch (_) { /* Silently fail */ }
 
-    // ═══ STEP 3: Load context & call AI ═══
+    // ═══ STEP 2: Load context & call AI ═══
     try {
       const ctx = await loadJarvisContext(supa);
 
@@ -789,50 +677,8 @@ Return only the JSON array, no formatting wrappers like \`\`\`json.`;
 
       removeTyping(typingEl);
 
-      // ═══ STEP 4: Assemble final response ═══
+      // ═══ STEP 3: Assemble final response ═══
       let finalReply = response || '';
-
-      // If food was logged, prepend the nutrition estimate
-      if (foodResult && foodResult.confidence !== 'low') {
-        const { protein_grams, calories, confidence } = foodResult;
-
-        // Try to update today's checkin with protein
-        if (supa && protein_grams > 0) {
-          try {
-            const todayStr = etToday();
-            const { data: existing } = await supa.from('daily_checkins').select('id,protein_grams').eq('date', todayStr).maybeSingle();
-            const newProtein = (existing?.protein_grams || 0) + protein_grams;
-            if (existing) {
-              await supa.from('daily_checkins').update({ protein_grams: newProtein, estimated_calories: calories }).eq('id', existing.id);
-            } else {
-              await supa.from('daily_checkins').insert({
-                date: todayStr,
-                protein_grams: newProtein,
-                estimated_calories: calories
-              });
-            }
-
-            // Same record the Nutrition tab reads — one current state, not two.
-            try {
-              await updateNutritionState((nut) => {
-                const d = nut.days[todayStr] || (nut.days[todayStr] = { entries: [], w: null });
-                d.entries.push({ lbl: 'Jarvis', kc: calories || 0, c: 0, p: protein_grams || 0, t: Date.now() });
-              });
-            } catch (_) { /* nutrition sync is best-effort */ }
-
-            const targetWeight = ctx?.state?.latest_weight || startWeight;
-            const target = Math.round((typeof targetWeight === 'object' ? (targetWeight.weight || 135) : targetWeight) * 0.82);
-            const foodPrefix = `\uD83C\uDF57 Logged — estimated ${protein_grams}g protein and approximately ${calories} calories. Running total today: ${newProtein}g protein toward your ${target}g target.${newProtein >= target ? ' Strong protein hit — keep this up to support today\'s muscle building stimulus.' : ''}\n\n`;
-            finalReply = foodPrefix + finalReply;
-            // Refresh app_state after food logging
-            if (window.computeDailyState) { window.computeDailyState(supa).catch(() => {}); }
-          } catch (_) {
-            finalReply = `\uD83C\uDF57 Estimated ${protein_grams}g protein, ~${calories} calories.\n\n` + finalReply;
-          }
-        }
-      } else if (foodResult && foodResult.confidence === 'low' && foodResult.follow_up_question) {
-        finalReply = `\u2753 ${foodResult.follow_up_question}`;
-      }
 
       // If data was logged, prepend the log confirmation
       if (logResult) {
@@ -846,11 +692,8 @@ Return only the JSON array, no formatting wrappers like \`\`\`json.`;
     } catch (_) {
       removeTyping(typingEl);
 
-      // If we have food/log results, show those even if AI failed
+      // If data was logged, show that even if the AI failed
       let fallbackMsg = '';
-      if (foodResult && foodResult.confidence !== 'low') {
-        fallbackMsg += `\uD83C\uDF57 Estimated ${foodResult.protein_grams}g protein, ~${foodResult.calories} calories.\n\n`;
-      }
       if (logResult) {
         fallbackMsg += logResult + '\n\n';
       }
@@ -1029,7 +872,6 @@ Return only the JSON array, no formatting wrappers like \`\`\`json.`;
     supa = supabaseClient;
     if (userConfig) {
       if (userConfig.athleteName) athleteName = userConfig.athleteName;
-      if (userConfig.startWeight) startWeight = userConfig.startWeight;
     }
 
     if (document.readyState === 'loading') {

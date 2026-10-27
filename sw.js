@@ -1,6 +1,16 @@
 // ════════════════════════════════════════════════════════════
 //  SERVICE WORKER — dashboard PWA + push notifications
 //
+//  v19 — Hydration removed + Fuel simplified (2026-10-26):
+//   - stack.html dropped its water tracker (tab button, section, CSS, modal,
+//     water.css block and the whole water IIFE) and now clears the loading
+//     overlay itself.
+//   - nutrition.html logs one set of day totals (calories / carbs / protein +
+//     weigh-in) instead of meals; per-day carb targets (ch/cl) and DAYINFO are
+//     gone, replaced by an optional weekly carb average goal (cavg).
+//   - chat.js no longer estimates food or auto-logs weight.
+//   - cache version bumped so installed clients pick up the new pages.
+//
 //  v18 — Home/Nutrition polish (2026-10-26):
 //   - knee check-in + knee gate removed from home.html.
 //   - "today" is now the date in America/New_York, not the device timezone.
@@ -48,7 +58,7 @@
 //  instead of silently failing.
 // ════════════════════════════════════════════════════════════
 
-const CACHE = 'dashboard-pwa-v18';
+const CACHE = 'dashboard-pwa-v19';
 const ASSETS = [
   './', './index.html', './manifest.json', './icon.svg',
   './icon-192.png', './icon-512.png',
