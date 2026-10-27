@@ -25,7 +25,7 @@ const SUPABASE_URL  = process.env.SUPABASE_URL;
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_KEY;
 
 webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT     || 'mailto:admin@jarvis.local',
+  process.env.VAPID_SUBJECT     || 'mailto:admin@offseason.local',
   process.env.VAPID_PUBLIC_KEY  || '',
   process.env.VAPID_PRIVATE_KEY || ''
 );
@@ -33,7 +33,7 @@ webpush.setVapidDetails(
 // Test payload — replaced by smart meal-gap content in the next prompt
 const TEST_PAYLOAD = JSON.stringify({
   title: 'Reminder test',
-  body:  'Jarvis meal reminders are working ✓',
+  body:  'Offseason reminders are working ✓',
   url:   '/'
 });
 

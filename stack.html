@@ -1,21 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">  <head>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="chat.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#050506">
 <meta name="color-scheme" content="dark">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Dashboard">
+<meta name="apple-mobile-web-app-title" content="Offseason">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
 <title>Health — Supplements</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="env.js"></script>
-<script src="chat.js"></script>
 
 
 <style>
@@ -550,9 +547,6 @@ body.stack-embed main {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.08); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.15); }
-
-/* Jarvis floating chat button */
-
 
 /* =========================================================
    RESPONSIVE
@@ -1317,6 +1311,7 @@ body.stack-embed main {
   (async function stInitCloudSync() {
     if (!window.supabase || !SUPABASE_URL || !SUPABASE_KEY) return;
     stSupa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    window.__stackSb = stSupa; // shared with the reminder-subscription flow
     try {
       const { data, error } = await stSupa
         .from('app_state').select('data').eq('key', APP_KEY).maybeSingle();
@@ -1393,11 +1388,8 @@ body.stack-embed main {
 }
 </style>
 
-  <script>
-    const JARVIS_SUPABASE_URL = 'https://cskbbioyniryonkukamw.supabase.co';
-    const JARVIS_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNza2JiaW95bmlyeW9ua3VrYW13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NjE2MTYsImV4cCI6MjA5NDUzNzYxNn0.R3Vx3fA-iAc8LhNL3WPSa9-BxH_087c7VaIbrB3CBJM';
-    const jarvisSb = window.supabase.createClient(JARVIS_SUPABASE_URL, JARVIS_SUPABASE_KEY);
-  </script>
+  <!-- The reminder flow below reuses the single client the supplements sync
+       creates (window.__stackSb), so this page builds Supabase exactly once. -->
 
   <!-- ════════════════════════════════════════════════════════════
        MEAL REMINDER SUBSCRIPTION FLOW (Prompt 1, 2026-07-08)
@@ -1470,7 +1462,7 @@ body.stack-embed main {
         setStatus('Step 1/4: Permission = ' + perm, 'info');
         if(perm !== 'granted'){
           if(perm === 'denied'){
-            setStatus('Permission denied. Enable in iOS Settings → Notifications → Dashboard.', 'bad');
+            setStatus('Permission denied. Enable in iOS Settings → Notifications → Offseason.', 'bad');
           } else {
             setStatus('Permission dismissed (' + perm + '). Tap the button again to retry.', 'warn');
           }
@@ -1533,7 +1525,9 @@ body.stack-embed main {
           else if(/Android/.test(ua)) label = 'Android PWA';
           else if(/Macintosh/.test(ua)) label = 'macOS PWA';
           else if(/Windows/.test(ua)) label = 'Windows PWA';
-          const { error } = await jarvisSb.from('push_subscriptions').insert({
+          const sbc = window.__stackSb;
+          if (!sbc) throw new Error('no database client — check your connection and reload');
+          const { error } = await sbc.from('push_subscriptions').insert({
             subscription_json: subJson,
             user_label: label,
             user_agent: ua,
@@ -1562,9 +1556,6 @@ body.stack-embed main {
     }
     btn.addEventListener('click', enableReminders);
   })();
-  </script>
-  <script>
-  initJarvisChat(jarvisSb);
   </script>
 </body>
 </html>

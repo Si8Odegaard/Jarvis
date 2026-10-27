@@ -96,7 +96,8 @@ input[type=range]{width:100%;accent-color:#fff}
 .m-val{font:600 13px var(--mono);color:var(--t1)}
 .bar{position:relative;height:8px;background:rgba(255,255,255,.06);border-radius:9px;margin:6px 0 3px;overflow:hidden}
 .bar div{height:100%;background:linear-gradient(90deg,var(--info),var(--good));border-radius:9px}
-.bar.over div{background:linear-gradient(90deg,var(--good),var(--warn))}
+.bar.warn div{background:linear-gradient(90deg,var(--good),var(--warn))}
+.bar.bad div{background:linear-gradient(90deg,var(--warn),var(--bad))}
 .m-sub{font-size:11px;color:var(--t3)}
 
 .empty{font-size:12px;color:var(--t4);font-style:italic;padding:6px 0}
@@ -119,9 +120,14 @@ input[type=range]{width:100%;accent-color:#fff}
     <button type="button" class="wnav" id="wkNext" aria-label="Next week">›</button>
   </div>
   <div class="strip" id="strip"></div>
+  <div class="rule" id="testsNote" style="margin:-6px 0 12px"></div>
 
   <!-- Today's session -->
   <section class="card" id="sessionCard"></section>
+
+  <!-- Test / retest cards — keyed by block week and weekday, not by PLAN,
+       so they still show for weeks that have no session data loaded yet. -->
+  <section class="card" id="testCard" hidden></section>
 
   <!-- Morning check-in -->
   <section class="card">
@@ -160,7 +166,7 @@ input[type=range]{width:100%;accent-color:#fff}
   </section>
 
   <!-- Baselines -->
-  <section class="card">
+  <section class="card" id="baselinesCard">
     <div class="card-h"><h2>Baselines</h2><span class="eyebrow">retest wk 4</span></div>
     <div class="row r3">
       <div><label class="f">10 m (s)</label><input type="number" id="bs10" step="0.01" inputmode="decimal"></div>
@@ -496,38 +502,127 @@ $('sessList').addEventListener('click',(e)=>{
 });
 
 /* =========================================================
-   Weekly load — three metrics, each capped ≈10–15% rise
+   Weekly load — the plan's rules, applied per metric
+     Week 1    baseline (a normal Week 1 lands around 2,000–2,500)
+     Week 2–3  ceiling = previous week × 1.10; warn above +10%,
+               red above +15%
+     Week 4    deload ≈ 75% of Week 3; 70–80% is on target, above 80%
+               is "too high for a deload week", below 65% is "deeper
+               than planned"
+     Outside the block: last week's number, no rule.
+   Three metrics are tracked separately: total session load (RPE × min),
+   sprint reps × distance at 90%+ effort, and lifting volume-load (lb).
    ========================================================= */
+const WEEK1_LOAD_RANGE = [2000, 2500];
+const METRICS = [
+  ['load',   'Session load (RPE × min)', ''],
+  ['sprint', 'Sprint distance @90%+',    ' m'],
+  ['vol',    'Lifting volume-load',      ' lb']
+];
 function weekTotals(w){
   const ws = weekStart(w), t = { load:0, sprint:0, vol:0, n:0 };
   for (let i=0;i<7;i++){
-    const r = S.days[key(addDays(ws,i))]; if(!r) continue;
-    r.sessions.forEach(s=>{ t.load+=s.rpe*s.min; t.sprint+=s.sr*s.sd; t.vol+=s.vl; t.n++; });
+    const r = S.days[key(addDays(ws,i))]; if(!r || !r.sessions) continue;
+    r.sessions.forEach(s=>{
+      t.load += (s.rpe||0)*(s.min||0);
+      t.sprint += (s.sr||0)*(s.sd||0);
+      t.vol += (s.vl||0); t.n++;
+    });
   }
   return t;
 }
+const pctStr = (v) => (v>0?'+':'')+Math.round(v*100)+'%';
+// One metric for the week on screen: colour, what the bar is scaled against,
+// and the sentence explaining where the number sits against the rule.
+function metricRule(w, f, cur, prev){
+  const unit = METRICS.filter(m=>m[0]===f)[0][2];
+  if (w>=2 && w<=3){
+    if (!(prev>0)) return { state:'', ref:cur, sub:'No Week '+(w-1)+' data to compare against — log that week to get a ceiling.' };
+    const pct = cur/prev - 1;
+    const state = pct<=0.10 ? 'good' : (pct<=0.15 ? 'warn' : 'bad');
+    const verdict = pct<=0.10 ? 'inside the guide' : (pct<=0.15 ? 'past the +10% guide, +15% is the red line' : 'over the +15% red line');
+    return { state, ref:prev*1.15,
+      sub:'Last week '+Math.round(prev).toLocaleString()+unit+' · ceiling ~'+Math.round(prev*1.10).toLocaleString()+unit+' (+10%) · '+pctStr(pct)+' — '+verdict };
+  }
+  if (w===4){
+    const wk3 = weekTotals(3)[f];
+    if (!(wk3>0)) return { state:'', ref:cur, sub:'No Week 3 data to compare against — the deload target is 75% of Week 3.' };
+    const pct = cur/wk3;
+    const state = pct>0.80 ? 'bad' : (pct<0.65 ? 'warn' : (pct>=0.70 ? 'good' : 'warn'));
+    const verdict = pct>0.80 ? 'too high for a deload week' : (pct<0.65 ? 'deload is deeper than planned' : (pct>=0.70 ? 'on target' : 'just under the 70–80% band'));
+    return { state, ref:wk3,
+      sub:'Week 3 '+Math.round(wk3).toLocaleString()+unit+' → target ~'+Math.round(wk3*0.75).toLocaleString()+unit+' (75%) · you\'re at '+Math.round(pct*100)+'% — '+verdict };
+  }
+  if (w===1){
+    const range = f==='load' ? WEEK1_LOAD_RANGE : null;
+    return { state:'', ref: range ? range[1] : cur,
+      sub: range
+        ? 'Week 1 baseline: a normal Week 1 lands around '+range[0].toLocaleString()+'–'+range[1].toLocaleString()+'. This week sets the ceiling.'
+        : 'Baseline week — this sets next week\'s ceiling.' };
+  }
+  return { state:'', ref: prev>0?prev:cur,
+    sub:'Outside the block — no weekly target. Last week '+Math.round(prev).toLocaleString()+unit+'.' };
+}
+
+/* ACWR on total session load. Acute = the 7 days ending on the day on screen
+   (so the default view is today), chronic = the average of the last four
+   7-day totals including the current one. Held back until four weeks of
+   history exist, because the ratio is noise before that. */
+function dayLoad(k){ const r = S.days[k]; if(!r||!r.sessions) return 0; return r.sessions.reduce((a,s)=>a+(s.rpe||0)*(s.min||0),0); }
+function load7(endK){ const end = parse(endK); let t = 0; for (let i=0;i<7;i++) t += dayLoad(key(addDays(end,-i))); return t; }
+function historyDays(){
+  const ks = Object.keys(S.days).filter(k=>dayLoad(k)>0).sort();
+  if (!ks.length) return 0;
+  return Math.max(0, dayDiff(parse(selKey), parse(ks[0])) + 1);
+}
+function acwrRow(){
+  const name = 'ACWR (session load)', span = historyDays();
+  const need = '<div class="metric"><div class="m-top"><span class="m-name">'+name+'</span><span class="m-val">—</span></div>'
+    + '<div class="m-sub">Needs 4 weeks of history ('+span+' of 28 days).</div></div>';
+  if (span < 28) return need;
+  const d = parse(selKey);
+  const acute = load7(selKey);
+  const chronic = (load7(selKey) + load7(key(addDays(d,-7))) + load7(key(addDays(d,-14))) + load7(key(addDays(d,-21))))/4;
+  if (!(chronic>0)) return need;
+  const r = acute/chronic;
+  const color = r>1.5 ? 'var(--bad)' : (r>=0.8 && r<=1.3 ? 'var(--good)' : 'var(--warn)');
+  const band  = r>1.5 ? 'bad' : (r>=0.8 && r<=1.3 ? 'good' : 'warn');
+  const label = r>1.5 ? 'above 1.5 — red flag' : (r>=0.8 && r<=1.3 ? 'in the 0.8–1.3 band' : 'outside the 0.8–1.3 band');
+  return '<div class="metric"><div class="m-top"><span class="m-name">'+name+'</span><span class="m-val" style="color:'+color+'">'+r.toFixed(2)+'</span></div>'
+    + '<div class="bar '+band+'"><div style="width:'+Math.min(100, r/1.5*100)+'%"></div></div>'
+    + '<div class="m-sub">Acute '+Math.round(acute).toLocaleString()+' (last 7 days) · chronic '+Math.round(chronic).toLocaleString()+' (4-week average) · '+label+'.</div>'
+    + '<div class="m-sub">A guide, not a law. If you feel run down, the number loses.</div></div>';
+}
 function renderMetrics(){
-  const w = weekOf(parse(selKey)), cur = weekTotals(w), prev = weekTotals(w-1), hasPrev = prev.n>0;
+  const w = weekOf(parse(selKey)), cur = weekTotals(w), prev = weekTotals(w-1);
   $('wkLabel').textContent = 'Week '+w;
-  const defs = [
-    ['Session load (RPE × min)','load','',w===1?[2000,2500]:null],
-    ['Sprint distance @90%+','sprint',' m',null],
-    ['Lifting volume-load','vol',' lb',null]
-  ];
-  $('metrics').innerHTML = defs.map(([name,f,unit,range])=>{
-    const v = cur[f], cap = hasPrev ? prev[f]*1.10 : (range ? range[1] : 0);
-    const pct = cap>0 ? Math.min(100, v/cap*100) : (v>0?100:0);
-    const over = cap>0 && v>cap*(hasPrev?1.05:1);
-    let sub = hasPrev ? ('Last week '+Math.round(prev[f]).toLocaleString()+unit+' · ceiling ~'+Math.round(cap).toLocaleString()+unit+' (+10%)')
-            : range ? ('Typical Week 1: '+range[0].toLocaleString()+'–'+range[1].toLocaleString()+'. This week sets your baseline.')
-            : 'Baseline week — this sets next week\'s ceiling.';
-    return '<div class="metric"><div class="m-top"><span class="m-name">'+name+'</span><span class="m-val">'+Math.round(v).toLocaleString()+unit+'</span></div>'
-      +'<div class="bar'+(over?' over':'')+'"><div style="width:'+pct+'%"></div></div><div class="m-sub">'+sub+'</div></div>';
-  }).join('');
-  const bad = hasPrev && ['load','sprint','vol'].some(f=>prev[f]>0 && cur[f]>prev[f]*1.15);
-  const el = $('wkRule');
-  el.textContent = bad ? 'A metric is more than 15% above last week — hold or cut volume.' : (hasPrev ? 'Cap each metric at about a 10–15% weekly rise.' : 'Week 1 is your baseline; Week 2 ceiling = Week 1 total × 1.10.');
-  el.className = 'rule'+(bad?' bad':'');
+  const rows = METRICS.map(([f,name,unit])=>{
+    const c = cur[f], r = metricRule(w, f, c, prev[f]);
+    const fill = r.ref>0 ? Math.min(100, c/r.ref*100) : (c>0?100:0);
+    return '<div class="metric"><div class="m-top"><span class="m-name">'+name+'</span><span class="m-val">'+Math.round(c).toLocaleString()+unit+'</span></div>'
+      + '<div class="bar'+(r.state?' '+r.state:'')+'"><div style="width:'+fill+'%"></div></div><div class="m-sub">'+r.sub+'</div></div>';
+  });
+  rows.push(acwrRow());
+  $('metrics').innerHTML = rows.join('');
+
+  const el = $('wkRule'); let txt, cls = 'rule';
+  if (w===1) txt = 'Week 1 is the baseline; the Week 2 ceiling is Week 1 × 1.10.';
+  else if (w===4){
+    const over = METRICS.some(([f])=>{ const b = weekTotals(3)[f]; return b>0 && cur[f]/b > 0.80; });
+    const deep = METRICS.some(([f])=>{ const b = weekTotals(3)[f]; return b>0 && cur[f]/b < 0.65; });
+    if (over){ txt = 'Too high for a deload week — Week 4 should be about 75% of Week 3.'; cls = 'rule bad'; }
+    else if (deep){ txt = 'Deload is deeper than planned — 70–80% of Week 3 is the target.'; cls = 'rule warn'; }
+    else txt = 'Deload week: about 75% of Week 3, 70–80% on target.';
+  }
+  else if (w>=2 && w<=3){
+    const hi = METRICS.filter(([f])=>prev[f]>0 && cur[f]/prev[f] > 1.15).map(m=>m[1]);
+    const up = METRICS.filter(([f])=>prev[f]>0 && cur[f]/prev[f] > 1.10).map(m=>m[1]);
+    if (hi.length){ txt = 'More than 15% above last week on '+hi.join(', ')+' — hold or cut volume.'; cls = 'rule bad'; }
+    else if (up.length){ txt = 'Past the +10% guide on '+up.join(', ')+' — +15% is the red line.'; cls = 'rule warn'; }
+    else txt = 'Cap each metric at about a 10–15% weekly rise.';
+  }
+  else txt = 'Outside the block — no weekly target; last week\'s number is shown for reference.';
+  el.textContent = txt; el.className = cls;
 }
 
 /* =========================================================
@@ -547,9 +642,82 @@ TESTS.forEach(([id,f])=>{
     const v=num($(id).value);
     S.tests = (S.tests||[]).filter(t=>!(t.f===f && t.d===selKey));
     if (v!=null) S.tests.push({ f, v, d:selKey });
-    save(); renderTests();
+    save(); renderTests(); renderTestCards();
   });
 });
+
+/* =========================================================
+   Test + retest schedule — keyed by block week and weekday,
+   deliberately separate from PLAN so the cards still render on
+   weeks that have no session data loaded yet.
+   ========================================================= */
+const TEST_NAME = { t10:'10 m sprint', t20:'20 m sprint', bj:'Standing broad jump', hc:'Head checks / 3 s', mas:'MAS' };
+function bestOf(f, upTo){
+  const xs = (S.tests||[]).filter(t=>t.f===f && (!upTo || t.d<=upTo));
+  if (!xs.length) return null;
+  const low = (f==='t10' || f==='t20');
+  return xs.reduce((a,b)=> (low ? (b.v<a.v) : (b.v>a.v)) ? b : a);
+}
+function bestLine(f, upTo){
+  const b = bestOf(f, upTo);
+  return TEST_NAME[f]+(b ? ' — previous best '+b.v+' ('+b.d.slice(5)+')' : ' — nothing logged yet');
+}
+function baselineBtn(){ return '<button class="btn sec" data-goto="baselines" style="margin-top:10px">Open baseline entry</button>'; }
+function masOut(){
+  const v = num($('masDist').value);
+  $('masOut').textContent = (v!=null && v>0) ? (v/300).toFixed(2)+' m/s' : '—';
+}
+function renderTestCards(){
+  const w = weekOf(parse(selKey)), dow = parse(selKey).getDay();
+  const note = $('testsNote');
+  if (note) note.textContent = w>=1 ? 'Week 4 tests: Mon retest, Fri MAS run.' : '';
+  let h = '';
+  if (w===1 && dow===6){
+    // Week 1: only nudge if a 10 m / 20 m / broad-jump baseline is still missing.
+    const missing = ['t10','t20','bj'].filter(f=>!bestOf(f, selKey));
+    if (missing.length){
+      h = '<span class="tag">Baselines</span><h2>Take baselines today</h2>'
+        + '<div class="purpose">Take baselines after the primer: 2 timed 10 m (phone slow-mo) + 3 broad jumps.</div>'
+        + '<div class="m-sub">Still missing: '+missing.map(f=>TEST_NAME[f]).join(', ')+'.</div>'
+        + baselineBtn();
+    }
+  } else if (w===4 && dow===1){
+    h = '<span class="tag">Retest day</span><h2>Week 4 retest</h2>'
+      + '<div class="purpose">Repeat the Week 1 baselines — same protocol, same surface — before the session.</div>'
+      + '<div class="m-sub">'+bestLine('t10', selKey)+'</div>'
+      + '<div class="m-sub">'+bestLine('t20', selKey)+'</div>'
+      + '<div class="m-sub">'+bestLine('bj', selKey)+'</div>'
+      + '<div class="m-sub">'+bestLine('hc', selKey)+' — count head checks in the 3 s before receiving a pass, from the filmed Tuesday game.</div>'
+      + baselineBtn();
+  } else if (w===4 && dow===5){
+    h = '<span class="tag">Test</span><h2>MAS run test</h2>'
+      + '<div class="purpose">5 minutes max distance. MAS = distance (m) ÷ 300 — e.g. 1,400 m = 4.67 m/s. This replaces intervals today.</div>'
+      + '<div class="row r2"><div><label class="f">5-min distance (m)</label><input type="number" id="masDist" min="0" inputmode="numeric" placeholder="1400"></div>'
+      + '<div><label class="f">MAS (m/s)</label><div id="masOut" style="padding:10px 0;color:var(--t1);font:600 15px var(--mono)">—</div></div></div>'
+      + '<button class="btn" id="masSave">Save MAS</button>'
+      + '<div class="m-sub" style="margin-top:6px">'+bestLine('mas', selKey)+'</div>';
+  }
+  const el = $('testCard');
+  if (!el) return;
+  el.innerHTML = h;
+  el.hidden = !h;
+  if (h && $('masDist')) masOut();
+}
+$('testCard').addEventListener('click',(e)=>{
+  if (e.target.closest('[data-goto="baselines"]')){
+    $('baselinesCard').scrollIntoView({ behavior:'smooth', block:'start' });
+    $('bs10').focus();
+    return;
+  }
+  if (e.target.id === 'masSave'){
+    const v = num($('masDist').value);
+    if (!(v>0)){ $('masDist').focus(); return; }
+    S.tests = (S.tests||[]).filter(t=>!(t.f==='mas' && t.d===selKey));
+    S.tests.push({ f:'mas', v:+(v/300).toFixed(2), d:selKey });
+    save(); renderTests(); renderTestCards();
+  }
+});
+$('testCard').addEventListener('input',(e)=>{ if (e.target.id === 'masDist') masOut(); });
 
 /* =========================================================
    Open items
@@ -570,7 +738,7 @@ $('openItems').addEventListener('click',(e)=>{
    BOOT
    ========================================================= */
 function renderAll(){
-  renderHeader(); renderStrip(); renderSession(); renderCheckin();
+  renderHeader(); renderStrip(); renderSession(); renderTestCards(); renderCheckin();
   renderLog(); renderMetrics(); renderTests(); renderOpen();
 }
 S = load();
@@ -589,7 +757,7 @@ function checkRollover(){
   renderAll();
 }
 setInterval(checkRollover, 60 * 1000);
-// Keep pulling so entries logged in another tab or by Jarvis show up here.
+// Keep pulling so entries logged in another tab or on another device show up here.
 setInterval(pull, 60 * 1000);
 document.addEventListener('visibilitychange',()=>{ if (!document.hidden){ checkRollover(); pull(); } });
 })();

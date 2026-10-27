@@ -1,8 +1,8 @@
 {
-  "name": "jarvis-dashboard",
+  "name": "offseason-dashboard",
   "version": "1.0.0",
   "private": true,
-  "description": "Jarvis dashboard — Vercel-deployed PWA with meal-reminder push notifications",
+  "description": "Offseason tracker — Vercel-deployed PWA with meal-reminder push notifications",
   "scripts": {
     "build": "node build.js"
   },

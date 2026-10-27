@@ -1,6 +1,15 @@
 // ════════════════════════════════════════════════════════════
 //  SERVICE WORKER — dashboard PWA + push notifications
 //
+//  v21 — AI coach removed + plan-accurate load rules (2026-10-26):
+//   - chat.js and utils.js deleted. index.html no longer loads either, and
+//     stack.html no longer loads chat.js twice or builds a second client.
+//   - notification title/tag are neutral ("Offseason" / "offseason-reminder").
+//   - home.html: week-aware load ceilings, Week 4 deload targets, ACWR on
+//     total session load, and a test/retest schedule that does not need PLAN.
+//   - nutrition.html: carb-day labels, no latest_weight row.
+//   - cache version bumped so installed clients pick up the new pages.
+//
 //  v20 — Health page anon key fixed (2026-10-26):
 //   - stack.html's push-subscription script held a corrupted copy of the
 //     public anon key (one wrong base64 character, 207 vs 208 chars), so the
@@ -66,7 +75,7 @@
 //  instead of silently failing.
 // ════════════════════════════════════════════════════════════
 
-const CACHE = 'dashboard-pwa-v20';
+const CACHE = 'dashboard-pwa-v21';
 const ASSETS = [
   './', './index.html', './manifest.json', './icon.svg',
   './icon-192.png', './icon-512.png',
@@ -101,7 +110,7 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('push', (event) => {
   // Default payload in case the push came in without data
   let data = {
-    title: 'Jarvis',
+    title: 'Offseason',
     body:  'You have a new reminder.',
     url:   '/',
   };
@@ -122,7 +131,7 @@ self.addEventListener('push', (event) => {
     badge: data.badge || '/icon-192.png',
     data: { url: data.url || '/' },
     vibrate: [100, 50, 100],
-    tag: data.tag || 'jarvis-reminder',
+    tag: data.tag || 'offseason-reminder',
     renotify: true,
   };
 

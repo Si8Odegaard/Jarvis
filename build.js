@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// build.js — Jarvis Vercel build step
+// build.js — Offseason Vercel build step
 // -----------------------------------------------------------------------------
 // Reads API keys and VAPID public key from Vercel project environment
 // variables and writes ./env.js (loaded via <script src="env.js"> in
@@ -7,8 +7,9 @@
 // chat.js and the push-subscription flow in stack.html).
 //
 // Required env vars (set in Vercel → Settings → Environment Variables):
-//   - GEMINI_API_KEY       (Gemini AI for food estimation)
-//   - GROQ_API_KEY         (Groq fallback for food estimation)
+//   - GEMINI_API_KEY       (unused since the chat page was removed — kept so
+//                           existing Vercel config stays valid)
+//   - GROQ_API_KEY         (same: unused, kept for config compatibility)
 //   - VAPID_PUBLIC_KEY     (VAPID public key for web push; private key
 //                           stays server-side only — do NOT commit it)
 //

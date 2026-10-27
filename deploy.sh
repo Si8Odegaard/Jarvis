@@ -39,4 +39,4 @@ fi
 echo ""
 echo "✅ Pushed $COMMIT_HASH to origin/main. Vercel is now auto-deploying."
 echo "   Open Vercel & confirm a deployment appears tied to: $COMMIT_HASH"
-echo "   Vercel deployments URL: https://vercel.com/dashboard → select 'Jarvis' → Deployments"
+echo "   Vercel deployments URL: https://vercel.com/dashboard → select the project → Deployments"

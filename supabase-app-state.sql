@@ -8,8 +8,12 @@
 --
 --  Rows used by the current tabs:
 --    offseason_home       — the whole Home tab (days, tests, open items)
---    offseason_nutrition  — the whole Fuel tab (days, targets)
---    latest_weight        — newest weigh-in + 14-day rate, quoted by Jarvis
+--    offseason_nutrition  — the whole Fuel tab (days, targets, weigh-ins)
+--    stack                — the Health tab's supplement state (stack:* keys)
+--
+--  latest_weight is a legacy row: the Fuel tab stopped publishing it when the
+--  chat page was removed, and nothing reads it now. Weigh-ins live in
+--  offseason_nutrition.days[k].w.
 --
 --  Everything else in app_state (dashboard, stack, water, acwr, …) is
 --  written by older pages or by utils.js and is not read by Home/Fuel.

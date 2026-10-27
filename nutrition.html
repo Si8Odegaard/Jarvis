@@ -120,6 +120,11 @@ details[open] summary::after{transform:rotate(180deg)}
     <button class="nbtn" id="nextD" aria-label="Next day">›</button>
   </div>
 
+  <!-- Day header notes: the carb-day label and, on lift days, the meal cue.
+       Informational only — no grams, no bar, no pass/fail. -->
+  <div id="dayCarb" style="margin:-2px 0 10px"></div>
+  <div id="dayNote"></div>
+
   <!-- One set of totals + weigh-in per day -->
   <section class="card">
     <div class="card-h"><h2>Today's totals</h2><span class="eyebrow" id="dayState">—</span></div>
@@ -135,7 +140,6 @@ details[open] summary::after{transform:rotate(180deg)}
     <button class="btn" id="daySave">Save</button>
     <div class="sub" style="margin-top:8px">One set of numbers per day — saving replaces this day rather than adding to it. Leave the three blank to clear the totals.</div>
     <div id="prog" style="margin-top:14px"></div>
-    <div id="dayNote"></div>
   </section>
 
   <!-- On-track -->
@@ -198,7 +202,8 @@ const BLOCK_WEEKS = 4;
 const SESSIONS_PLANNED = 6;            // Mon–Sat in the Week 1 layout
 // cavg is an optional weekly-average carb goal; null means "not set".
 const DEFAULT_TARGETS = { kmin:3000, kmax:3300, pmin:120, pmax:140, cavg:null, w0:143 };
-const LIFT_DAYS = [4,6];               // post-lift carb+protein meal within ~2 h
+const LIFT_DAYS = [4,6];               // Thu + Sat: post-lift carb+protein meal within ~2 h
+const CARB_HI_DAYS = [1,2,4,5,6];      // Mon, Tue, Thu, Fri, Sat — higher-carb days
 
 /* =========================================================
    HELPERS
@@ -266,20 +271,12 @@ async function pull(){
     renderAll();
   } catch(e){ chip('OFFLINE','bad'); }
 }
-// The current state other surfaces read: the newest weigh-in plus its 14-day trend,
-// which is what Jarvis quotes back instead of a hardcoded default.
-function latestWeightRow(){
-  const ks = Object.keys(S.days).filter((k)=>S.days[k] && S.days[k].w!=null).sort();
-  if (!ks.length) return null;
-  const k = ks[ks.length-1], a = assess(k);
-  return { weight:S.days[k].w, date:k, gain_rate:a.rate!=null?+a.rate.toFixed(2):null, updated:Date.now() };
-}
+// Weigh-ins live inside offseason_nutrition (days[k].w) — nothing else is
+// published any more, so this tab writes exactly one app_state row.
 async function push(){
   if (!sbOn) return;
   try {
     const rows = [{ key:'offseason_nutrition', data:S, updated_at:new Date().toISOString() }];
-    const lw = latestWeightRow();
-    if (lw) rows.push({ key:'latest_weight', data:lw, updated_at:new Date().toISOString() });
     const r = await fetch(SB_URL+'/rest/v1/app_state?on_conflict=key',{ method:'POST', headers:Object.assign(hdrs(),{Prefer:'resolution=merge-duplicates'}), body:JSON.stringify(rows) });
     chip(r.ok?'SYNCED':'OFFLINE', r.ok?'ok':'bad');
   } catch(e){ chip('OFFLINE','bad'); }
@@ -353,8 +350,11 @@ function renderProg(){
     + bar(t.p/T.pmax*100, pCls, '<u style="left:'+(T.pmin/T.pmax*100)+'%"></u>')
     + '<div class="sub">'+(t.p<=0 ? 'Nothing logged yet' : t.p<T.pmin ? fmt(T.pmin-t.p)+' g to go' : 'Protein target met')+'</div></div>'
     + '<div class="pr"><div class="pr-top"><span class="pr-name">Carbs</span><span class="pr-val">'+fmt(t.c)+' g</span></div></div>';
-  const note = LIFT_DAYS.indexOf(d.getDay())>-1 ? 'Lift day: get a carb + protein meal in within about 2 hours after training.' : '';
-  $('dayNote').innerHTML = note ? '<div class="note">'+esc(note)+'</div>' : '';
+  // Carb-day label: higher-carb days are Mon, Tue (game day), Thu, Fri, Sat.
+  const carbHi = CARB_HI_DAYS.indexOf(d.getDay())>-1;
+  $('dayCarb').innerHTML = '<span class="tag '+(carbHi?'hi':'lo')+'">'+(carbHi?'Higher-carb day':'Normal-carb day')+'</span>';
+  const note = LIFT_DAYS.indexOf(d.getDay())>-1 ? 'Carb + protein meal within about 2 hours of your lift.' : '';
+  $('dayNote').innerHTML = note ? '<div class="note" style="margin-top:6px">'+esc(note)+'</div>' : '';
 }
 // Pre-fill the form from whatever is stored for the selected day. A day saved by
 // the old multi-entry UI is shown as the sum of its entries.
@@ -531,8 +531,8 @@ const h0 = readHome(); if (h0) HOME = h0.days;
 if (!sbOn) chip('LOCAL');
 renderAll();
 pull();
-// Keep pulling so this tab shows what was logged elsewhere (Home, Jarvis) instead
-// of sitting on an older copy of the state.
+// Keep pulling so this tab shows what was logged on another device instead of
+// sitting on an older copy of the state.
 setInterval(pull, 60 * 1000);
 // Follow the calendar: "today" has to move at midnight, not stay on yesterday.
 let lastToday = todayKey();

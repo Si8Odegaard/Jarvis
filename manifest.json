@@ -1,7 +1,7 @@
 {
-  "name": "My Dashboard",
-  "short_name": "Dashboard",
-  "description": "Goals, day ring, and to-do list",
+  "name": "Offseason",
+  "short_name": "Offseason",
+  "description": "Offseason training, health and fuel tracker",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

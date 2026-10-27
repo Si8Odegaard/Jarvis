@@ -6,11 +6,11 @@
   <meta name="theme-color" content="#050506">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Dashboard">
+  <meta name="apple-mobile-web-app-title" content="Offseason">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icon.svg">
-  <title>My Dashboard</title>
+  <title>Offseason</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
@@ -205,24 +205,16 @@
   <section id="tab-panel-nutrition" class="tab-panel" hidden aria-label="Nutrition"></section>
   </div>
 
+  <!-- env.js supplies ENV_VAPID_PUBLIC_KEY to the Health tab's reminder card. -->
   <script src="env.js"></script>
   <script src="tabs.js" defer></script>
+  <!-- topbar.js builds its own Supabase client from window.supabase, so the
+       CDN build stays loaded above. -->
   <script src="topbar.js" defer></script>
-  <script src="utils.js"></script>
-  <script src="chat.js"></script>
 
   <script>
   (function () {
     'use strict';
-
-    const SUPABASE_URL = 'https://cskbbioyniryonkukamw.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNza2JiaW95bmlyeW9ua3VrYW13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NjE2MTYsImV4cCI6MjA5NDUzNzYxNn0.R3Vx3fA-iAc8LhNL3WPSa9-BxH_087c7VaIbrB3CBJM';
-
-    // Jarvis chat widget (chat.js) injects its own markup but needs a Supabase
-    // client — the same project the rest of the dashboard uses.
-    if (window.supabase && window.initJarvisChat) {
-      try { window.initJarvisChat(window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)); } catch (e) {}
-    }
 
     // Service worker — offline shell + meal-reminder push notifications.
     if ('serviceWorker' in navigator) {
