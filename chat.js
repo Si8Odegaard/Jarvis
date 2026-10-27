@@ -290,6 +290,9 @@
 
   // ──────────────── UNIFIED STATE READER ────────────────
   const toLocal = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  // Plan days run on Eastern time, not the device's timezone.
+  const ET_FMT = new Intl.DateTimeFormat('en-US',{ timeZone:'America/New_York', year:'numeric', month:'2-digit', day:'2-digit' });
+  const etToday = () => { const o={}; ET_FMT.formatToParts(new Date()).forEach((p)=>{ o[p.type]=p.value; }); return o.year+'-'+o.month+'-'+o.day; };
 
   async function loadJarvisContext(sb) {
     if (!sb) return null;
@@ -538,7 +541,7 @@ Return only the JSON array, no formatting wrappers like \`\`\`json.`;
   // ──────────────── NATURAL LANGUAGE DATA LOGGING ────────────────
   async function detectAndLog(userText) {
     if (!supa) return null;
-    const today = (()=>{ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })();
+    const today = etToday();
     const logs = [];
 
     // Water tracking was removed — the offseason plan has no hydration target.
@@ -796,7 +799,7 @@ Return only the JSON array, no formatting wrappers like \`\`\`json.`;
         // Try to update today's checkin with protein
         if (supa && protein_grams > 0) {
           try {
-            const todayStr = toLocal(new Date());
+            const todayStr = etToday();
             const { data: existing } = await supa.from('daily_checkins').select('id,protein_grams').eq('date', todayStr).maybeSingle();
             const newProtein = (existing?.protein_grams || 0) + protein_grams;
             if (existing) {

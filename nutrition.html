@@ -230,7 +230,10 @@ const esc = (s) => String(s).replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>
 const num = (v) => { const n = parseFloat(v); return isFinite(n) ? n : null; };
 const fmt = (n) => Math.round(n).toLocaleString();
 const START = parse(BLOCK_START);
-const todayKey = () => key(new Date());
+// "Today" is the date in EASTERN time, not on the device: the plan day rolls
+// over at midnight ET even if the phone or browser is set to another timezone.
+const ET_FMT = new Intl.DateTimeFormat('en-US',{ timeZone:'America/New_York', year:'numeric', month:'2-digit', day:'2-digit' });
+const todayKey = () => { const o={}; ET_FMT.formatToParts(new Date()).forEach((p)=>{ o[p.type]=p.value; }); return o.year+'-'+o.month+'-'+o.day; };
 const dayDiff = (a,b) => Math.round((a-b)/86400000);
 const weekOf = (d) => Math.floor(dayDiff(d,START)/7)+1;
 const weekStart = (w) => addDays(START,(w-1)*7);
@@ -458,7 +461,7 @@ function renderCharts(){
 function renderWeeks(){
   let h = '<div class="tr h wk"><span>Week</span><span>kcal</span><span>P g</span><span>Wt avg</span><span>Δ lb</span><span>Load (n)</span></div>';
   let prevAvg = null;
-  const cur = Math.min(BLOCK_WEEKS, Math.max(1, weekOf(new Date())));
+  const cur = Math.min(BLOCK_WEEKS, Math.max(1, weekOf(parse(todayKey()))));
   for (let w=1; w<=BLOCK_WEEKS; w++){
     const o = weekStats(w);
     const base = prevAvg!=null ? prevAvg : S.t.w0;
@@ -539,7 +542,17 @@ pull();
 // Keep pulling so this tab shows what was logged elsewhere (Home, Jarvis) instead
 // of sitting on an older copy of the state.
 setInterval(pull, 60 * 1000);
-document.addEventListener('visibilitychange',()=>{ if (!document.hidden) pull(); });
+// Follow the calendar: "today" has to move at midnight, not stay on yesterday.
+let lastToday = todayKey();
+function checkRollover(){
+  const t = todayKey();
+  if (t === lastToday) return;
+  if (sel === lastToday) sel = t;
+  lastToday = t;
+  renderAll();
+}
+setInterval(checkRollover, 60 * 1000);
+document.addEventListener('visibilitychange',()=>{ if (!document.hidden){ checkRollover(); pull(); } });
 window.addEventListener('storage',()=>{ renderAll(); });
 })();
 </script>

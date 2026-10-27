@@ -1,6 +1,12 @@
 // ════════════════════════════════════════════════════════════
 //  SERVICE WORKER — dashboard PWA + push notifications
 //
+//  v18 — Home/Nutrition polish (2026-10-26):
+//   - knee check-in + knee gate removed from home.html.
+//   - "today" is now the date in America/New_York, not the device timezone.
+//   - the Home week strip pages back through earlier weeks for retro editing.
+//   - cache version bumped so installed clients pick up the new markup.
+//
 //  v17 — Nutrition tab rewritten (2026-10-26):
 //   - ./nutrition.html replaced with the new "Fuel" page. The fetch handler
 //     is cache-first, so without this bump installed clients would keep
@@ -42,7 +48,7 @@
 //  instead of silently failing.
 // ════════════════════════════════════════════════════════════
 
-const CACHE = 'dashboard-pwa-v17';
+const CACHE = 'dashboard-pwa-v18';
 const ASSETS = [
   './', './index.html', './manifest.json', './icon.svg',
   './icon-192.png', './icon-512.png',

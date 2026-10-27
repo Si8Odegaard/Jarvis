@@ -51,7 +51,7 @@ h2{margin:0;font-size:17px;color:var(--t1);letter-spacing:-.01em}
 
 /* session */
 .tag{display:inline-block;font:700 10px var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:99px;background:rgba(125,211,252,.12);color:var(--info);margin-bottom:6px}
-.tag.rest{background:rgba(255,255,255,.07);color:var(--t3)}.tag.gate{background:rgba(242,192,99,.14);color:var(--warn)}
+.tag.rest{background:rgba(255,255,255,.07);color:var(--t3)}
 .purpose{font-size:13px;color:var(--t2);margin:2px 0 12px}
 details{background:var(--card2);border:1px solid var(--b);border-radius:12px;margin-bottom:8px}
 summary{list-style:none;cursor:pointer;padding:11px 13px;font-weight:600;color:var(--t1);font-size:13.5px;display:flex;justify-content:space-between;align-items:center}
@@ -70,14 +70,9 @@ details[open] summary::after{transform:rotate(180deg)}
 .prog div{height:100%;background:#fff;width:0;transition:width .4s}
 .note{font-size:12px;color:var(--warn);background:rgba(242,192,99,.08);border-radius:10px;padding:9px 11px;margin-top:8px}
 
-/* gate */
-.gate-btns{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 8px}
-.gbtn{padding:12px 4px;border-radius:12px;border:1px solid var(--b2);background:var(--card2);color:var(--t2);font:700 13px var(--font);cursor:pointer}
-.gbtn.sel.green{background:rgba(107,227,164,.14);border-color:var(--good);color:var(--good)}
-.gbtn.sel.yellow{background:rgba(242,192,99,.14);border-color:var(--warn);color:var(--warn)}
-.gbtn.sel.red{background:rgba(255,107,107,.14);border-color:var(--bad);color:var(--bad)}
-.gate-out{font-size:12.5px;color:var(--t2)}
-.gate-test{font-size:11.5px;color:var(--t3);margin-top:8px;line-height:1.5}
+/* week nav — page back to any earlier week to fix a forgotten entry */
+.wknav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.wnav{width:36px;height:30px;border-radius:9px;border:1px solid var(--b2);background:var(--card);color:var(--t1);font:600 15px var(--font);line-height:1;cursor:pointer}
 
 /* forms */
 .row{display:grid;gap:8px;margin-bottom:8px}
@@ -118,21 +113,22 @@ input[type=range]{width:100%;accent-color:#fff}
     <span class="chip" id="syncChip">LOCAL</span>
   </div>
 
+  <div class="wknav">
+    <button type="button" class="wnav" id="wkPrev" aria-label="Previous week">‹</button>
+    <span class="eyebrow" id="wkStripLabel">Week 1</span>
+    <button type="button" class="wnav" id="wkNext" aria-label="Next week">›</button>
+  </div>
   <div class="strip" id="strip"></div>
 
   <!-- Today's session -->
   <section class="card" id="sessionCard"></section>
 
-  <!-- Knee gate -->
-  <section class="card" id="gateCard"></section>
-
   <!-- Morning check-in -->
   <section class="card">
     <div class="card-h"><h2>Morning check-in</h2><span class="eyebrow">30 sec</span></div>
-    <div class="row r3">
+    <div class="row r2">
       <div><label class="f">Sleep (h)</label><input type="number" id="ciSleep" step="0.5" min="0" max="14" inputmode="decimal"></div>
       <div><label class="f">Soreness 1–5</label><input type="number" id="ciSore" min="1" max="5" inputmode="numeric"></div>
-      <div><label class="f">Knee 0–10</label><input type="number" id="ciKnee" min="0" max="10" inputmode="numeric"></div>
     </div>
     <div class="rule" id="ciRule">Log these before you train.</div>
   </section>
@@ -212,7 +208,7 @@ const PRIMER_B = { h:'Primer B · upper · 6 min', items:[
 ]};
 
 const PLAN = { 1: {
-  1:{ tag:'Upper strength A', kind:'gym', purpose:'Gym is the default until the trainer clears the knee. Learn the lifts at RPE 7 (2–3 reps in reserve).',
+  1:{ tag:'Upper strength A', kind:'gym', purpose:'Gym is the default. Learn the lifts at RPE 7 (2–3 reps in reserve).',
       blocks:[ PRIMER_B,
         { h:'Upper strength A · ~50 min', items:[
           ['DB bench press','3×8 · tempo 3-0-1-0 · RPE 7 (35–40 lb) · rest 2 min · backup: elevated push-ups'],
@@ -222,7 +218,7 @@ const PLAN = { 1: {
           ['Pallof press','3×8/side · 2 s hold · light'],
           ['Dead bug','3×6/side · 3 s lower']
         ]}],
-      alt:{ h:'Version A · Field (ONLY if knee gate = green) · ~40 min', items:[
+      alt:{ h:'Version A · Field (optional) · ~40 min', items:[
           ['Primer A','Skip the sprint builds if they feel heavy'],
           ['Rolling starts','4×10 m: 5 m jog-in, scan, go · 95–100% · rest 2 min'],
           ['Static starts','2×15 m · 95–100% · rest 2.5 min'],
@@ -231,13 +227,12 @@ const PLAN = { 1: {
           ['Wall touches','3×60 s each foot + 3×60 s receiving across body · no cutting']
       ]},
       note:'No lateral/cutting work this week. If you skip the field version, don\'t make it up later.' },
-  2:{ tag:'Indoor game day', kind:'game', gate:true, purpose:'Best transfer stimulus of the week. Treat it as a lab, not an unmanaged load.',
+  2:{ tag:'Indoor game day', kind:'game', purpose:'Best transfer stimulus of the week. Treat it as a lab, not an unmanaged load.',
       blocks:[
         { h:'Before', items:[
           ['See HCC athletic trainer','Tuesday morning, you\'re on campus until 12:30'],
           ['AM mobility · 10–15 min','90/90 switches · bridge marches 2×8 · lateral walks 2×10 · ankle rocks'],
-          ['Pre-game · 8 min','Jog 3 min · pogos 2×8 · A-skips 2×10 m · build-ups 3×20 m 70/80/90%'],
-          ['Run the knee gate','In the warm-up. Yellow = no hard planting cuts.']
+          ['Pre-game · 8 min','Jog 3 min · pogos 2×8 · A-skips 2×10 m · build-ups 3×20 m 70/80/90%']
         ]},
         { h:'Game', items:[
           ['Cap at ~half the minutes','e.g. 5 on / 5 off this week'],
@@ -249,7 +244,6 @@ const PLAN = { 1: {
   3:{ tag:'Technical block', kind:'tech', purpose:'Low metabolic cost. Targets awareness — scanned reps with a decision attached.',
       blocks:[
         { h:'Technical · 75 min', items:[
-          ['Knee check first','Rate 0–10. If 1+ above baseline: turns technique-only at 70%'],
           ['Warm-up · 10 min','Primer A without the sprint builds'],
           ['Wall · 4 × 4 min (1 min rest)','Pass-backs → receive & turn (shoulder check) → across body → partner number call'],
           ['Pressure turns · 25 min','4×3 min rondos (90 s rest) + 3×8 1v1 turn through a 10 m gate'],
@@ -261,7 +255,7 @@ const PLAN = { 1: {
       blocks:[ PRIMER_A,
         { h:'Lower strength A · ~70 min', items:[
           ['Box back squat (parallel)','3×6 · 4-0-1-0 · RPE 6 (~65–75 lb) · rest 2–3 min · backup: goblet to box'],
-          ['DB reverse lunge','3×6/leg · 3-0-1-0 · backup: single-leg hip thrust 3×8 if knee complains'],
+          ['DB reverse lunge','3×6/leg · 3-0-1-0 · backup: single-leg hip thrust 3×8'],
           ['Nordic hamstring curl','2×3 · ~5 s lower · catch with hands · backup: machine curl 3×5'],
           ['Copenhagen plank (knee on bench)','2×15 s/side'],
           ['Standing calf raise','3×10 · 3-1-1-0'],
@@ -295,20 +289,12 @@ const PLAN = { 1: {
           ['Push-up','3×AMRAP-2 · 3-0-1-0'],
           ['Side plank','2×20 s/side']
         ]}],
-      note:'Skip box jumps this week unless the knee gate is green.' },
+      note:'Skip box jumps this week.' },
   0:{ tag:'Off', kind:'rest', purpose:'Full recovery. Walk and 10 min of mobility only. Flexes after Nov 8 when the refereeing schedule is set.',
       blocks:[{ h:'Recovery', items:[['Walk','Easy, outdoors'],['Mobility','10 min'],['Log weekly totals','Check the Weekly load card']]}] }
 }};
 
-const GATE = {
-  test:'Run before every field session: 2×10 single-leg step-downs (8 in step, each leg) · 20 quick pogo hops · 3 build-up runs of 20 m at 80%.',
-  green:{label:'Green',msg:'Pain 0–2/10, no swelling, full range, nothing giving way, no worse next morning → do the session as written.'},
-  yellow:{label:'Yellow',msg:'3–4/10 or morning stiffness above baseline → swap field work for bike. No sprints or cutting.'},
-  red:{label:'Red',msg:'Sharp pain, swelling, locking or giving way → stop and see the trainer or a doctor.'}
-};
-
 const OPEN_DEFAULT = [
-  ['trainer','HCC athletic trainer\'s verdict on the knee'],
   ['coach','Fitness coach\'s lifting program (to merge with this)'],
   ['ref','Weekend refereeing schedule (after Nov 8)'],
   ['field','Grass field + wall confirmed']
@@ -327,7 +313,10 @@ const addDays = (d,n) => { const x = new Date(d); x.setDate(x.getDate()+n); retu
 const esc = (s) => String(s).replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num = (v) => { const n = parseFloat(v); return isFinite(n) ? n : null; };
 const START = parse(BLOCK_START);
-const todayKey = () => key(new Date());
+// "Today" is the date in EASTERN time, not on the device: the plan day rolls
+// over at midnight ET even if the phone or browser is set to another timezone.
+const ET_FMT = new Intl.DateTimeFormat('en-US',{ timeZone:'America/New_York', year:'numeric', month:'2-digit', day:'2-digit' });
+const todayKey = () => { const o={}; ET_FMT.formatToParts(new Date()).forEach((p)=>{ o[p.type]=p.value; }); return o.year+'-'+o.month+'-'+o.day; };
 const dayDiff = (a,b) => Math.round((a - b)/86400000);
 function weekOf(d){ return Math.floor(dayDiff(d, START)/7)+1; }          // 1-based block week (can be <1 or >4)
 function weekStart(w){ return addDays(START,(w-1)*7); }
@@ -337,9 +326,9 @@ function weekStart(w){ return addDays(START,(w-1)*7); }
    ========================================================= */
 const LS = 'ot_home_v1';
 let S;
-function blank(){ return { v:1, updated:0, days:{}, tests:[], open:{}, kneeBase:0 }; }
+function blank(){ return { v:1, updated:0, days:{}, tests:[], open:{} }; }
 function load(){ try { const r = JSON.parse(localStorage.getItem(LS)); if (r && r.days) return Object.assign(blank(), r); } catch(e){} return blank(); }
-function day(k){ return S.days[k] || (S.days[k] = { sleep:null, sore:null, knee:null, gate:null, done:{}, sessions:[] }); }
+function day(k){ return S.days[k] || (S.days[k] = { sleep:null, sore:null, done:{}, sessions:[] }); }
 let selKey = todayKey();
 
 let pushT = null;
@@ -393,17 +382,23 @@ function renderHeader(){
   $('hdrTitle').textContent = selKey===todayKey() ? 'Today' : DOW[d.getDay()].charAt(0)+DOW[d.getDay()].slice(1).toLowerCase()+' '+d.getDate();
   $('logDate').textContent = DOW[d.getDay()]+' '+(d.getMonth()+1)+'/'+d.getDate();
 }
+// The strip pages week by week, so an entry you forgot last week can still be
+// opened and corrected instead of being unreachable.
+let stripWeek = weekOf(parse(selKey));
 function renderStrip(){
-  const d = parse(selKey), w = weekOf(d), ws = weekStart(w), tk = todayKey();
+  const ws = weekStart(stripWeek), tk = todayKey();
   let h='';
   for (let i=0;i<7;i++){
     const dd = addDays(ws,i), k = key(dd), rec = S.days[k];
-    const has = rec && (rec.sessions.length || Object.keys(rec.done).length);
+    const has = rec && ((rec.sessions||[]).length || Object.keys(rec.done||{}).length || rec.sleep!=null);
     h += '<button class="day'+(k===tk?' today':'')+(k===selKey?' sel':'')+(has?' has':'')+'" data-k="'+k+'"><b>'+DOW[dd.getDay()].slice(0,1)+DOW[dd.getDay()].slice(1,3).toLowerCase()+'</b><span>'+dd.getDate()+'</span><i></i></button>';
   }
   $('strip').innerHTML = h;
+  const lbl = $('wkStripLabel'); if (lbl) lbl.textContent = 'Week '+stripWeek;
 }
-$('strip').addEventListener('click',(e)=>{ const b=e.target.closest('.day'); if(!b) return; selKey=b.dataset.k; renderAll(); });
+$('strip').addEventListener('click',(e)=>{ const b=e.target.closest('.day'); if(!b) return; selKey=b.dataset.k; stripWeek=weekOf(parse(selKey)); renderAll(); });
+$('wkPrev').addEventListener('click',()=>{ stripWeek-=1; renderStrip(); });
+$('wkNext').addEventListener('click',()=>{ stripWeek+=1; renderStrip(); });
 
 /* =========================================================
    RENDER: session card
@@ -427,7 +422,7 @@ function renderSession(){
   }
   const ids = allItemIds(p), doneN = ids.filter(i=>rec.done[i]).length;
   const pct = ids.length ? Math.round(doneN/ids.length*100) : 0;
-  let h = '<span class="tag '+(p.kind==='rest'?'rest':(p.gate?'gate':''))+'">'+(p.kind==='rest'?'rest':p.kind)+'</span>';
+  let h = '<span class="tag '+(p.kind==='rest'?'rest':'')+'">'+(p.kind==='rest'?'rest':p.kind)+'</span>';
   h += '<h2 style="font-size:21px">'+esc(p.tag)+'</h2><div class="purpose">'+esc(p.purpose)+'</div>';
   h += '<div class="prog"><div style="width:'+pct+'%"></div></div>';
   p.blocks.forEach((b,bi)=>{
@@ -452,29 +447,11 @@ $('sessionCard').addEventListener('click',(e)=>{
 });
 
 /* =========================================================
-   RENDER: knee gate
-   ========================================================= */
-function renderGate(){
-  const rec = day(selKey), g = rec.gate;
-  let h = '<div class="card-h"><h2>Knee gate</h2><span class="eyebrow">before field work</span></div>';
-  h += '<div class="gate-out">Run it, then tap your result.</div>';
-  h += '<div class="gate-btns">'+['green','yellow','red'].map(c=>'<button class="gbtn '+c+(g===c?' sel':'')+'" data-g="'+c+'">'+GATE[c].label+'</button>').join('')+'</div>';
-  h += '<div class="gate-out">'+(g?esc(GATE[g].msg):'Not logged for this day.')+'</div>';
-  h += '<div class="gate-test">'+esc(GATE.test)+'</div>';
-  $('gateCard').innerHTML = h;
-}
-$('gateCard').addEventListener('click',(e)=>{
-  const b=e.target.closest('.gbtn'); if(!b) return;
-  const rec=day(selKey); rec.gate = rec.gate===b.dataset.g ? null : b.dataset.g;
-  save(); renderGate();
-});
-
-/* =========================================================
    Morning check-in
    ========================================================= */
 function renderCheckin(){
   const rec = day(selKey);
-  $('ciSleep').value = rec.sleep ?? ''; $('ciSore').value = rec.sore ?? ''; $('ciKnee').value = rec.knee ?? '';
+  $('ciSleep').value = rec.sleep ?? ''; $('ciSore').value = rec.sore ?? '';
   ciRule();
 }
 function ciRule(){
@@ -484,10 +461,9 @@ function ciRule(){
   if (rec.sore!=null && rec.sore>=4) flags.push('soreness 4+');
   if (flags.length){ msg='Drop one set per exercise today ('+flags.join(', ')+').'; cls='rule warn'; }
   else if (rec.sleep!=null && rec.sore!=null) { msg='Green light — train as written.'; cls='rule good'; }
-  if (rec.knee!=null && S.kneeBase!=null && rec.knee >= S.kneeBase+1 && rec.knee>0){ msg += ' Knee is 1+ above your baseline ('+S.kneeBase+') — technique-only turns, swap lunges for single-leg hip thrusts.'; cls='rule bad'; }
   el.textContent = msg; el.className = cls;
 }
-[['ciSleep','sleep'],['ciSore','sore'],['ciKnee','knee']].forEach(([id,f])=>{
+[['ciSleep','sleep'],['ciSore','sore']].forEach(([id,f])=>{
   $(id).addEventListener('input',()=>{
     const rec=day(selKey); rec[f]=num($(id).value);
     save(); ciRule();
@@ -594,14 +570,28 @@ $('openItems').addEventListener('click',(e)=>{
    BOOT
    ========================================================= */
 function renderAll(){
-  renderHeader(); renderStrip(); renderSession(); renderGate(); renderCheckin();
+  renderHeader(); renderStrip(); renderSession(); renderCheckin();
   renderLog(); renderMetrics(); renderTests(); renderOpen();
 }
 S = load();
 if (!sbOn) chip('LOCAL');
 renderAll();
 pull();
-document.addEventListener('visibilitychange',()=>{ if (!document.hidden) pull(); });
+
+// Follow the calendar: if midnight passes while this tab stays open, "today"
+// has to move to the new day instead of stranding you on yesterday's session.
+let lastToday = todayKey();
+function checkRollover(){
+  const t = todayKey();
+  if (t === lastToday) return;
+  if (selKey === lastToday){ selKey = t; stripWeek = weekOf(parse(t)); }
+  lastToday = t;
+  renderAll();
+}
+setInterval(checkRollover, 60 * 1000);
+// Keep pulling so entries logged in another tab or by Jarvis show up here.
+setInterval(pull, 60 * 1000);
+document.addEventListener('visibilitychange',()=>{ if (!document.hidden){ checkRollover(); pull(); } });
 })();
 </script>
 </body>
