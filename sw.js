@@ -1,6 +1,14 @@
 // ════════════════════════════════════════════════════════════
 //  SERVICE WORKER — dashboard PWA + push notifications
 //
+//  v20 — Health page anon key fixed (2026-10-26):
+//   - stack.html's push-subscription script held a corrupted copy of the
+//     public anon key (one wrong base64 character, 207 vs 208 chars), so the
+//     Supabase client it built returned 401 Invalid API key. "Enable meal
+//     reminders" could never save a subscription and Jarvis inside the Health
+//     iframe ran without data. Restored to the same key the other pages use.
+//   - cache version bumped so installed clients pick up the fixed page.
+//
 //  v19 — Hydration removed + Fuel simplified (2026-10-26):
 //   - stack.html dropped its water tracker (tab button, section, CSS, modal,
 //     water.css block and the whole water IIFE) and now clears the loading
@@ -58,7 +66,7 @@
 //  instead of silently failing.
 // ════════════════════════════════════════════════════════════
 
-const CACHE = 'dashboard-pwa-v19';
+const CACHE = 'dashboard-pwa-v20';
 const ASSETS = [
   './', './index.html', './manifest.json', './icon.svg',
   './icon-192.png', './icon-512.png',
