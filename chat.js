@@ -307,6 +307,11 @@
       state[row.key] = row.data;
     }
 
+    // Start weight comes from the Nutrition tab's Targets, not the 135 lb default,
+    // so anything quoted back reflects what was actually entered.
+    const nutTargets = state.offseason_nutrition && state.offseason_nutrition.t;
+    if (nutTargets && nutTargets.w0) startWeight = nutTargets.w0;
+
     return {
       state,
       checkins: checkinsRes.data || [],
@@ -401,12 +406,12 @@ FOOD LOGGING:
 If Silas describes food he ate, make a secondary analysis to estimate protein and calories, then confirm with him before logging. Format: "That sounds like roughly [N]g protein and [N] calories. Want me to log that?"
 
 DATA LOGGING FROM CONVERSATION:
-If Silas mentions his weight, water intake, or how he's feeling, offer to log it. Say "Want me to log that?" and if he confirms, write to the appropriate Supabase table.`;
+If Silas mentions his weight or how he's feeling, offer to log it. Say "Want me to log that?" and if he confirms, write to the appropriate Supabase table.`;
   }
 
   // ──────────────── FOOD NUTRITION ESTIMATION ────────────────
   async function estimateFoodNutrition(foodDescription) {
-    const prompt = `You are a sports nutrition calculator for a ${startWeight}-155lb male athlete in a caloric surplus trying to gain muscle. Estimate the protein grams and total calories in this food description. Be generous with portions since this is an athlete. Return ONLY a valid JSON object with exactly these keys: protein_grams (number), calories (number), confidence (high or medium or low), follow_up_question (string or null — only include a follow-up question if confidence is low and one specific question would significantly improve the estimate). Food description: ${foodDescription}. Return only the JSON object, no other text, no markdown.`;
+    const prompt = `You are a sports nutrition calculator for a ${startWeight}-${startWeight + 20}lb male athlete in a caloric surplus trying to gain muscle. Estimate the protein grams and total calories in this food description. Be generous with portions since this is an athlete. Return ONLY a valid JSON object with exactly these keys: protein_grams (number), calories (number), confidence (high or medium or low), follow_up_question (string or null — only include a follow-up question if confidence is low and one specific question would significantly improve the estimate). Food description: ${foodDescription}. Return only the JSON object, no other text, no markdown.`;
 
     const body = {
       contents: [{ parts: [{ text: prompt }] }],
@@ -511,38 +516,32 @@ Return only the JSON array, no formatting wrappers like \`\`\`json.`;
     }
   }
 
+  // ──────────────── SHARED NUTRITION STATE ────────────────
+  // The Nutrition tab stores its day records under app_state key
+  // 'offseason_nutrition'. Anything logged from chat is mirrored there so the
+  // tab shows what was actually entered instead of its own older copy.
+  async function updateNutritionState(mutate) {
+    if (!supa) return null;
+    const { data: row } = await supa.from('app_state').select('data').eq('key', 'offseason_nutrition').maybeSingle();
+    const nut = (row && row.data) || {};
+    nut.v = nut.v || 1;
+    nut.days = nut.days || {};
+    mutate(nut);
+    nut.updated = Date.now();
+    await supa.from('app_state').upsert(
+      { key: 'offseason_nutrition', data: nut, updated_at: new Date().toISOString() },
+      { onConflict: 'key' }
+    );
+    return nut;
+  }
+
   // ──────────────── NATURAL LANGUAGE DATA LOGGING ────────────────
   async function detectAndLog(userText) {
     if (!supa) return null;
     const today = (()=>{ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })();
     const logs = [];
 
-    // Water: "drank X liters", "had X bottles", "X ml of water"
-    const waterMatch = userText.match(/(?:drank|had|consumed)\s+(\d+\.?\d*)\s*(?:liters?|l|bottles?)/i) ||
-                       userText.match(/(\d+\.?\d*)\s*ml\s+(?:of\s+)?water/i) ||
-                       userText.match(/(\d+\.?\d*)\s*(?:oz|ounces?)\s+(?:of\s+)?water/i);
-    if (waterMatch) {
-      let oz = 0;
-      if (userText.match(/liters?|l\b/i) && waterMatch[1]) oz = parseFloat(waterMatch[1]) * 33.814;
-      else if (userText.match(/ml/i) && waterMatch[1]) oz = parseFloat(waterMatch[1]) / 29.5735;
-      else if (waterMatch[1]) oz = parseFloat(waterMatch[1]); // Assume oz if no unit or oz
-      if (oz > 0) {
-        try {
-          const { data: nutRow } = await supa.from('app_state').select('data').eq('key', 'nutrition').maybeSingle();
-          const nutData = (nutRow?.data) || {};
-          nutData.water_oz = (nutData.water_oz || 0) + oz;
-          await supa.from('app_state').upsert(
-            { key: 'nutrition', data: nutData, updated_at: new Date().toISOString() },
-            { onConflict: 'key' }
-          );
-          // Also insert into water table
-          try {
-            await supa.from('water').insert({ date: today, amount_oz: oz });
-          } catch (_) { /* water table may not exist */ }
-          logs.push(`\u{1F4A7} Logged ${Math.round(oz)}oz water. Today's total: ${Math.round(nutData.water_oz)}oz. Stay hydrated — hydration directly impacts your sprint repeatability.`);
-        } catch (_) { logs.push('\u{1F4A7} Water logged (offline).'); }
-      }
-    }
+    // Water tracking was removed — the offseason plan has no hydration target.
 
     // Weight: "weighed X", "weight is X", "scale said X"
     const weightMatch = userText.match(/(?:weighed|weight\s+is|scale\s+said|weigh\s+in\s+at)\s+(\d+\.?\d*)\s*(?:lbs?|pounds?)?/i) ||
@@ -550,7 +549,19 @@ Return only the JSON array, no formatting wrappers like \`\`\`json.`;
     if (weightMatch && parseFloat(weightMatch[1]) > 50) {
       const w = parseFloat(weightMatch[1]);
       try {
-        await supa.from('weight_logs').upsert({ date: today, weight: w }, { onConflict: 'date' });
+        // Canonical current weight, quoted by every surface (no stale default).
+        await supa.from('app_state').upsert(
+          { key: 'latest_weight', data: { weight: w, date: today, updated: Date.now() }, updated_at: new Date().toISOString() },
+          { onConflict: 'key' }
+        );
+        // Mirror into the Nutrition tab's own record so its charts/tables show it.
+        await updateNutritionState((nut) => {
+          const d = nut.days[today] || (nut.days[today] = { entries: [], w: null });
+          d.w = w;
+        });
+        try {
+          await supa.from('weight_logs').upsert({ date: today, weight: w }, { onConflict: 'date' });
+        } catch (_) { /* legacy table, may not exist */ }
         const diff = w - startWeight;
         const sign = diff >= 0 ? '+' : '';
         logs.push(`\u2696\uFE0F Logged weight: ${w}lbs (${sign}${diff.toFixed(1)} from ${startWeight}lbs). ${diff > 0 ? 'Mass gain on track — every pound is functional power on the pitch.' : 'Keep eating — muscle takes fuel.'}`);
@@ -797,6 +808,14 @@ Return only the JSON array, no formatting wrappers like \`\`\`json.`;
                 estimated_calories: calories
               });
             }
+
+            // Same record the Nutrition tab reads — one current state, not two.
+            try {
+              await updateNutritionState((nut) => {
+                const d = nut.days[todayStr] || (nut.days[todayStr] = { entries: [], w: null });
+                d.entries.push({ lbl: 'Jarvis', kc: calories || 0, c: 0, p: protein_grams || 0, t: Date.now() });
+              });
+            } catch (_) { /* nutrition sync is best-effort */ }
 
             const targetWeight = ctx?.state?.latest_weight || startWeight;
             const target = Math.round((typeof targetWeight === 'object' ? (targetWeight.weight || 135) : targetWeight) * 0.82);

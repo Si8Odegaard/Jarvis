@@ -14,7 +14,7 @@
   };
 
   const TABS = [
-    { id: 'home', label: 'Home', panelId: 'tab-panel-home' },
+    { id: 'home', label: 'Home', panelId: 'tab-panel-home', iframeSrc: 'home.html?embed=1' },
     { id: 'stack', label: 'Health', panelId: 'tab-panel-stack', iframeSrc: 'stack.html?embed=1' },
     { id: 'nutrition', label: 'Nutrition', panelId: 'tab-panel-nutrition', iframeSrc: 'nutrition.html?embed=1' },
 

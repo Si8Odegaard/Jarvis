@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#050506">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Offseason — Home</title>
+<!-- Supabase is the same project the other tabs use (public anon key, RLS-enforced).
+     home.html hardcodes it below, like stack.html / nutrition.html / topbar.js do;
+     window.ENV_SUPABASE_* overrides are honoured if env.js ever provides them. -->
+<script src="env.js" onerror="void 0"></script>
+<style>
+:root{
+  --bg:#050506;--card:rgba(255,255,255,.04);--card2:rgba(255,255,255,.035);--input:rgba(0,0,0,.3);
+  --b:rgba(255,255,255,.07);--b2:rgba(255,255,255,.13);
+  --t1:#FAFAFA;--t2:#B8B6B0;--t3:#76746E;--t4:#4D4B47;
+  --accent:#1D9E75;--good:#6BE3A4;--warn:#F2C063;--bad:#FF6B6B;--info:#7DD3FC;
+  --font:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--t2);font:15px/1.5 var(--font);-webkit-font-smoothing:antialiased}
+body{min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(60% 50% at 82% 10%,rgba(29,158,117,.13),transparent 60%),radial-gradient(50% 40% at 15% 95%,rgba(125,211,252,.05),transparent 60%)}
+main{position:relative;z-index:1;max-width:720px;margin:0 auto;padding:max(28px,env(safe-area-inset-top)) 16px calc(96px + env(safe-area-inset-bottom))}
+body.embed main{padding-top:14px;padding-bottom:24px}
+.mono{font-family:var(--mono)}
+.eyebrow{font:600 10.5px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--t3)}
+h1{margin:2px 0 0;font-size:26px;letter-spacing:-.025em;color:var(--t1);line-height:1.15}
+h2{margin:0;font-size:17px;color:var(--t1);letter-spacing:-.01em}
+.top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:10px}
+.chip{font:600 10px var(--mono);letter-spacing:.08em;padding:4px 9px;border-radius:99px;border:1px solid var(--b2);color:var(--t3);white-space:nowrap}
+.chip.ok{color:var(--good);border-color:rgba(107,227,164,.35)}.chip.bad{color:var(--bad);border-color:rgba(255,107,107,.35)}
+.card{background:var(--card);border:1px solid var(--b);border-radius:16px;padding:16px;margin-bottom:12px}
+.card-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px}
+
+/* week strip */
+.strip{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:12px}
+.day{background:var(--card);border:1px solid var(--b);border-radius:12px;padding:8px 0 7px;text-align:center;cursor:pointer;color:var(--t3);font:inherit}
+.day b{display:block;font:700 10px var(--mono);letter-spacing:.08em;text-transform:uppercase}
+.day span{display:block;font-size:16px;font-weight:700;color:var(--t2);margin-top:1px}
+.day i{display:block;width:5px;height:5px;border-radius:50%;margin:4px auto 0;background:transparent}
+.day.has i{background:var(--good)}
+.day.today{border-color:rgba(255,255,255,.28)}
+.day.sel{background:rgba(255,255,255,.1);color:var(--t1)}
+.day.sel span{color:var(--t1)}
+
+/* session */
+.tag{display:inline-block;font:700 10px var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:99px;background:rgba(125,211,252,.12);color:var(--info);margin-bottom:6px}
+.tag.rest{background:rgba(255,255,255,.07);color:var(--t3)}.tag.gate{background:rgba(242,192,99,.14);color:var(--warn)}
+.purpose{font-size:13px;color:var(--t2);margin:2px 0 12px}
+details{background:var(--card2);border:1px solid var(--b);border-radius:12px;margin-bottom:8px}
+summary{list-style:none;cursor:pointer;padding:11px 13px;font-weight:600;color:var(--t1);font-size:13.5px;display:flex;justify-content:space-between;align-items:center}
+summary::-webkit-details-marker{display:none}
+summary::after{content:'▾';color:var(--t3);transition:transform .2s}
+details[open] summary::after{transform:rotate(180deg)}
+.det-body{padding:0 13px 10px}
+.item{display:flex;gap:11px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--b);cursor:pointer}
+.item:first-child{border-top:none}
+.box{flex:none;width:22px;height:22px;border-radius:50%;border:2px solid var(--b2);display:flex;align-items:center;justify-content:center;font-size:12px;color:transparent;margin-top:1px}
+.item.done .box{background:var(--accent);border-color:var(--accent);color:#fff}
+.item.done .nm{text-decoration:line-through;color:var(--t3)}
+.nm{font-size:13.5px;color:var(--t1);font-weight:600;line-height:1.3}
+.sub{font-size:11.5px;color:var(--t3);margin-top:1px}
+.prog{height:5px;background:rgba(255,255,255,.06);border-radius:9px;overflow:hidden;margin:2px 0 12px}
+.prog div{height:100%;background:#fff;width:0;transition:width .4s}
+.note{font-size:12px;color:var(--warn);background:rgba(242,192,99,.08);border-radius:10px;padding:9px 11px;margin-top:8px}
+
+/* gate */
+.gate-btns{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 8px}
+.gbtn{padding:12px 4px;border-radius:12px;border:1px solid var(--b2);background:var(--card2);color:var(--t2);font:700 13px var(--font);cursor:pointer}
+.gbtn.sel.green{background:rgba(107,227,164,.14);border-color:var(--good);color:var(--good)}
+.gbtn.sel.yellow{background:rgba(242,192,99,.14);border-color:var(--warn);color:var(--warn)}
+.gbtn.sel.red{background:rgba(255,107,107,.14);border-color:var(--bad);color:var(--bad)}
+.gate-out{font-size:12.5px;color:var(--t2)}
+.gate-test{font-size:11.5px;color:var(--t3);margin-top:8px;line-height:1.5}
+
+/* forms */
+.row{display:grid;gap:8px;margin-bottom:8px}
+.r2{grid-template-columns:1fr 1fr}.r3{grid-template-columns:1fr 1fr 1fr}
+label.f{display:block;font:700 9.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:4px}
+input[type=number],input[type=text],select{width:100%;background:var(--input);border:1px solid var(--b2);color:var(--t1);border-radius:10px;padding:10px 11px;font:14px var(--font);outline:none}
+input:focus,select:focus{border-color:rgba(255,255,255,.4)}
+input[type=range]{width:100%;accent-color:#fff}
+.btn{width:100%;padding:12px;border:none;border-radius:12px;background:linear-gradient(180deg,#fff,#e8e5dd);color:#0a0a0b;font:700 14px var(--font);cursor:pointer}
+.btn.sec{background:var(--card);border:1px solid var(--b2);color:var(--t1)}
+.rule{font-size:12px;margin-top:6px;color:var(--t3)}.rule.warn{color:var(--warn)}.rule.bad{color:var(--bad)}.rule.good{color:var(--good)}
+.sess{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-top:1px solid var(--b);font-size:13px}
+.sess .m{font:11px var(--mono);color:var(--t3)}
+.x{background:none;border:1px solid var(--b2);color:var(--t3);border-radius:8px;width:28px;height:28px;cursor:pointer;font-size:15px}
+
+/* metrics */
+.metric{margin-bottom:12px}
+.metric:last-child{margin-bottom:0}
+.m-top{display:flex;justify-content:space-between;align-items:baseline}
+.m-name{font-size:13px;font-weight:600;color:var(--t1)}
+.m-val{font:600 13px var(--mono);color:var(--t1)}
+.bar{position:relative;height:8px;background:rgba(255,255,255,.06);border-radius:9px;margin:6px 0 3px;overflow:hidden}
+.bar div{height:100%;background:linear-gradient(90deg,var(--info),var(--good));border-radius:9px}
+.bar.over div{background:linear-gradient(90deg,var(--good),var(--warn))}
+.m-sub{font-size:11px;color:var(--t3)}
+
+.empty{font-size:12px;color:var(--t4);font-style:italic;padding:6px 0}
+.foot{text-align:center;margin-top:20px;font:10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--t4)}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div>
+      <div class="eyebrow" id="hdrEyebrow">—</div>
+      <h1 id="hdrTitle">Today</h1>
+    </div>
+    <span class="chip" id="syncChip">LOCAL</span>
+  </div>
+
+  <div class="strip" id="strip"></div>
+
+  <!-- Today's session -->
+  <section class="card" id="sessionCard"></section>
+
+  <!-- Knee gate -->
+  <section class="card" id="gateCard"></section>
+
+  <!-- Morning check-in -->
+  <section class="card">
+    <div class="card-h"><h2>Morning check-in</h2><span class="eyebrow">30 sec</span></div>
+    <div class="row r3">
+      <div><label class="f">Sleep (h)</label><input type="number" id="ciSleep" step="0.5" min="0" max="14" inputmode="decimal"></div>
+      <div><label class="f">Soreness 1–5</label><input type="number" id="ciSore" min="1" max="5" inputmode="numeric"></div>
+      <div><label class="f">Knee 0–10</label><input type="number" id="ciKnee" min="0" max="10" inputmode="numeric"></div>
+    </div>
+    <div class="rule" id="ciRule">Log these before you train.</div>
+  </section>
+
+  <!-- Log a session -->
+  <section class="card">
+    <div class="card-h"><h2>Log session</h2><span class="eyebrow" id="logDate">—</span></div>
+    <div class="row r2">
+      <div><label class="f">Type</label>
+        <select id="lgType"><option>Gym</option><option>Field</option><option>Game</option><option>Bike</option><option>Technical</option><option>Other</option></select></div>
+      <div><label class="f">Minutes</label><input type="number" id="lgMin" min="1" max="240" inputmode="numeric" placeholder="45"></div>
+    </div>
+    <label class="f">RPE <span id="lgRpeVal" style="color:var(--t1)">6</span> / 10</label>
+    <input type="range" id="lgRpe" min="1" max="10" value="6">
+    <div class="row r3" style="margin-top:10px">
+      <div><label class="f">Sprint reps 90%+</label><input type="number" id="lgSR" min="0" inputmode="numeric" placeholder="0"></div>
+      <div><label class="f">Rep dist (m)</label><input type="number" id="lgSD" min="0" inputmode="numeric" placeholder="10"></div>
+      <div><label class="f">Vol-load (lb)</label><input type="number" id="lgVL" min="0" inputmode="numeric" placeholder="0"></div>
+    </div>
+    <button class="btn" id="lgAdd">+ Add session</button>
+    <div id="sessList" style="margin-top:6px"></div>
+  </section>
+
+  <!-- Weekly load -->
+  <section class="card">
+    <div class="card-h"><h2>Weekly load</h2><span class="eyebrow" id="wkLabel">—</span></div>
+    <div id="metrics"></div>
+    <div class="rule" id="wkRule"></div>
+  </section>
+
+  <!-- Baselines -->
+  <section class="card">
+    <div class="card-h"><h2>Baselines</h2><span class="eyebrow">retest wk 4</span></div>
+    <div class="row r3">
+      <div><label class="f">10 m (s)</label><input type="number" id="bs10" step="0.01" inputmode="decimal"></div>
+      <div><label class="f">20 m (s)</label><input type="number" id="bs20" step="0.01" inputmode="decimal"></div>
+      <div><label class="f">Broad jump (in)</label><input type="number" id="bsBJ" step="1" inputmode="decimal"></div>
+    </div>
+    <div class="row r2">
+      <div><label class="f">Head checks / 3 s (game film)</label><input type="number" id="bsHC" step="0.1" inputmode="decimal"></div>
+      <div><label class="f">MAS (m/s)</label><input type="number" id="bsMAS" step="0.01" inputmode="decimal"></div>
+    </div>
+    <div class="m-sub">Saved with today's date. Best value per test is kept for comparison.</div>
+    <div id="bsHist" class="m-sub" style="margin-top:6px"></div>
+  </section>
+
+  <!-- Open items -->
+  <section class="card">
+    <div class="card-h"><h2>Open items</h2><span class="eyebrow">needed from you</span></div>
+    <div id="openItems"></div>
+  </section>
+
+  <div class="foot">// Offseason · Phase 1 · Oct 26 – Nov 21</div>
+</main>
+
+<script>
+(function () {
+'use strict';
+if (/[?&]embed=1/.test(location.search)) document.body.classList.add('embed');
+
+/* =========================================================
+   PLAN DATA — edit/extend here. Keyed by block week, then
+   weekday (0=Sun … 6=Sat). Items have stable ids for check-off.
+   ========================================================= */
+const BLOCK_START = '2026-10-26';          // Monday of Week 1
+const BLOCK_WEEKS = 4;
+const PHASE_NAME  = 'Phase 1';
+
+const PRIMER_A = { h:'Primer A · 10 min · max 40 contacts (tissue prep + rehearsal)', items:[
+  ['Raise','5 min easy bike or jog, RPE 3'],
+  ['Mobilize','90/90 hip switches 2×5 · ankle rocks 2×8/side'],
+  ['Activate','Glute bridge marches 2×8 · banded lateral walks 2×10 each way · dead bug 2×5'],
+  ['Prime','Pogos 2×10 · A-skips 2×15 m · build-ups 3×20 m at 70/80/90%']
+]};
+const PRIMER_B = { h:'Primer B · upper · 6 min', items:[
+  ['Band pull-aparts','2×12'],['Push-up plus','2×8'],['Med-ball chest pass','3×3 max intent (6–8 lb)'],['Ramp sets','bar ×8 → 50% ×5 → 70% ×3 fast']
+]};
+
+const PLAN = { 1: {
+  1:{ tag:'Upper strength A', kind:'gym', purpose:'Gym is the default until the trainer clears the knee. Learn the lifts at RPE 7 (2–3 reps in reserve).',
+      blocks:[ PRIMER_B,
+        { h:'Upper strength A · ~50 min', items:[
+          ['DB bench press','3×8 · tempo 3-0-1-0 · RPE 7 (35–40 lb) · rest 2 min · backup: elevated push-ups'],
+          ['Pull-up','3×4 · tempo 3-0-1-0 · stop 2 short of failure · backup: lat pulldown / band-assisted'],
+          ['Half-kneeling landmine or DB OHP','3×8/side · 2-0-1-0 · RPE 7 · backup: seated DB press'],
+          ['Chest-supported DB row','3×10 · 2-1-1-0 · RPE 7 · backup: single-arm row on bench'],
+          ['Pallof press','3×8/side · 2 s hold · light'],
+          ['Dead bug','3×6/side · 3 s lower']
+        ]}],
+      alt:{ h:'Version A · Field (ONLY if knee gate = green) · ~40 min', items:[
+          ['Primer A','Skip the sprint builds if they feel heavy'],
+          ['Rolling starts','4×10 m: 5 m jog-in, scan, go · 95–100% · rest 2 min'],
+          ['Static starts','2×15 m · 95–100% · rest 2.5 min'],
+          ['Decel runs ×3','Sprint 10 m at 85%, stop in 5–6 m with control'],
+          ['Baselines','2 timed 10 m (phone slow-mo) + 3 broad jumps'],
+          ['Wall touches','3×60 s each foot + 3×60 s receiving across body · no cutting']
+      ]},
+      note:'No lateral/cutting work this week. If you skip the field version, don\'t make it up later.' },
+  2:{ tag:'Indoor game day', kind:'game', gate:true, purpose:'Best transfer stimulus of the week. Treat it as a lab, not an unmanaged load.',
+      blocks:[
+        { h:'Before', items:[
+          ['See HCC athletic trainer','Tuesday morning, you\'re on campus until 12:30'],
+          ['AM mobility · 10–15 min','90/90 switches · bridge marches 2×8 · lateral walks 2×10 · ankle rocks'],
+          ['Pre-game · 8 min','Jog 3 min · pogos 2×8 · A-skips 2×10 m · build-ups 3×20 m 70/80/90%'],
+          ['Run the knee gate','In the warm-up. Yellow = no hard planting cuts.']
+        ]},
+        { h:'Game', items:[
+          ['Cap at ~half the minutes','e.g. 5 on / 5 off this week'],
+          ['Scan before every touch','Turn away from pressure at least once a sequence'],
+          ['Film the game','Count head checks in the 3 s before receiving a pass'],
+          ['Log session RPE × minutes','Right after']
+        ]}],
+      note:'Stop on sharp pain or giving way.' },
+  3:{ tag:'Technical block', kind:'tech', purpose:'Low metabolic cost. Targets awareness — scanned reps with a decision attached.',
+      blocks:[
+        { h:'Technical · 75 min', items:[
+          ['Knee check first','Rate 0–10. If 1+ above baseline: turns technique-only at 70%'],
+          ['Warm-up · 10 min','Primer A without the sprint builds'],
+          ['Wall · 4 × 4 min (1 min rest)','Pass-backs → receive & turn (shoulder check) → across body → partner number call'],
+          ['Pressure turns · 25 min','4×3 min rondos (90 s rest) + 3×8 1v1 turn through a 10 m gate'],
+          ['Finishing · 15–20 min','First-time shots off wall rebound, 12 m, 3×8/foot'],
+          ['Zone 2 bike · 20–30 min','RPE 3–4 (60–70% HRmax)']
+        ]}],
+      note:'Best with a teammate or two for real pressure.' },
+  4:{ tag:'Lower strength A', kind:'gym', purpose:'Main mechanical lower day. Squat-dominant, eccentric emphasis.',
+      blocks:[ PRIMER_A,
+        { h:'Lower strength A · ~70 min', items:[
+          ['Box back squat (parallel)','3×6 · 4-0-1-0 · RPE 6 (~65–75 lb) · rest 2–3 min · backup: goblet to box'],
+          ['DB reverse lunge','3×6/leg · 3-0-1-0 · backup: single-leg hip thrust 3×8 if knee complains'],
+          ['Nordic hamstring curl','2×3 · ~5 s lower · catch with hands · backup: machine curl 3×5'],
+          ['Copenhagen plank (knee on bench)','2×15 s/side'],
+          ['Standing calf raise','3×10 · 3-1-1-0'],
+          ['Seated soleus raise','2×12 · 2-0-1-1'],
+          ['Spanish squat isometric','3×30 s · pain ≤3/10 · backup: wall sit']
+        ]}],
+      note:'Squat pain over 3/10 at any point: stop and use the backup. Nordics = never the day before speed work.' },
+  5:{ tag:'Bike 15:15', kind:'bike', purpose:'Sub-max aerobic power on the bike. No strides, no max test — formal MAS run test moves to Week 4 Friday.',
+      blocks:[
+        { h:'Bike · ~45 min', items:[
+          ['Warm-up','10 min easy'],
+          ['Set 1','6 min: 15 s hard (RPE 8) / 15 s easy'],
+          ['Recover','3 min easy'],
+          ['Set 2','6 min: 15 s hard (RPE 8) / 15 s easy'],
+          ['Log','Average watts + heart rate in the session log'],
+          ['Cooldown','5–10 min easy']
+        ]}],
+      note:'Thursday soreness peaks 24–72 h later — this is why Friday stays off the legs.' },
+  6:{ tag:'Strength B + RFD', kind:'gym', purpose:'Posterior chain + low-dose rate-of-force exposure. Baselines here if not taken Monday.',
+      blocks:[ PRIMER_A,
+        { h:'RFD block · before lifts · max 40 contacts total', items:[
+          ['Pogo hops','3×10 (drop them from the primer today)'],
+          ['Med-ball rotational scoop toss','3×4/side · 60–90 s rest'],
+          ['Med-ball chest pass','3×4 · max intent'],
+          ['Baselines (if not done Mon)','2 timed 10 m + 3 broad jumps · after primer']
+        ]},
+        { h:'Strength B · ~75 min', items:[
+          ['Trap bar deadlift','3×5 · 3-0-1-0 · RPE 6 (75–95 lb) · backup: DB/barbell RDL'],
+          ['Barbell hip thrust','3×8 · 3-0-1-2 · RPE 7'],
+          ['Single-arm DB row','3×10 · 2-1-1-0'],
+          ['Push-up','3×AMRAP-2 · 3-0-1-0'],
+          ['Side plank','2×20 s/side']
+        ]}],
+      note:'Skip box jumps this week unless the knee gate is green.' },
+  0:{ tag:'Off', kind:'rest', purpose:'Full recovery. Walk and 10 min of mobility only. Flexes after Nov 8 when the refereeing schedule is set.',
+      blocks:[{ h:'Recovery', items:[['Walk','Easy, outdoors'],['Mobility','10 min'],['Log weekly totals','Check the Weekly load card']]}] }
+}};
+
+const GATE = {
+  test:'Run before every field session: 2×10 single-leg step-downs (8 in step, each leg) · 20 quick pogo hops · 3 build-up runs of 20 m at 80%.',
+  green:{label:'Green',msg:'Pain 0–2/10, no swelling, full range, nothing giving way, no worse next morning → do the session as written.'},
+  yellow:{label:'Yellow',msg:'3–4/10 or morning stiffness above baseline → swap field work for bike. No sprints or cutting.'},
+  red:{label:'Red',msg:'Sharp pain, swelling, locking or giving way → stop and see the trainer or a doctor.'}
+};
+
+const OPEN_DEFAULT = [
+  ['trainer','HCC athletic trainer\'s verdict on the knee'],
+  ['coach','Fitness coach\'s lifting program (to merge with this)'],
+  ['ref','Weekend refereeing schedule (after Nov 8)'],
+  ['field','Grass field + wall confirmed']
+];
+
+/* =========================================================
+   HELPERS
+   ========================================================= */
+const $ = (id) => document.getElementById(id);
+const DOW = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+const MON = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+const pad = (n) => String(n).padStart(2,'0');
+const key = (d) => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const parse = (s) => { const [y,m,d] = s.split('-').map(Number); return new Date(y,m-1,d,12); };
+const addDays = (d,n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
+const esc = (s) => String(s).replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = (v) => { const n = parseFloat(v); return isFinite(n) ? n : null; };
+const START = parse(BLOCK_START);
+const todayKey = () => key(new Date());
+const dayDiff = (a,b) => Math.round((a - b)/86400000);
+function weekOf(d){ return Math.floor(dayDiff(d, START)/7)+1; }          // 1-based block week (can be <1 or >4)
+function weekStart(w){ return addDays(START,(w-1)*7); }
+
+/* =========================================================
+   STATE (localStorage first, Supabase app_state sync)
+   ========================================================= */
+const LS = 'ot_home_v1';
+let S;
+function blank(){ return { v:1, updated:0, days:{}, tests:[], open:{}, kneeBase:0 }; }
+function load(){ try { const r = JSON.parse(localStorage.getItem(LS)); if (r && r.days) return Object.assign(blank(), r); } catch(e){} return blank(); }
+function day(k){ return S.days[k] || (S.days[k] = { sleep:null, sore:null, knee:null, gate:null, done:{}, sessions:[] }); }
+let selKey = todayKey();
+
+let pushT = null;
+function save(){
+  S.updated = Date.now();
+  try { localStorage.setItem(LS, JSON.stringify(S)); } catch(e){}
+  clearTimeout(pushT); pushT = setTimeout(push, 600);
+}
+
+const SB_URL = (window.ENV_SUPABASE_URL || 'https://cskbbioyniryonkukamw.supabase.co').replace(/\/$/,'');
+const SB_KEY = window.ENV_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNza2JiaW95bmlyeW9ua3VrYW13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NjE2MTYsImV4cCI6MjA5NDUzNzYxNn0.R3Vx3fA-iAc8LhNL3WPSa9-BxH_087c7VaIbrB3CBJM';
+const SYNC_KEY = 'offseason_home';
+const sbOn = !!(SB_URL && SB_KEY);
+const hdrs = () => ({ apikey:SB_KEY, Authorization:'Bearer '+SB_KEY, 'Content-Type':'application/json' });
+function chip(t,c){ const e=$('syncChip'); e.textContent=t; e.className='chip'+(c?' '+c:''); }
+
+async function pull(){
+  if (!sbOn) return;
+  try {
+    const r = await fetch(SB_URL+'/rest/v1/app_state?key=eq.'+SYNC_KEY+'&select=data', { headers:hdrs() });
+    if (!r.ok) throw 0;
+    const rows = await r.json();
+    const remote = rows[0] && rows[0].data;
+    if (remote && remote.updated > S.updated) {
+      S = Object.assign(blank(), remote);
+      try { localStorage.setItem(LS, JSON.stringify(S)); } catch(e){}
+      renderAll();
+    } else if (!remote || remote.updated < S.updated) { await push(); return; }
+    chip('SYNCED','ok');
+  } catch(e){ chip('OFFLINE','bad'); }
+}
+async function push(){
+  if (!sbOn) return;
+  try {
+    const r = await fetch(SB_URL+'/rest/v1/app_state?on_conflict=key', {
+      method:'POST',
+      headers:Object.assign(hdrs(),{ Prefer:'resolution=merge-duplicates' }),
+      body:JSON.stringify({ key:SYNC_KEY, data:S, updated_at:new Date().toISOString() })
+    });
+    chip(r.ok ? 'SYNCED' : 'OFFLINE', r.ok ? 'ok' : 'bad');
+  } catch(e){ chip('OFFLINE','bad'); }
+}
+
+/* =========================================================
+   RENDER: header + week strip
+   ========================================================= */
+function renderHeader(){
+  const d = parse(selKey), w = weekOf(d);
+  const inBlock = w>=1 && w<=BLOCK_WEEKS;
+  $('hdrEyebrow').textContent = (inBlock ? PHASE_NAME+' · Week '+w+' of '+BLOCK_WEEKS : 'Outside '+PHASE_NAME) + ' · ' + DOW[d.getDay()]+', '+MON[d.getMonth()]+' '+d.getDate();
+  $('hdrTitle').textContent = selKey===todayKey() ? 'Today' : DOW[d.getDay()].charAt(0)+DOW[d.getDay()].slice(1).toLowerCase()+' '+d.getDate();
+  $('logDate').textContent = DOW[d.getDay()]+' '+(d.getMonth()+1)+'/'+d.getDate();
+}
+function renderStrip(){
+  const d = parse(selKey), w = weekOf(d), ws = weekStart(w), tk = todayKey();
+  let h='';
+  for (let i=0;i<7;i++){
+    const dd = addDays(ws,i), k = key(dd), rec = S.days[k];
+    const has = rec && (rec.sessions.length || Object.keys(rec.done).length);
+    h += '<button class="day'+(k===tk?' today':'')+(k===selKey?' sel':'')+(has?' has':'')+'" data-k="'+k+'"><b>'+DOW[dd.getDay()].slice(0,1)+DOW[dd.getDay()].slice(1,3).toLowerCase()+'</b><span>'+dd.getDate()+'</span><i></i></button>';
+  }
+  $('strip').innerHTML = h;
+}
+$('strip').addEventListener('click',(e)=>{ const b=e.target.closest('.day'); if(!b) return; selKey=b.dataset.k; renderAll(); });
+
+/* =========================================================
+   RENDER: session card
+   ========================================================= */
+function planFor(k){ const d=parse(k); const wk=PLAN[weekOf(d)]; return wk ? wk[d.getDay()] : null; }
+function allItemIds(p){
+  const ids=[]; p.blocks.forEach((b,bi)=>b.items.forEach((_,ii)=>ids.push('b'+bi+'i'+ii)));
+  return ids;
+}
+function itemsHtml(block, bi, rec, prefix){
+  return block.items.map((it,ii)=>{
+    const id = prefix+bi+'i'+ii, done = !!rec.done[id];
+    return '<div class="item'+(done?' done':'')+'" data-id="'+id+'"><div class="box">✓</div><div><div class="nm">'+esc(it[0])+'</div><div class="sub">'+esc(it[1])+'</div></div></div>';
+  }).join('');
+}
+function renderSession(){
+  const el = $('sessionCard'), rec = day(selKey), p = planFor(selKey);
+  if (!p){
+    el.innerHTML = '<div class="card-h"><h2>No plan loaded</h2></div><div class="empty">Week '+weekOf(parse(selKey))+' has no session data yet. Add it to PLAN in home.html (build it from your Week 1 results).</div>';
+    return;
+  }
+  const ids = allItemIds(p), doneN = ids.filter(i=>rec.done[i]).length;
+  const pct = ids.length ? Math.round(doneN/ids.length*100) : 0;
+  let h = '<span class="tag '+(p.kind==='rest'?'rest':(p.gate?'gate':''))+'">'+(p.kind==='rest'?'rest':p.kind)+'</span>';
+  h += '<h2 style="font-size:21px">'+esc(p.tag)+'</h2><div class="purpose">'+esc(p.purpose)+'</div>';
+  h += '<div class="prog"><div style="width:'+pct+'%"></div></div>';
+  p.blocks.forEach((b,bi)=>{
+    h += '<details'+(bi===p.blocks.length-1||p.blocks.length===1?' open':'')+'><summary>'+esc(b.h)+'</summary><div class="det-body">'+itemsHtml(b,bi,rec,'b')+'</div></details>';
+  });
+  if (p.alt) h += '<details><summary>'+esc(p.alt.h)+'</summary><div class="det-body">'+itemsHtml(p.alt,0,rec,'a')+'</div></details>';
+  if (p.note) h += '<div class="note">'+esc(p.note)+'</div>';
+  el.innerHTML = h;
+}
+$('sessionCard').addEventListener('click',(e)=>{
+  const it = e.target.closest('.item'); if(!it) return;
+  const rec = day(selKey), id = it.dataset.id;
+  if (rec.done[id]) delete rec.done[id]; else rec.done[id]=1;
+  save();
+  // keep <details> open states: update in place instead of full re-render
+  it.classList.toggle('done');
+  const p = planFor(selKey); if (p){
+    const ids = allItemIds(p), n = ids.filter(i=>rec.done[i]).length;
+    const bar = document.querySelector('#sessionCard .prog div'); if (bar) bar.style.width = (ids.length?Math.round(n/ids.length*100):0)+'%';
+  }
+  renderStrip();
+});
+
+/* =========================================================
+   RENDER: knee gate
+   ========================================================= */
+function renderGate(){
+  const rec = day(selKey), g = rec.gate;
+  let h = '<div class="card-h"><h2>Knee gate</h2><span class="eyebrow">before field work</span></div>';
+  h += '<div class="gate-out">Run it, then tap your result.</div>';
+  h += '<div class="gate-btns">'+['green','yellow','red'].map(c=>'<button class="gbtn '+c+(g===c?' sel':'')+'" data-g="'+c+'">'+GATE[c].label+'</button>').join('')+'</div>';
+  h += '<div class="gate-out">'+(g?esc(GATE[g].msg):'Not logged for this day.')+'</div>';
+  h += '<div class="gate-test">'+esc(GATE.test)+'</div>';
+  $('gateCard').innerHTML = h;
+}
+$('gateCard').addEventListener('click',(e)=>{
+  const b=e.target.closest('.gbtn'); if(!b) return;
+  const rec=day(selKey); rec.gate = rec.gate===b.dataset.g ? null : b.dataset.g;
+  save(); renderGate();
+});
+
+/* =========================================================
+   Morning check-in
+   ========================================================= */
+function renderCheckin(){
+  const rec = day(selKey);
+  $('ciSleep').value = rec.sleep ?? ''; $('ciSore').value = rec.sore ?? ''; $('ciKnee').value = rec.knee ?? '';
+  ciRule();
+}
+function ciRule(){
+  const rec = day(selKey), el = $('ciRule'); let msg='Log these before you train.', cls='rule';
+  const flags=[];
+  if (rec.sleep!=null && rec.sleep<6) flags.push('under 6 h sleep');
+  if (rec.sore!=null && rec.sore>=4) flags.push('soreness 4+');
+  if (flags.length){ msg='Drop one set per exercise today ('+flags.join(', ')+').'; cls='rule warn'; }
+  else if (rec.sleep!=null && rec.sore!=null) { msg='Green light — train as written.'; cls='rule good'; }
+  if (rec.knee!=null && S.kneeBase!=null && rec.knee >= S.kneeBase+1 && rec.knee>0){ msg += ' Knee is 1+ above your baseline ('+S.kneeBase+') — technique-only turns, swap lunges for single-leg hip thrusts.'; cls='rule bad'; }
+  el.textContent = msg; el.className = cls;
+}
+[['ciSleep','sleep'],['ciSore','sore'],['ciKnee','knee']].forEach(([id,f])=>{
+  $(id).addEventListener('input',()=>{
+    const rec=day(selKey); rec[f]=num($(id).value);
+    save(); ciRule();
+  });
+});
+
+/* =========================================================
+   Session log
+   ========================================================= */
+$('lgRpe').addEventListener('input',()=>{ $('lgRpeVal').textContent=$('lgRpe').value; });
+$('lgAdd').addEventListener('click',()=>{
+  const min=num($('lgMin').value); if(!min||min<=0){ $('lgMin').focus(); return; }
+  const rpe=num($('lgRpe').value)||0, sr=num($('lgSR').value)||0, sd=num($('lgSD').value)||0, vl=num($('lgVL').value)||0;
+  day(selKey).sessions.push({ type:$('lgType').value, min, rpe, sr, sd, vl, t:Date.now() });
+  ['lgMin','lgSR','lgSD','lgVL'].forEach(i=>$(i).value='');
+  save(); renderLog(); renderMetrics(); renderStrip();
+});
+function renderLog(){
+  const ss = day(selKey).sessions;
+  $('sessList').innerHTML = ss.length ? ss.map((s,i)=>
+    '<div class="sess"><div><div style="color:var(--t1);font-weight:600">'+esc(s.type)+' · RPE '+s.rpe+' × '+s.min+' min = '+(s.rpe*s.min)+'</div>'
+    +'<div class="m">'+(s.sr?s.sr+'×'+s.sd+' m sprint · ':'')+(s.vl?s.vl.toLocaleString()+' lb vol-load':'')+'</div></div>'
+    +'<button class="x" data-i="'+i+'" aria-label="Delete">×</button></div>').join('')
+    : '<div class="empty">No sessions logged for this day.</div>';
+}
+$('sessList').addEventListener('click',(e)=>{
+  const b=e.target.closest('.x'); if(!b) return;
+  day(selKey).sessions.splice(+b.dataset.i,1);
+  save(); renderLog(); renderMetrics(); renderStrip();
+});
+
+/* =========================================================
+   Weekly load — three metrics, each capped ≈10–15% rise
+   ========================================================= */
+function weekTotals(w){
+  const ws = weekStart(w), t = { load:0, sprint:0, vol:0, n:0 };
+  for (let i=0;i<7;i++){
+    const r = S.days[key(addDays(ws,i))]; if(!r) continue;
+    r.sessions.forEach(s=>{ t.load+=s.rpe*s.min; t.sprint+=s.sr*s.sd; t.vol+=s.vl; t.n++; });
+  }
+  return t;
+}
+function renderMetrics(){
+  const w = weekOf(parse(selKey)), cur = weekTotals(w), prev = weekTotals(w-1), hasPrev = prev.n>0;
+  $('wkLabel').textContent = 'Week '+w;
+  const defs = [
+    ['Session load (RPE × min)','load','',w===1?[2000,2500]:null],
+    ['Sprint distance @90%+','sprint',' m',null],
+    ['Lifting volume-load','vol',' lb',null]
+  ];
+  $('metrics').innerHTML = defs.map(([name,f,unit,range])=>{
+    const v = cur[f], cap = hasPrev ? prev[f]*1.10 : (range ? range[1] : 0);
+    const pct = cap>0 ? Math.min(100, v/cap*100) : (v>0?100:0);
+    const over = cap>0 && v>cap*(hasPrev?1.05:1);
+    let sub = hasPrev ? ('Last week '+Math.round(prev[f]).toLocaleString()+unit+' · ceiling ~'+Math.round(cap).toLocaleString()+unit+' (+10%)')
+            : range ? ('Typical Week 1: '+range[0].toLocaleString()+'–'+range[1].toLocaleString()+'. This week sets your baseline.')
+            : 'Baseline week — this sets next week\'s ceiling.';
+    return '<div class="metric"><div class="m-top"><span class="m-name">'+name+'</span><span class="m-val">'+Math.round(v).toLocaleString()+unit+'</span></div>'
+      +'<div class="bar'+(over?' over':'')+'"><div style="width:'+pct+'%"></div></div><div class="m-sub">'+sub+'</div></div>';
+  }).join('');
+  const bad = hasPrev && ['load','sprint','vol'].some(f=>prev[f]>0 && cur[f]>prev[f]*1.15);
+  const el = $('wkRule');
+  el.textContent = bad ? 'A metric is more than 15% above last week — hold or cut volume.' : (hasPrev ? 'Cap each metric at about a 10–15% weekly rise.' : 'Week 1 is your baseline; Week 2 ceiling = Week 1 total × 1.10.');
+  el.className = 'rule'+(bad?' bad':'');
+}
+
+/* =========================================================
+   Baselines
+   ========================================================= */
+const TESTS = [['bs10','t10','10 m','s',true],['bs20','t20','20 m','s',true],['bsBJ','bj','Broad jump','in',false],['bsHC','hc','Head checks','',false],['bsMAS','mas','MAS',' m/s',false]];
+function renderTests(){
+  TESTS.forEach(([id,f])=>{ const e = (S.tests||[]).filter(t=>t.f===f && t.d===selKey).pop(); $(id).value = e ? e.v : ''; });
+  $('bsHist').innerHTML = TESTS.map(([id,f,name,unit,lowBest])=>{
+    const xs=(S.tests||[]).filter(t=>t.f===f); if(!xs.length) return '';
+    const best = xs.reduce((a,b)=> (lowBest ? b.v<a.v : b.v>a.v) ? b : a);
+    return name+': best '+best.v+unit+' ('+best.d.slice(5)+')';
+  }).filter(Boolean).join(' · ');
+}
+TESTS.forEach(([id,f])=>{
+  $(id).addEventListener('change',()=>{
+    const v=num($(id).value);
+    S.tests = (S.tests||[]).filter(t=>!(t.f===f && t.d===selKey));
+    if (v!=null) S.tests.push({ f, v, d:selKey });
+    save(); renderTests();
+  });
+});
+
+/* =========================================================
+   Open items
+   ========================================================= */
+function renderOpen(){
+  $('openItems').innerHTML = OPEN_DEFAULT.map(([id,label])=>{
+    const done = !!S.open[id];
+    return '<div class="item'+(done?' done':'')+'" data-o="'+id+'"><div class="box">✓</div><div><div class="nm">'+esc(label)+'</div></div></div>';
+  }).join('');
+}
+$('openItems').addEventListener('click',(e)=>{
+  const it=e.target.closest('.item'); if(!it) return;
+  const id=it.dataset.o; if (S.open[id]) delete S.open[id]; else S.open[id]=1;
+  save(); renderOpen();
+});
+
+/* =========================================================
+   BOOT
+   ========================================================= */
+function renderAll(){
+  renderHeader(); renderStrip(); renderSession(); renderGate(); renderCheckin();
+  renderLog(); renderMetrics(); renderTests(); renderOpen();
+}
+S = load();
+if (!sbOn) chip('LOCAL');
+renderAll();
+pull();
+document.addEventListener('visibilitychange',()=>{ if (!document.hidden) pull(); });
+})();
+</script>
+</body>
+</html>

@@ -1,6 +1,16 @@
 // ════════════════════════════════════════════════════════════
 //  SERVICE WORKER — dashboard PWA + push notifications
 //
+//  v17 — Nutrition tab rewritten (2026-10-26):
+//   - ./nutrition.html replaced with the new "Fuel" page. The fetch handler
+//     is cache-first, so without this bump installed clients would keep
+//     serving the old Nutrition tab forever.
+//
+//  v16 — Home tab rewritten (2026-10-26):
+//   - ./home.html added to ASSETS. index.html is now just the shell, and the
+//     Home tab lazy-loads home.html?embed=1 in an iframe.
+//   - cache version bumped so clients pick up the new ASSETS list.
+//
 //  v15 — drops the Workout tab (2026-10-26):
 //   - ./workout.html removed from ASSETS. The file is deleted, and a
 //     missing asset makes cache.addAll() reject, which fails install and
@@ -32,11 +42,11 @@
 //  instead of silently failing.
 // ════════════════════════════════════════════════════════════
 
-const CACHE = 'dashboard-pwa-v15';
+const CACHE = 'dashboard-pwa-v17';
 const ASSETS = [
   './', './index.html', './manifest.json', './icon.svg',
   './icon-192.png', './icon-512.png',
-  './topbar.js', './tabs.js', './stack.html', './nutrition.html',
+  './topbar.js', './tabs.js', './home.html', './stack.html', './nutrition.html',
 ];
 
 self.addEventListener('install', (event) => {

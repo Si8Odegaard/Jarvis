@@ -2,1799 +2,545 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#050506">
 <meta name="color-scheme" content="dark">
-<title>Nutrition & Recovery</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="env.js"></script>
-<script src="chat.js"></script>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Offseason — Nutrition</title>
+<!-- Supabase is the same project the other tabs use (public anon key, RLS-enforced).
+     nutrition.html hardcodes it below, like stack.html / home.html / topbar.js do;
+     window.ENV_SUPABASE_* overrides are honoured if env.js ever provides them. -->
+<script src="env.js" onerror="void 0"></script>
 <style>
-:root {
-  --bg: #050506;
-  --text-primary: #FAFAFA;
-  --text-secondary: #B8B6B0;
-  --text-tertiary: #76746E;
-  --success: #6BE3A4;
-  --warning: #F2C063;
-  --danger: #FF8A8A;
-  --surface: rgba(255,255,255,0.03);
-  --surface-hover: rgba(255,255,255,0.06);
-  --border: rgba(255,255,255,0.08);
+:root{
+  --bg:#050506;--card:rgba(255,255,255,.04);--card2:rgba(255,255,255,.035);--input:rgba(0,0,0,.3);
+  --b:rgba(255,255,255,.07);--b2:rgba(255,255,255,.13);
+  --t1:#FAFAFA;--t2:#B8B6B0;--t3:#76746E;--t4:#4D4B47;
+  --accent:#1D9E75;--good:#6BE3A4;--warn:#F2C063;--bad:#FF6B6B;--info:#7DD3FC;
+  --font:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
 }
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--bg); color: var(--text-primary);
-  line-height: 1.5; min-height: 100vh; padding: 16px;
-}
-.container { max-width: 600px; margin: 0 auto; }
-h1 { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
-h2 { font-size: 18px; font-weight: 600; margin-bottom: 12px; }
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.reminder-badge { background: var(--warning); color: #000; font-size: 11px; font-weight: 600; padding: 4px 8px; border-radius: 4px; animation: pulse 2s infinite; }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.7} }
-.form-group { margin-bottom: 16px; }
-label { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
-input[type="range"] { width:100%; height:6px; background:var(--border); border-radius:3px; outline:none; -webkit-appearance:none; appearance:none; }
-input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:22px; height:22px; background:var(--success); border-radius:50%; cursor:pointer; box-shadow:0 0 6px rgba(107,227,164,.5); }
-input[type="number"], input[type="text"] { width:100%; padding:12px; background:var(--surface); border:1px solid var(--border); border-radius:8px; color:var(--text-primary); font-size:16px; outline:none; transition:border-color .2s; }
-input[type="number"]:focus, input[type="text"]:focus { border-color:var(--success); }
-input[type="number"].error { border-color:var(--danger); }
-.btn-group { display:flex; gap:8px; }
-.btn-group button { flex:1; padding:10px; background:var(--surface); border:1px solid var(--border); border-radius:8px; color:var(--text-primary); font-size:13px; cursor:pointer; transition:all .15s; }
-.btn-group button:hover { background:var(--surface-hover); }
-.btn-group button.active { background:var(--success); color:#000; border-color:var(--success); font-weight:600; }
-.btn-group.error button { border-color:var(--danger); }
-.star-rating { display:flex; gap:8px; }
-.star-rating button { background:none; border:none; font-size:28px; cursor:pointer; color:var(--border); transition:color .15s, transform .1s; padding:0; line-height:1; }
-.star-rating button.filled { color:var(--warning); }
-.star-rating button.preview { color:var(--warning); opacity:.6; }
-.star-rating.error button { outline:1px solid var(--danger); border-radius:2px; }
-.submit-btn { width:100%; padding:14px; background:var(--success); color:#000; font-size:16px; font-weight:600; border:none; border-radius:8px; cursor:pointer; transition:transform .15s, opacity .15s; }
-.submit-btn:hover { transform:scale(1.02); }
-.submit-btn:disabled { opacity:.5; cursor:not-allowed; transform:none; }
-.validation-msg { display:none; background:rgba(255,138,138,.1); border:1px solid var(--danger); border-radius:8px; padding:10px 14px; margin-bottom:12px; font-size:13px; color:var(--danger); }
-.validation-msg.show { display:block; }
-@keyframes successPop { 0%{transform:scale(.8);opacity:0} 60%{transform:scale(1.05)} 100%{transform:scale(1);opacity:1} }
-.success-anim { animation:successPop .4s ease forwards; }
-.recovery-score { font-size:48px; font-weight:700; text-align:center; margin:16px 0; }
-.recovery-score.good { color:var(--success); }
-.recovery-score.warn { color:var(--warning); }
-.recovery-score.bad  { color:var(--danger); }
-.summary-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); font-size:14px; }
-.summary-row:last-child { border-bottom:none; }
-.summary-label { color:var(--text-secondary); font-size:13px; }
-.summary-value { font-weight:600; }
-.alert { background:rgba(255,138,138,.1); border:1px solid var(--danger); border-radius:8px; padding:12px; margin-bottom:12px; font-size:13px; }
-.alert-title { font-weight:600; color:var(--danger); margin-bottom:4px; }
-.chart-placeholder { height:120px; background:var(--surface); border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--text-tertiary); font-size:13px; }
-.settings-btn { background:none; border:none; color:var(--text-secondary); cursor:pointer; padding:8px; font-size:18px; }
-.settings-btn:hover { color:var(--text-primary); }
-.modal { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.8); z-index:1000; align-items:center; justify-content:center; }
-.modal.show { display:flex; }
-.modal-content { background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:20px; max-width:400px; width:90%; }
-.modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
-.modal-close { background:none; border:none; color:var(--text-secondary); font-size:24px; cursor:pointer; }
-.protein-target { font-size:32px; font-weight:700; color:var(--success); text-align:center; margin:12px 0; }
-.protein-streak { text-align:center; font-size:14px; color:var(--text-secondary); }
-.tdee-display { text-align:center; margin:12px 0; }
-.tdee-value { font-size:28px; font-weight:700; color:var(--success); }
-.tdee-range { font-size:13px; color:var(--text-secondary); }
-.unit-badge { display:inline-block; font-size:11px; font-weight:700; color:var(--success); background:rgba(107,227,164,.1); border:1px solid rgba(107,227,164,.3); border-radius:4px; padding:2px 6px; margin-left:6px; letter-spacing:.05em; }
-.hidden { display:none !important; }
-.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.04em;}
-.pill-good{background:rgba(107,227,164,.12);color:var(--success);}
-.pill-warn{background:rgba(242,192,99,.12);color:var(--warning);}
-.pill-bad{background:rgba(255,138,138,.12);color:var(--danger);}
-.pill-dim{background:rgba(255,255,255,.05);color:var(--text-tertiary);}
-.chart-wrap{margin-top:10px;padding:10px;background:rgba(0,0,0,.20);border-radius:8px;}
-.chart-svg{display:block;width:100%;height:80px;overflow:visible;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--t2);font:15px/1.5 var(--font);-webkit-font-smoothing:antialiased}
+body{min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(60% 50% at 82% 10%,rgba(242,192,99,.10),transparent 60%),radial-gradient(50% 40% at 15% 95%,rgba(29,158,117,.08),transparent 60%)}
+main{position:relative;z-index:1;max-width:720px;margin:0 auto;padding:max(28px,env(safe-area-inset-top)) 16px calc(96px + env(safe-area-inset-bottom))}
+body.embed main{padding-top:14px;padding-bottom:24px}
+.eyebrow{font:600 10.5px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--t3)}
+h1{margin:2px 0 0;font-size:26px;letter-spacing:-.025em;color:var(--t1);line-height:1.15}
+h2{margin:0;font-size:17px;color:var(--t1);letter-spacing:-.01em}
+.top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:10px}
+.chip{font:600 10px var(--mono);letter-spacing:.08em;padding:4px 9px;border-radius:99px;border:1px solid var(--b2);color:var(--t3);white-space:nowrap}
+.chip.ok{color:var(--good);border-color:rgba(107,227,164,.35)}.chip.bad{color:var(--bad);border-color:rgba(255,107,107,.35)}
+.card{background:var(--card);border:1px solid var(--b);border-radius:16px;padding:16px;margin-bottom:12px}
+.card-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px}
 
-/* ── Match Day Banners ── */
-.match-banner {
-  padding: 12px 16px; border-radius: 10px;
-  margin-bottom: 12px; font-size: 13px; font-weight: 600;
-  display: flex; align-items: center; gap: 10px;
-}
-.match-banner.carb { background:rgba(107,227,164,.08); border:1px solid rgba(107,227,164,.20); color:var(--success); }
-.match-banner.protein { background:rgba(125,211,252,.08); border:1px solid rgba(125,211,252,.20); color:#7DD3FC; }
+.nav{display:grid;grid-template-columns:44px 1fr 44px;gap:8px;align-items:center;margin-bottom:12px}
+.nbtn{height:44px;border-radius:12px;border:1px solid var(--b2);background:var(--card);color:var(--t1);font-size:18px;cursor:pointer}
+.nmid{text-align:center;border:1px solid var(--b);border-radius:12px;background:var(--card);padding:6px 8px;cursor:pointer}
+.nmid b{display:block;color:var(--t1);font-size:14px}
+.nmid span{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--t3)}
+.tag{display:inline-block;font:700 10px var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:99px}
+.tag.hi{background:rgba(242,192,99,.14);color:var(--warn)}.tag.lo{background:rgba(125,211,252,.12);color:var(--info)}
 
-/* ── Carb Source Grid ── */
-.carb-sources {
-  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;
-}
-.carb-source-pill {
-  background: rgba(107,227,164,.08); border:1px solid rgba(107,227,164,.18);
-  color:var(--success); padding:4px 10px; border-radius:99px;
-  font-size:11px; font-weight:600;
-}
+/* progress rows */
+.pr{margin-bottom:13px}
+.pr-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.pr-name{font-size:13px;font-weight:600;color:var(--t1)}
+.pr-val{font:600 13px var(--mono);color:var(--t1)}
+.bar{position:relative;height:9px;background:rgba(255,255,255,.06);border-radius:9px;margin:6px 0 3px;overflow:hidden}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:9px;background:var(--info);transition:width .4s}
+.bar.good i{background:var(--good)}.bar.over i{background:var(--warn)}
+.bar u{position:absolute;top:0;bottom:0;width:2px;background:rgba(255,255,255,.55)}
+.sub{font-size:11px;color:var(--t3)}
+.note{font-size:12px;color:var(--warn);background:rgba(242,192,99,.08);border-radius:10px;padding:9px 11px;margin-top:8px}
 
-/* ── Gain Rate Display ── */
-.gain-rate {
-  font-size:12px; text-align:center; margin-top:6px; padding:6px 10px;
-  border-radius:6px; display:inline-block; width:100%;
-}
-.gain-rate.good { color:var(--success); background:rgba(107,227,164,.06); }
-.gain-rate.warn { color:var(--warning); background:rgba(242,192,99,.06); }
-.gain-rate.bad  { color:var(--danger);  background:rgba(255,138,138,.06); }
+/* forms */
+.row{display:grid;gap:8px;margin-bottom:8px}
+.r2{grid-template-columns:1fr 1fr}.r3{grid-template-columns:1fr 1fr 1fr}.r4{grid-template-columns:1fr 1fr 1fr 1fr}
+label.f{display:block;font:700 9.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:4px}
+input[type=number],select{width:100%;background:var(--input);border:1px solid var(--b2);color:var(--t1);border-radius:10px;padding:10px 11px;font:14px var(--font);outline:none}
+input:focus,select:focus{border-color:rgba(255,255,255,.4)}
+.btn{width:100%;padding:12px;border:none;border-radius:12px;background:linear-gradient(180deg,#fff,#e8e5dd);color:#0a0a0b;font:700 14px var(--font);cursor:pointer}
+.btn.sec{background:var(--card);border:1px solid var(--b2);color:var(--t1)}
+.ent{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-top:1px solid var(--b);font-size:13px}
+.ent .m{font:11px var(--mono);color:var(--t3)}
+.x{background:none;border:1px solid var(--b2);color:var(--t3);border-radius:8px;width:28px;height:28px;cursor:pointer;font-size:15px;flex:none}
+.empty{font-size:12px;color:var(--t4);font-style:italic;padding:6px 0}
 
-/* ── Supplement Banner ── */
-.supplement-banner {
-  padding: 10px 14px; border-radius: 10px;
-  margin-bottom: 12px; font-size: 12px;
-  background: rgba(107,227,164,.06);
-  border:1px solid rgba(107,227,164,.15);
-  color: var(--text-secondary);
-  display: flex; align-items: center; gap: 8px;
-}
+/* verdict + signals */
+.sig{display:grid;grid-template-columns:12px 1fr auto;gap:10px;align-items:start;padding:9px 0;border-top:1px solid var(--b)}
+.sig:first-of-type{border-top:none}
+.dot{width:10px;height:10px;border-radius:50%;margin-top:5px;background:var(--t4)}
+.dot.g{background:var(--good)}.dot.w{background:var(--warn)}.dot.b{background:var(--bad)}
+.sig-n{font-size:13px;font-weight:600;color:var(--t1)}
+.sig-v{font:600 12.5px var(--mono);color:var(--t1);text-align:right}
+.advice{font-size:13px;color:var(--t1);background:rgba(255,255,255,.05);border-radius:12px;padding:11px 13px;margin-top:10px;line-height:1.45}
+.advice.g{border-left:3px solid var(--good)}.advice.w{border-left:3px solid var(--warn)}.advice.b{border-left:3px solid var(--bad)}
 
-/* ── Sleep Coaching ── */
-.sleep-coaching {
-  font-size: 12px; text-align: center; padding: 8px 12px;
-  border-radius: 8px; margin-top: 8px;
-  background: rgba(107,227,164,.06);
-  border:1px solid rgba(107,227,164,.15);
-  color: var(--success);
-  line-height: 1.5;
-}
+/* charts */
+svg.ch{width:100%;height:auto;display:block}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font:10px var(--mono);color:var(--t3);margin-top:6px}
+.legend span::before{content:'';display:inline-block;width:9px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle;background:var(--c)}
 
-/* Jarvis floating chat button */
+/* tables */
+.tbl{font-size:12px}
+.tr{display:grid;gap:4px;padding:7px 0;border-top:1px solid var(--b);align-items:center;font-variant-numeric:tabular-nums}
+.tr.h{border-top:none;font:700 9.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--t3);padding-top:0}
+.tr span{text-align:right;color:var(--t1);font-family:var(--mono);font-size:11.5px}
+.tr span:first-child{text-align:left;font-family:var(--font);color:var(--t2);font-size:12px}
+.tr.h span{color:var(--t3);font-size:9.5px;font-family:var(--mono)}
+.wk{grid-template-columns:1.1fr 1.1fr .9fr 1fr 1fr 1.3fr}
+.st{grid-template-columns:1.2fr 1fr .9fr .9fr 1fr 1.2fr}
+.g{color:var(--good)!important}.w{color:var(--warn)!important}.b{color:var(--bad)!important}.dim{color:var(--t4)!important}
+details{background:var(--card2);border:1px solid var(--b);border-radius:12px}
+summary{list-style:none;cursor:pointer;padding:12px 14px;font-weight:600;color:var(--t1);font-size:13.5px;display:flex;justify-content:space-between}
+summary::-webkit-details-marker{display:none}
+summary::after{content:'▾';color:var(--t3)}
+details[open] summary::after{transform:rotate(180deg)}
+.det-body{padding:0 14px 12px}
+.foot{text-align:center;margin-top:20px;font:10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--t4)}
 </style>
 </head>
 <body>
-<div class="container">
-  <div class="card-header">
-    <h1>Nutrition & Recovery <span class="unit-badge">US / lbs</span></h1>
-    <button class="settings-btn" id="settingsBtn">⚙️</button>
-  </div>
-
-  <div id="reminderBadge" class="reminder-badge hidden">⏰ Check in pending</div>
-
-  <!-- Match Day Banners -->
-  <div id="matchBannerContainer"></div>
-
-  <!-- Supplement Timing Banner -->
-  <div id="supplementBanner"></div>
-
-  <!-- Quick Food Log (added this iteration — Gemini + food_logs) -->
-  <div class="card" id="qfCard">
-    <div class="card-header">
-      <h2>🍽️ Quick Food Log</h2>
-      <span id="qfStatus" style="font-size:12px;color:var(--text-tertiary);font-family:ui-monospace,monospace"></span>
-    </div>
-
-    <div style="margin-bottom:10px;display:flex;gap:8px;align-items:stretch">
-      <input type="text" id="qfInput" placeholder="What did you eat? (e.g. two eggs, toast, protein shake)" autocomplete="off" style="width:100%">
-      <button class="submit-btn" id="qfEstimateBtn" style="width:auto;padding:0 16px;flex-shrink:0;min-width:130px">Estimate &amp; Log</button>
-    </div>
-
-    <div id="qfError" class="hidden" style="background:rgba(255,138,138,.10);border:1px solid var(--danger);color:var(--danger);padding:10px 14px;border-radius:8px;font-size:13px;margin-top:6px"></div>
-
-    <!-- Estimate preview (hidden until Gemini response) -->
-    <div id="qfPreview" class="hidden" style="background:rgba(107,227,164,.06);border:1px solid rgba(107,227,164,.25);border-radius:10px;padding:14px 16px;margin-top:10px">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;gap:10px;flex-wrap:wrap">
-        <div>
-          <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--success);margin-bottom:2px">ESTIMATE</div>
-          <div id="qfPreviewTotals" style="font-size:20px;font-weight:700;color:var(--text-primary);font-family:ui-monospace,monospace"></div>
-          <div id="qfPreviewNotes" style="font-size:11px;color:var(--text-tertiary);margin-top:2px;font-style:italic"></div>
-        </div>
-        <button id="qfPreviewToggle" type="button" style="background:none;border:1px solid var(--border);color:var(--text-secondary);font-size:11px;padding:6px 10px;border-radius:6px;cursor:pointer;align-self:flex-start">Show breakdown ▼</button>
-      </div>
-      <div id="qfPreviewWarning" class="hidden" style="background:rgba(242,192,99,.10);border:1px solid var(--warning);color:var(--warning);padding:8px 12px;border-radius:8px;font-size:12px;margin-bottom:8px">⚠️ Portions unclear — edit before confirming</div>
-      <div id="qfPreviewItems" class="hidden" style="margin-bottom:10px;max-height:240px;overflow-y:auto"></div>
-      <div style="display:flex;gap:8px">
-        <button id="qfConfirmBtn" type="button" class="submit-btn" style="flex:2;background:var(--success)">✓ Confirm &amp; Log</button>
-        <button id="qfEditBtn" type="button" style="flex:1;padding:12px;background:var(--surface);border:1px solid var(--border);color:var(--text-primary);font-size:13px;font-weight:600;border-radius:8px;cursor:pointer">✏️ Edit</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Today's Totals -->
-  <div class="card" id="qfTotalsCard">
-    <h2>📊 Today's Totals</h2>
-    <div style="margin-bottom:14px">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-        <span style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-tertiary)">Calories</span>
-        <span id="qfCalText" style="font-size:13px;font-family:ui-monospace,monospace;color:var(--text-primary)">— / —</span>
-      </div>
-      <div style="height:8px;background:rgba(255,255,255,.05);border-radius:4px;overflow:hidden">
-        <div id="qfCalBar" style="height:100%;width:0%;background:var(--success);transition:width .35s ease,background .15s ease"></div>
-      </div>
-    </div>
+<main>
+  <div class="top">
     <div>
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-        <span style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-tertiary)">Protein</span>
-        <span id="qfProtText" style="font-size:13px;font-family:ui-monospace,monospace;color:var(--text-primary)">— / —</span>
-      </div>
-      <div style="height:8px;background:rgba(255,255,255,.05);border-radius:4px;overflow:hidden">
-        <div id="qfProtBar" style="height:100%;width:0%;background:var(--success);transition:width .35s ease,background .15s ease"></div>
-      </div>
+      <div class="eyebrow" id="hdrEyebrow">—</div>
+      <h1>Fuel</h1>
     </div>
+    <span class="chip" id="syncChip">LOCAL</span>
   </div>
 
-  <!-- Today's Food Log list -->
-  <div class="card" id="qfEntriesCard">
-    <h2>📋 Today's Entries</h2>
-    <div id="qfEntriesList" style="color:var(--text-tertiary);font-size:13px">No entries yet</div>
+  <div class="nav">
+    <button class="nbtn" id="prevD" aria-label="Previous day">‹</button>
+    <div class="nmid" id="todayD"><b id="navDate">—</b><span id="navType">—</span></div>
+    <button class="nbtn" id="nextD" aria-label="Next day">›</button>
   </div>
 
-  <!-- Yesterday collapsed -->
-  <div class="card" id="qfYesterdayCard">
-    <div id="qfYesterdayHeader" class="card-header" style="cursor:pointer;user-select:none">
-      <h2>📅 Yesterday</h2>
-      <span id="qfYesterdayToggle" style="color:var(--text-secondary);font-size:12px;transition:transform .15s">▶ show more</span>
-    </div>
-    <div id="qfYesterdayPreview" style="font-size:13px;color:var(--text-secondary);margin-bottom:6px"></div>
-    <div id="qfYesterdayBody" class="hidden" style="margin-top:12px"></div>
-  </div>
+  <!-- Day totals -->
+  <section class="card">
+    <div class="card-h"><h2>Day totals</h2><span class="eyebrow" id="feedsLbl">—</span></div>
+    <div id="prog"></div>
+    <div id="dayNote"></div>
+  </section>
 
-  <!-- Daily Check-in -->
-  <div class="card" id="checkinCard">
-    <div class="card-header">
-      <h2>Daily Check-in</h2>
-      <span id="checkinStatus" style="font-size:13px;color:var(--text-secondary)"></span>
+  <!-- Weight -->
+  <section class="card">
+    <div class="card-h"><h2>Morning weight</h2><span class="eyebrow">lb · same conditions daily</span></div>
+    <div class="row r2" style="margin-bottom:0">
+      <div><label class="f">Weight (lb)</label><input type="number" id="wtIn" step="0.1" min="60" max="400" inputmode="decimal"></div>
+      <div><label class="f">vs start</label><div id="wtDelta" style="padding:10px 0;color:var(--t1);font:600 15px var(--mono)">—</div></div>
     </div>
-    <div id="adaptiveTargets" style="background:rgba(107,227,164,0.06);border:1px solid rgba(107,227,164,0.15);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--text-secondary);display:none"></div>
-    <div id="validationMsg" class="validation-msg"></div>
+  </section>
 
-    <div class="form-group">
-      <label>Sleep Hours: <strong id="sleepValue">7</strong>h</label>
-      <input type="range" id="sleepHours" min="4" max="12" step="0.5" value="7">
+  <!-- Add entry -->
+  <section class="card">
+    <div class="card-h"><h2>Log food</h2><span class="eyebrow">adds to the day</span></div>
+    <div class="row r2">
+      <div><label class="f">Meal</label>
+        <select id="enLbl"><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option><option>Shake</option><option>Pre-game</option><option>Day total</option></select></div>
+      <div><label class="f">Calories</label><input type="number" id="enKc" min="0" inputmode="numeric" placeholder="800"></div>
     </div>
-    <div class="form-group">
-      <label>Sleep Quality</label>
-      <div class="star-rating" id="sleepQuality">
-        <button type="button" data-rating="1">★</button>
-        <button type="button" data-rating="2">★</button>
-        <button type="button" data-rating="3">★</button>
-        <button type="button" data-rating="4">★</button>
-        <button type="button" data-rating="5">★</button>
-      </div>
+    <div class="row r2">
+      <div><label class="f">Carbs (g)</label><input type="number" id="enC" min="0" inputmode="numeric" placeholder="100"></div>
+      <div><label class="f">Protein (g)</label><input type="number" id="enP" min="0" inputmode="numeric" placeholder="35"></div>
     </div>
-    <div class="form-group">
-      <label>Energy Level: <strong id="energyValue">7</strong>/10</label>
-      <input type="range" id="energyScore" min="1" max="10" step="1" value="7">
-    </div>
-    <div class="form-group">
-      <label>Muscle Soreness</label>
-      <div class="btn-group" id="sorenessGroup">
-        <button type="button" data-value="none">None</button>
-        <button type="button" data-value="mild">Mild</button>
-        <button type="button" data-value="moderate">Moderate</button>
-        <button type="button" data-value="severe">Severe</button>
-      </div>
-    </div>
-    <div class="form-group">
-      <label>Protein (g) yesterday <span style="font-size:10px;color:var(--text-tertiary)">(auto-filled if Jarvis logged it)</span></label>
-      <input type="number" id="proteinGrams" placeholder="e.g., 150" inputmode="numeric">
-    </div>
-    <div class="form-group">
-      <label>Hydration</label>
-      <div class="btn-group" id="hydrationGroup">
-        <button type="button" data-value="good">Good</button>
-        <button type="button" data-value="okay">Okay</button>
-        <button type="button" data-value="poor">Poor</button>
-      </div>
-    </div>
-    <div class="form-group">
-      <label>Hit Calorie Target?</label>
-      <div class="btn-group" id="calorieGroup">
-        <button type="button" data-value="yes">Yes</button>
-        <button type="button" data-value="roughly">Roughly</button>
-        <button type="button" data-value="no">No</button>
-      </div>
-    </div>
-    <button class="submit-btn" id="submitCheckin">Submit Check-in</button>
-  </div>
+    <button class="btn" id="enAdd">+ Add</button>
+    <div id="entList" style="margin-top:6px"></div>
+    <div class="sub" style="margin-top:6px">Prefer one number? Pick “Day total” and enter the full day once.</div>
+  </section>
 
-  <!-- Recovery Score -->
-  <div class="card">
-    <h2>Recovery Score</h2>
-    <div class="recovery-score" id="recoveryScore">—</div>
-    <div style="text-align:center;font-size:13px;color:var(--text-secondary)">
-      7-day avg: <span id="recoveryAvg">—</span>
-    </div>
-    <div id="sleepCoaching"></div>
-    <div class="chart-wrap"><svg class="chart-svg" id="recoveryChartSvg" viewBox="0 0 400 80" preserveAspectRatio="none"></svg></div>
-  </div>
+  <!-- On-track -->
+  <section class="card">
+    <div class="card-h"><h2>Am I on track?</h2><span class="eyebrow" id="trkLbl">—</span></div>
+    <div id="signals"></div>
+    <div class="advice" id="advice"></div>
+  </section>
 
-  <!-- Protein Target -->
-  <div class="card">
-    <h2>Protein Target</h2>
-    <div class="protein-target" id="proteinTarget">—</div>
-    <div class="protein-streak">
-      <span id="proteinStreak">0</span> day streak · avg: <span id="proteinAvg">—</span>g
-    </div>
-    <div style="font-size:12px;color:var(--text-tertiary);text-align:center;margin-top:6px" id="proteinWeightNote"></div>
-    <div id="gainRateDisplay"></div>
-    <div id="proteinAlert" class="alert hidden" style="margin-top:12px">
-      <div class="alert-title">⚠️ Low Protein Alert</div>
-      <div>Under target for 3+ days. Muscle retention at risk.</div>
-    </div>
-  </div>
+  <!-- Weight chart -->
+  <section class="card">
+    <div class="card-h"><h2>Weight trend</h2><span class="eyebrow" id="wtRate">—</span></div>
+    <div id="wtChart"></div>
+    <div class="legend"><span style="--c:#FAFAFA">daily</span><span style="--c:#7DD3FC">7-day avg</span><span style="--c:rgba(107,227,164,.7)">+0.25–0.5 lb/wk corridor</span></div>
+  </section>
 
-  <!-- Calories & Protein History -->
-  <div class="card">
-    <div class="card-header">
-      <h2>Calories & Protein History</h2>
-      <span id="calProteinRange" style="font-size:11px;color:var(--text-tertiary);font-family:var(--mono)">30 days</span>
-    </div>
-    <div class="chart-wrap"><svg class="chart-svg" id="proteinHistorySvg" viewBox="0 0 400 80" preserveAspectRatio="none"><text x="200" y="40" text-anchor="middle" fill="#76746E" font-size="12">Loading…</text></svg></div>
-    <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px">
-      <span style="color:var(--success);font-family:var(--mono)">Protein (g)</span>
-      <span style="color:var(--text-tertiary);font-family:var(--mono)" id="proteinHistoryAvg">—</span>
-    </div>
-    <div class="chart-wrap" style="margin-top:8px"><svg class="chart-svg" id="calorieHistorySvg" viewBox="0 0 400 80" preserveAspectRatio="none"><text x="200" y="40" text-anchor="middle" fill="#76746E" font-size="12">Loading…</text></svg></div>
-    <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px">
-      <span style="color:#F2C063;font-family:var(--mono)">Est. Calories</span>
-      <span style="color:var(--text-tertiary);font-family:var(--mono)" id="calorieHistoryAvg">—</span>
-    </div>
-  </div>
+  <!-- Calorie chart -->
+  <section class="card">
+    <div class="card-h"><h2>Calories · last 14 days</h2><span class="eyebrow" id="kcAvg">—</span></div>
+    <div id="kcChart"></div>
+    <div class="legend"><span style="--c:#6BE3A4">in range</span><span style="--c:#F2C063">under / over</span><span style="--c:rgba(255,255,255,.3)">target band</span></div>
+  </section>
 
-  <!-- TDEE -->
-  <div class="card">
-    <h2>Adaptive TDEE</h2>
-    <div class="tdee-display">
-      <div class="tdee-value" id="tdeeValue">—</div>
-      <div class="tdee-range" id="tdeeRange">Target: — —</div>
-    </div>
-    <div class="chart-wrap"><svg class="chart-svg" id="weightTrendChartSvg" viewBox="0 0 400 80" preserveAspectRatio="none"></svg></div>
-    <div style="font-size:12px;color:var(--text-secondary);text-align:center;margin-top:6px" id="tdeeAdjustment"></div>
-    <div id="carbAdjustment" style="font-size:12px;color:var(--text-secondary);text-align:center;margin-top:4px"></div>
-  </div>
+  <!-- Weekly table -->
+  <section class="card">
+    <div class="card-h"><h2>Block by week</h2><span class="eyebrow">nutrition × training</span></div>
+    <div class="tbl" id="wkTbl"></div>
+  </section>
 
-  <!-- Diagnosis -->
-  <div class="card">
-    <h2>Nutrition Diagnosis</h2>
-    <div id="diagnosisContent" style="color:var(--text-tertiary);font-size:13px">Check in for 3+ days to see diagnosis</div>
-  </div>
+  <!-- Stream -->
+  <section class="card">
+    <div class="card-h"><h2>Daily stream</h2><button class="x" id="csvBtn" style="width:auto;padding:0 10px;font:600 10px var(--mono);letter-spacing:.06em">CSV</button></div>
+    <div class="tbl" id="stream"></div>
+  </section>
 
-  <!-- Weekly Summary -->
-  <div class="card">
-    <div class="card-header">
-      <h2>Weekly Summary</h2>
-      <button id="refreshSummary" style="background:none;border:none;color:var(--success);cursor:pointer;font-size:13px">Refresh</button>
+  <!-- Targets -->
+  <details>
+    <summary>Targets</summary>
+    <div class="det-body">
+      <div class="row r2"><div><label class="f">Calories min</label><input type="number" id="tKmin" inputmode="numeric"></div><div><label class="f">Calories max</label><input type="number" id="tKmax" inputmode="numeric"></div></div>
+      <div class="row r2"><div><label class="f">Protein min (g)</label><input type="number" id="tPmin" inputmode="numeric"></div><div><label class="f">Protein max (g)</label><input type="number" id="tPmax" inputmode="numeric"></div></div>
+      <div class="row r3"><div><label class="f">Carbs high day</label><input type="number" id="tCh" inputmode="numeric"></div><div><label class="f">Carbs lower day</label><input type="number" id="tCl" inputmode="numeric"></div><div><label class="f">Start wt (lb)</label><input type="number" id="tW0" step="0.1" inputmode="decimal"></div></div>
+      <div class="sub">Calories and protein come from your plan (3,000–3,300 kcal to start, 120–140 g over 4 feeds, +0.25–0.5 lb/wk). The carb targets are starting estimates, so tune them. High-carb days: Mon, Thu, Fri, Sat and game day (Tue).</div>
     </div>
-    <div id="weeklySummary" style="color:var(--text-tertiary);font-size:13px">Check in for 7+ days to see summary</div>
-  </div>
+  </details>
 
-  <div id="fatigueWarning" class="alert hidden">
-    <div class="alert-title">⚠️ Accumulated Fatigue Warning</div>
-    <div>7-day recovery avg below 55. Deload recommended.</div>
-  </div>
-</div>
-
-<!-- Settings Modal -->
-<div class="modal" id="settingsModal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h2>Profile Settings</h2>
-      <button class="modal-close" id="closeSettings">×</button>
-    </div>
-    <div class="form-group">
-      <label>Body Weight (lbs) <span style="font-size:11px;color:var(--text-tertiary)">— used for protein & TDEE targets</span></label>
-      <input type="number" id="profileWeightLbs" placeholder="e.g., 155">
-    </div>
-    <div class="form-group">
-      <label>Age</label>
-      <input type="number" id="profileAge" placeholder="e.g., 22">
-    </div>
-    <div class="form-group">
-      <label>Height (inches)</label>
-      <input type="number" id="profileHeightIn" placeholder="e.g., 70">
-    </div>
-    <div class="form-group">
-      <label>Training Frequency (days/week)</label>
-      <input type="number" id="profileFrequency" placeholder="e.g., 4" min="1" max="7">
-    </div>
-    <div class="form-group">
-      <label>Goal Weight (lbs)</label>
-      <input type="number" id="profileGoalWeight" placeholder="e.g., 165">
-    </div>
-    <button class="submit-btn" id="saveSettings">Save Settings</button>
-  </div>
-</div>
+  <div class="foot">// Offseason · Phase 1 · Oct 26 – Nov 21</div>
+</main>
 
 <script>
-// ═══════════════════════════════════════════════
-//  SUPABASE
-// ═══════════════════════════════════════════════
-const SUPABASE_URL = 'https://cskbbioyniryonkukamw.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNza2JiaW95bmlyeW9ua3VrYW13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NjE2MTYsImV4cCI6MjA5NDUzNzYxNn0.R3Vx3fA-iAc8LhNL3WPSa9-BxH_087c7VaIbrB3CBJM';
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-const APP_KEY = 'nutrition';
+(function () {
+'use strict';
+if (/[?&]embed=1/.test(location.search)) document.body.classList.add('embed');
 
-// ═══════════════════════════════════════════════
-//  CHECK-IN STATE OBJECT
-// ═══════════════════════════════════════════════
-const checkInState = {
-  sleep_hours:   7,
-  sleep_quality: null,
-  energy_score:  7,
-  soreness:      null,
-  protein_grams: null,
-  hydration:     null,
-  calorie_hit:   null
-};
+/* =========================================================
+   CONFIG
+   ========================================================= */
+const BLOCK_START = '2026-10-26';
+const BLOCK_WEEKS = 4;
+const SESSIONS_PLANNED = 6;            // Mon–Sat in the Week 1 layout
+const DEFAULT_TARGETS = { kmin:3000, kmax:3300, pmin:120, pmax:140, ch:420, cl:340, w0:143, feeds:4 };
+// weekday → [carb day type, session]
+const DAYINFO = { 1:['hi','Upper A'], 2:['hi','Game day'], 3:['lo','Technical'], 4:['hi','Lower A'], 5:['hi','Bike 15:15'], 6:['hi','Strength B'], 0:['lo','Off'] };
+const LIFT_DAYS = [4,6];               // post-lift carb+protein meal within ~2 h
 
-let profileState = {
-  weight_lbs: null,   // PRIMARY — stored in lbs, converted to kg only for math
-  age: null,
-  height_in: null,
-  trainingFrequency: 4,
-  goal_weight_lbs: null
-};
+/* =========================================================
+   HELPERS
+   ========================================================= */
+const $ = (id) => document.getElementById(id);
+const DOW = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+const MON = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+const pad = (n) => String(n).padStart(2,'0');
+const key = (d) => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const parse = (s) => { const a = s.split('-').map(Number); return new Date(a[0],a[1]-1,a[2],12); };
+const addDays = (d,n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
+const esc = (s) => String(s).replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = (v) => { const n = parseFloat(v); return isFinite(n) ? n : null; };
+const fmt = (n) => Math.round(n).toLocaleString();
+const START = parse(BLOCK_START);
+const todayKey = () => key(new Date());
+const dayDiff = (a,b) => Math.round((a-b)/86400000);
+const weekOf = (d) => Math.floor(dayDiff(d,START)/7)+1;
+const weekStart = (w) => addDays(START,(w-1)*7);
 
-const $ = id => document.getElementById(id);
+/* =========================================================
+   STATE — nutrition (own key) + read-only training from Home
+   ========================================================= */
+const LS = 'ot_nutrition_v1', LS_HOME = 'ot_home_v1';
+let S, HOME = {}, homeRemote = false;
+const blank = () => ({ v:1, updated:0, days:{}, t:Object.assign({}, DEFAULT_TARGETS) });
+function load(){ try { const r = JSON.parse(localStorage.getItem(LS)); if (r && r.days) { const b = blank(); r.t = Object.assign(b.t, r.t||{}); return Object.assign(b, r); } } catch(e){} return blank(); }
+function readHome(){ try { const r = JSON.parse(localStorage.getItem(LS_HOME)); return r && r.days ? r : null; } catch(e){ return null; } }
+const day = (k) => S.days[k] || (S.days[k] = { entries:[], w:null });
+let sel = todayKey();
 
-function todayKey() {
-  const d = new Date();
-  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+let pushT = null;
+function save(){ S.updated = Date.now(); try { localStorage.setItem(LS, JSON.stringify(S)); } catch(e){} clearTimeout(pushT); pushT = setTimeout(push, 600); }
+
+const SB_URL = (window.ENV_SUPABASE_URL || 'https://cskbbioyniryonkukamw.supabase.co').replace(/\/$/,'');
+const SB_KEY = window.ENV_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNza2JiaW95bmlyeW9ua3VrYW13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NjE2MTYsImV4cCI6MjA5NDUzNzYxNn0.R3Vx3fA-iAc8LhNL3WPSa9-BxH_087c7VaIbrB3CBJM';
+const sbOn = !!(SB_URL && SB_KEY);
+const hdrs = () => ({ apikey:SB_KEY, Authorization:'Bearer '+SB_KEY, 'Content-Type':'application/json' });
+function chip(t,c){ const e=$('syncChip'); e.textContent=t; e.className='chip'+(c?' '+c:''); }
+async function getRow(k){ const r = await fetch(SB_URL+'/rest/v1/app_state?key=eq.'+k+'&select=data',{headers:hdrs()}); if(!r.ok) throw 0; const rows = await r.json(); return rows[0] && rows[0].data; }
+async function pull(){
+  if (!sbOn) return;
+  try {
+    const remote = await getRow('offseason_nutrition');
+    if (remote && remote.updated > S.updated) {
+      const b = blank(); remote.t = Object.assign(b.t, remote.t||{});
+      S = Object.assign(b, remote);
+      try { localStorage.setItem(LS, JSON.stringify(S)); } catch(e){}
+    } else if (!remote || remote.updated < S.updated) { await push(); }
+    // training data written by the Home tab (read-only here)
+    const hr = await getRow('offseason_home');
+    const lh = readHome();
+    if (hr && hr.days && (!lh || hr.updated >= lh.updated)) { HOME = hr.days; homeRemote = true; }
+    chip('SYNCED','ok');
+    renderAll();
+  } catch(e){ chip('OFFLINE','bad'); }
 }
-function scoreClass(s) { return s >= 70 ? 'good' : s >= 55 ? 'warn' : 'bad'; }
-// Detect today's training split (mirrors gym tab logic)
-function todaySplit() {
-  const anchor = new Date('2026-05-12T00:00:00');
-  const now = new Date(todayKey() + 'T00:00:00');
-  const diff = Math.round((now - anchor) / 86400000);
-  const idx = ((3 + diff) % 4 + 4) % 4;
-  return ['Push','Pull','Legs','Rest'][idx];
+// The current state other surfaces read: the newest weigh-in plus its 14-day trend,
+// which is what Jarvis quotes back instead of a hardcoded default.
+function latestWeightRow(){
+  const ks = Object.keys(S.days).filter((k)=>S.days[k] && S.days[k].w!=null).sort();
+  if (!ks.length) return null;
+  const k = ks[ks.length-1], a = assess(k);
+  return { weight:S.days[k].w, date:k, gain_rate:a.rate!=null?+a.rate.toFixed(2):null, updated:Date.now() };
+}
+async function push(){
+  if (!sbOn) return;
+  try {
+    const rows = [{ key:'offseason_nutrition', data:S, updated_at:new Date().toISOString() }];
+    const lw = latestWeightRow();
+    if (lw) rows.push({ key:'latest_weight', data:lw, updated_at:new Date().toISOString() });
+    const r = await fetch(SB_URL+'/rest/v1/app_state?on_conflict=key',{ method:'POST', headers:Object.assign(hdrs(),{Prefer:'resolution=merge-duplicates'}), body:JSON.stringify(rows) });
+    chip(r.ok?'SYNCED':'OFFLINE', r.ok?'ok':'bad');
+  } catch(e){ chip('OFFLINE','bad'); }
 }
 
-// ═══════════════════════════════════════════════
-//  SLIDERS
-// ═══════════════════════════════════════════════
-function initSliders() {
-  const sleepEl = $('sleepHours'), sleepVal = $('sleepValue');
-  if (sleepEl) {
-    sleepEl.addEventListener('input', function() {
-      checkInState.sleep_hours = parseFloat(this.value);
-      if (sleepVal) sleepVal.textContent = this.value;
-    });
-    if (sleepVal) sleepVal.textContent = sleepEl.value;
-    checkInState.sleep_hours = parseFloat(sleepEl.value);
+/* =========================================================
+   CALCS
+   ========================================================= */
+function tot(k){
+  const r = S.days[k]; const o = { kc:0, c:0, p:0, f:0, n:0 };
+  if (r) r.entries.forEach(e=>{ o.kc+=e.kc; o.c+=e.c; o.p+=e.p; if (e.p>0) o.f++; o.n++; });
+  return o;
+}
+const carbTarget = (k) => DAYINFO[parse(k).getDay()][0]==='hi' ? S.t.ch : S.t.cl;
+function train(k){
+  const r = HOME[k], o = { n:0, load:0, sprint:0, vol:0 };
+  if (r && r.sessions) r.sessions.forEach(s=>{ o.n++; o.load+=(s.rpe||0)*(s.min||0); o.sprint+=(s.sr||0)*(s.sd||0); o.vol+=(s.vl||0); });
+  return o;
+}
+function weekStats(w){
+  const ws = weekStart(w), o = { days:0, kc:0, p:0, c:0, pHit:0, cHit:0, wts:[], n:0, load:0, sprint:0, vol:0 };
+  for (let i=0;i<7;i++){
+    const k = key(addDays(ws,i)), t = tot(k), tr = train(k), rec = S.days[k];
+    if (t.kc>0){ o.days++; o.kc+=t.kc; o.p+=t.p; o.c+=t.c; if (t.p>=S.t.pmin) o.pHit++; if (t.c>=0.9*carbTarget(k)) o.cHit++; }
+    if (rec && rec.w!=null) o.wts.push(rec.w);
+    o.n+=tr.n; o.load+=tr.load; o.sprint+=tr.sprint; o.vol+=tr.vol;
   }
-  const energyEl = $('energyScore'), energyVal = $('energyValue');
-  if (energyEl) {
-    energyEl.addEventListener('input', function() {
-      checkInState.energy_score = parseInt(this.value, 10);
-      if (energyVal) energyVal.textContent = this.value;
-    });
-    if (energyVal) energyVal.textContent = energyEl.value;
-    checkInState.energy_score = parseInt(energyEl.value, 10);
+  o.avgK = o.days ? o.kc/o.days : null; o.avgP = o.days ? o.p/o.days : null;
+  o.avgW = o.wts.length ? o.wts.reduce((a,b)=>a+b,0)/o.wts.length : null;
+  return o;
+}
+// last-14-day weight trend: least-squares slope in lb/week
+function assess(endK){
+  const end = parse(endK), pts = [];
+  for (let i=13;i>=0;i--){ const r = S.days[key(addDays(end,-i))]; if (r && r.w!=null) pts.push({ x:13-i, y:r.w }); }
+  let rate = null;
+  if (pts.length>=4 && pts[pts.length-1].x - pts[0].x >= 6){
+    const n = pts.length; let sx=0, sy=0, sxy=0, sxx=0;
+    pts.forEach(p=>{ sx+=p.x; sy+=p.y; sxy+=p.x*p.y; sxx+=p.x*p.x; });
+    rate = (n*sxy - sx*sy)/(n*sxx - sx*sx)*7;
   }
+  let kc=0, kn=0, ph=0, pn=0, ts=0;
+  for (let i=6;i>=0;i--){ const k = key(addDays(end,-i)), t = tot(k); if (t.kc>0){ kc+=t.kc; kn++; pn++; if (t.p>=S.t.pmin) ph++; } ts += train(k).n; }
+  return { rate, pts:pts.length, avgK: kn?kc/kn:null, kDays:kn, pHit:ph, pDays:pn, sessions:ts };
 }
 
-// ═══════════════════════════════════════════════
-//  STAR RATING
-// ═══════════════════════════════════════════════
-function initStarRating() {
-  const container = $('sleepQuality');
-  if (!container) return;
-  const stars = Array.from(container.querySelectorAll('button'));
-  function paint(filled, preview) {
-    stars.forEach(s => {
-      const r = parseInt(s.dataset.rating, 10);
-      s.classList.remove('filled', 'preview');
-      if (r <= filled) s.classList.add('filled');
-      else if (preview && r <= preview) s.classList.add('preview');
-    });
-  }
-  stars.forEach(star => {
-    const rating = parseInt(star.dataset.rating, 10);
-    star.addEventListener('mouseover', () => paint(checkInState.sleep_quality || 0, rating));
-    star.addEventListener('mouseout',  () => paint(checkInState.sleep_quality || 0, 0));
-    star.addEventListener('click', () => {
-      checkInState.sleep_quality = rating;
-      paint(rating, 0);
-      container.classList.remove('error');
-    });
+/* =========================================================
+   RENDER
+   ========================================================= */
+function renderHeader(){
+  const d = parse(sel), w = weekOf(d), inB = w>=1 && w<=BLOCK_WEEKS, di = DAYINFO[d.getDay()];
+  $('hdrEyebrow').textContent = (inB ? 'Phase 1 · Week '+w+' of '+BLOCK_WEEKS : 'Outside Phase 1') + ' · ' + DOW[d.getDay()]+', '+MON[d.getMonth()]+' '+d.getDate();
+  $('navDate').textContent = (sel===todayKey() ? 'Today · ' : '') + DOW[d.getDay()]+' '+MON[d.getMonth()]+' '+d.getDate();
+  $('navType').innerHTML = '<span class="tag '+di[0]+'">'+(di[0]==='hi'?'high-carb':'lower-carb')+'</span> · '+di[1];
+}
+function bar(pct, cls, marks){
+  return '<div class="bar '+(cls||'')+'"><i style="width:'+Math.min(100,pct)+'%"></i>'+(marks||'')+'</div>';
+}
+function renderProg(){
+  const t = tot(sel), T = S.t, ct = carbTarget(sel), d = parse(sel);
+  const kMax = T.kmax;
+  const kCls = t.kc>=T.kmin && t.kc<=T.kmax ? 'good' : (t.kc>T.kmax ? 'over' : '');
+  const pCls = t.p>=T.pmin && t.p<=T.pmax*1.15 ? 'good' : '';
+  const cCls = t.c>=0.9*ct ? 'good' : '';
+  const fat = Math.max(0,(t.kc - 4*t.c - 4*t.p)/9);
+  $('feedsLbl').textContent = 'Protein feeds '+t.f+'/'+T.feeds;
+  $('prog').innerHTML =
+    '<div class="pr"><div class="pr-top"><span class="pr-name">Calories</span><span class="pr-val">'+fmt(t.kc)+' / '+fmt(T.kmin)+'–'+fmt(T.kmax)+'</span></div>'
+    + bar(t.kc/kMax*100, kCls, '<u style="left:'+(T.kmin/kMax*100)+'%"></u>')
+    + '<div class="sub">'+(t.kc<T.kmin ? fmt(T.kmin-t.kc)+' kcal to reach the floor' : t.kc<=T.kmax ? 'In range' : fmt(t.kc-T.kmax)+' over the top of the range')+'</div></div>'
+    + '<div class="pr"><div class="pr-top"><span class="pr-name">Protein</span><span class="pr-val">'+fmt(t.p)+' g / '+T.pmin+'–'+T.pmax+'</span></div>'
+    + bar(t.p/T.pmax*100, pCls, '<u style="left:'+(T.pmin/T.pmax*100)+'%"></u>')
+    + '<div class="sub">'+(t.p<T.pmin ? fmt(T.pmin-t.p)+' g to the floor · spread over '+T.feeds+' feeds' : 'Protein target met')+'</div></div>'
+    + '<div class="pr"><div class="pr-top"><span class="pr-name">Carbs</span><span class="pr-val">'+fmt(t.c)+' / '+ct+' g</span></div>'
+    + bar(t.c/ct*100, cCls)
+    + '<div class="sub">'+(DAYINFO[d.getDay()][0]==='hi' ? 'High-carb day' : 'Lower-carb day')+(t.kc>0 ? ' · implied fat ≈ '+fmt(fat)+' g' : '')+'</div></div>';
+  let note = '';
+  if (LIFT_DAYS.indexOf(d.getDay())>-1) note = 'Lift day: get a carb + protein meal in within about 2 hours after training.';
+  else if (d.getDay()===2) note = 'Game day: carbs up around the game, and log the evening meal after.';
+  $('dayNote').innerHTML = note ? '<div class="note">'+esc(note)+'</div>' : '';
+}
+function renderWeight(){
+  const r = day(sel); $('wtIn').value = r.w ?? '';
+  $('wtDelta').textContent = r.w!=null ? ((r.w-S.t.w0>=0?'+':'')+(r.w-S.t.w0).toFixed(1)+' lb') : '—';
+}
+function renderEntries(){
+  const es = day(sel).entries;
+  $('entList').innerHTML = es.length ? es.map((e,i)=>
+    '<div class="ent"><div><div style="color:var(--t1);font-weight:600">'+esc(e.lbl)+' · '+fmt(e.kc)+' kcal</div><div class="m">C '+fmt(e.c)+' g · P '+fmt(e.p)+' g</div></div><button class="x" data-i="'+i+'" aria-label="Delete">×</button></div>').join('')
+    : '<div class="empty">Nothing logged for this day.</div>';
+}
+
+function signalsHtml(a, ws){
+  const T = S.t, rows = [];
+  // intake
+  let k = ['','—','Log a few days of meals.'];
+  if (a.avgK!=null) k = [a.avgK>=T.kmin && a.avgK<=T.kmax*1.05 ? 'g' : (a.avgK>=T.kmin*0.93 ? 'w' : 'b'), fmt(a.avgK)+' kcal', 'Avg of last '+a.kDays+' logged day'+(a.kDays>1?'s':'')+' · target '+fmt(T.kmin)+'–'+fmt(T.kmax)];
+  rows.push(['Calories', k]);
+  let p = ['','—','Needs logged days.'];
+  if (a.pDays){ const f = a.pHit/a.pDays; p = [f>=0.7?'g':(f>=0.4?'w':'b'), a.pHit+'/'+a.pDays+' days', 'Days at or above '+T.pmin+' g (last 7)']; }
+  rows.push(['Protein', p]);
+  let w = ['','—','Needs ~4 weigh-ins over a week or more.'];
+  if (a.rate!=null) w = [a.rate>=0.25 && a.rate<=0.5 ? 'g' : (a.rate>=0.1 && a.rate<=0.65 ? 'w' : 'b'), (a.rate>=0?'+':'')+a.rate.toFixed(2)+' lb/wk', '14-day trend · goal +0.25 to +0.5'];
+  rows.push(['Weight', w]);
+  const tr = a.sessions;
+  rows.push(['Training', [tr>=5?'g':(tr>=3?'w':(tr>0?'b':'')), tr+'/'+SESSIONS_PLANNED+' sessions', 'Logged in Home, last 7 days']]);
+  return rows.map(r=>'<div class="sig"><span class="dot '+r[1][0]+'"></span><div><div class="sig-n">'+r[0]+'</div><div class="sub">'+r[1][2]+'</div></div><div class="sig-v">'+r[1][1]+'</div></div>').join('');
+}
+function adviceFor(a){
+  const T = S.t;
+  if (a.rate==null) return ['','Weigh in every morning (same time, same conditions). The adjustment rule needs about two weeks of weight data; until then, hit '+fmt(T.kmin)+'+ kcal and '+T.pmin+'+ g protein and let the data build.'];
+  if (a.avgK!=null && a.avgK < T.kmin-100) return ['w','You\'re averaging '+fmt(a.avgK)+' kcal, under the '+fmt(T.kmin)+' floor. Hit the plan before you change the plan; a slow trend is probably an intake problem.'];
+  if (a.rate<0) return ['b','Weight is trending down ('+a.rate.toFixed(2)+' lb/wk) while training. Add roughly 250–300 kcal/day, mostly carbs around the Mon/Thu/Fri/Sat sessions.'];
+  if (a.rate<0.25) return ['w','Gaining slower than +0.25 lb/wk. Suggested nudge: add about 150–250 kcal/day, mostly carbs around lifts.'];
+  if (a.rate>0.5) return ['w','Gaining faster than +0.5 lb/wk. Suggested nudge: trim about 150–200 kcal/day (extra fat and carbs on lower-carb days first).'];
+  return ['g','In the +0.25 to +0.5 lb/wk window. Hold calories where they are.'];
+}
+function renderTrack(){
+  const a = assess(sel);
+  $('trkLbl').textContent = a.pts+' weigh-ins · 14 d';
+  $('signals').innerHTML = signalsHtml(a);
+  const ad = adviceFor(a); $('advice').className = 'advice '+ad[0]; $('advice').textContent = ad[1];
+  $('wtRate').textContent = a.rate!=null ? ((a.rate>=0?'+':'')+a.rate.toFixed(2)+' lb/wk') : 'need more data';
+}
+
+/* ---- SVG charts (no text inside; labels are HTML) ---- */
+function weightChart(){
+  const W=300, H=120, pad=6, T = S.t;
+  const lastD = Math.max(BLOCK_WEEKS*7-1, dayDiff(parse(sel),START));
+  const pts = [];
+  for (let i=0;i<=lastD;i++){ const r = S.days[key(addDays(START,i))]; if (r && r.w!=null) pts.push({ x:i, y:r.w }); }
+  if (!pts.length) return '<div class="empty">Log a morning weight to start the chart. Start weight is '+T.w0+' lb.</div>';
+  const x0 = pts[0].x, w0 = pts[0].y;
+  const c25 = (x)=> w0+0.25*(x-x0)/7, c50 = (x)=> w0+0.5*(x-x0)/7;
+  const ys = pts.map(p=>p.y).concat([w0, c25(lastD), c50(lastD)]);
+  const ymin = Math.min.apply(null, ys)-1, ymax = Math.max.apply(null, ys)+1;
+  const sx = (x)=> pad + x/lastD*(W-pad*2), sy = (y)=> H-pad-(y-ymin)/(ymax-ymin)*(H-pad*2);
+  let s = '<svg class="ch" viewBox="0 0 '+W+' '+H+'">';
+  s += '<polygon fill="rgba(107,227,164,.12)" points="'+sx(x0)+','+sy(c25(x0))+' '+sx(lastD)+','+sy(c25(lastD))+' '+sx(lastD)+','+sy(c50(lastD))+' '+sx(x0)+','+sy(c50(x0))+'"/>';
+  s += '<line x1="'+sx(x0)+'" y1="'+sy(c25(x0))+'" x2="'+sx(lastD)+'" y2="'+sy(c25(lastD))+'" stroke="rgba(107,227,164,.6)" stroke-width="1" stroke-dasharray="3 3"/>';
+  s += '<line x1="'+sx(x0)+'" y1="'+sy(c50(x0))+'" x2="'+sx(lastD)+'" y2="'+sy(c50(lastD))+'" stroke="rgba(107,227,164,.6)" stroke-width="1" stroke-dasharray="3 3"/>';
+  // trailing 7-day average
+  const avg = pts.map(p=>{ const w = pts.filter(q=>q.x<=p.x && q.x>p.x-7); return { x:p.x, y:w.reduce((a,b)=>a+b.y,0)/w.length }; });
+  s += '<polyline fill="none" stroke="#7DD3FC" stroke-width="2" points="'+avg.map(p=>sx(p.x).toFixed(1)+','+sy(p.y).toFixed(1)).join(' ')+'"/>';
+  pts.forEach(p=>{ s += '<circle cx="'+sx(p.x).toFixed(1)+'" cy="'+sy(p.y).toFixed(1)+'" r="2.6" fill="#FAFAFA"/>'; });
+  s += '</svg>';
+  return s + '<div class="sub" style="display:flex;justify-content:space-between"><span>'+ymin.toFixed(0)+' lb</span><span>Oct 26 → Nov 21</span><span>'+ymax.toFixed(0)+' lb</span></div>';
+}
+function kcalChart(){
+  const W=300, H=100, T = S.t, end = parse(sel), n = 14;
+  const data = []; for (let i=n-1;i>=0;i--){ const k = key(addDays(end,-i)); data.push({ k, kc:tot(k).kc }); }
+  const ymax = Math.max(T.kmax*1.12, Math.max.apply(null, data.map(d=>d.kc)));
+  const bw = W/n, sy = (v)=> H-(v/ymax)*(H-4);
+  let s = '<svg class="ch" viewBox="0 0 '+W+' '+H+'">';
+  s += '<rect x="0" y="'+sy(T.kmax)+'" width="'+W+'" height="'+(sy(T.kmin)-sy(T.kmax))+'" fill="rgba(255,255,255,.07)"/>';
+  data.forEach((d,i)=>{
+    if (d.kc<=0) { s += '<rect x="'+(i*bw+bw*0.2)+'" y="'+(H-2)+'" width="'+(bw*0.6)+'" height="2" fill="rgba(255,255,255,.12)"/>'; return; }
+    const ok = d.kc>=T.kmin && d.kc<=T.kmax, y = sy(d.kc);
+    s += '<rect x="'+(i*bw+bw*0.15)+'" y="'+y+'" width="'+(bw*0.7)+'" height="'+(H-y)+'" rx="2" fill="'+(ok?'#6BE3A4':'#F2C063')+'"'+(d.k===sel?' stroke="#fff" stroke-width="1"':'')+'/>';
   });
-  paint(checkInState.sleep_quality || 0, 0);
+  s += '</svg>';
+  return s;
+}
+function renderCharts(){
+  $('wtChart').innerHTML = weightChart();
+  $('kcChart').innerHTML = kcalChart();
+  const a = assess(sel); $('kcAvg').textContent = a.avgK!=null ? 'avg '+fmt(a.avgK)+' (7 d)' : '—';
 }
 
-// ═══════════════════════════════════════════════
-//  BUTTON GROUPS
-// ═══════════════════════════════════════════════
-function initButtonGroup(groupId, stateKey) {
-  const group = $(groupId);
-  if (!group) return;
-  const buttons = Array.from(group.querySelectorAll('button'));
-  buttons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      buttons.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      checkInState[stateKey] = btn.dataset.value;
-      group.classList.remove('error');
-    });
-  });
-}
-
-// ═══════════════════════════════════════════════
-//  PROTEIN INPUT
-// ═══════════════════════════════════════════════
-function initProteinInput() {
-  const el = $('proteinGrams');
-  if (!el) return;
-  el.addEventListener('input', function() {
-    const v = this.value.trim();
-    checkInState.protein_grams = v === '' ? null : parseInt(v, 10);
-    this.classList.remove('error');
-  });
-}
-
-// ═══════════════════════════════════════════════
-//  VALIDATION
-// ═══════════════════════════════════════════════
-function validateForm() {
-  const missing = [];
-  if (!checkInState.sleep_quality) { $('sleepQuality').classList.add('error'); missing.push('Sleep Quality'); }
-  if (!checkInState.soreness)      { $('sorenessGroup').classList.add('error'); missing.push('Soreness'); }
-  if (checkInState.protein_grams === null || isNaN(checkInState.protein_grams)) { $('proteinGrams').classList.add('error'); missing.push('Protein'); }
-  if (!checkInState.hydration)     { $('hydrationGroup').classList.add('error'); missing.push('Hydration'); }
-  if (!checkInState.calorie_hit)   { $('calorieGroup').classList.add('error'); missing.push('Calorie target'); }
-  const msgEl = $('validationMsg');
-  if (missing.length) {
-    msgEl.textContent = '⚠️ Please complete: ' + missing.join(', ');
-    msgEl.classList.add('show');
-    msgEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    return false;
+function renderWeeks(){
+  let h = '<div class="tr h wk"><span>Week</span><span>kcal</span><span>P g</span><span>Wt avg</span><span>Δ lb</span><span>Load (n)</span></div>';
+  let prevAvg = null;
+  const cur = Math.min(BLOCK_WEEKS, Math.max(1, weekOf(new Date())));
+  for (let w=1; w<=BLOCK_WEEKS; w++){
+    const o = weekStats(w);
+    const base = prevAvg!=null ? prevAvg : S.t.w0;
+    const dl = o.avgW!=null ? o.avgW-base : null;
+    const dc = dl==null ? 'dim' : (dl>=0.25 && dl<=0.5 ? 'g' : (dl<0.25 ? 'w' : 'w'));
+    h += '<div class="tr wk"><span>Wk '+w+(w===cur?' ●':'')+'</span>'
+      + '<span class="'+(o.avgK==null?'dim':(o.avgK>=S.t.kmin&&o.avgK<=S.t.kmax*1.05?'g':'w'))+'">'+(o.avgK==null?'—':fmt(o.avgK))+'</span>'
+      + '<span class="'+(o.avgP==null?'dim':(o.avgP>=S.t.pmin?'g':'w'))+'">'+(o.avgP==null?'—':fmt(o.avgP))+'</span>'
+      + '<span>'+(o.avgW==null?'—':o.avgW.toFixed(1))+'</span>'
+      + '<span class="'+dc+'">'+(dl==null?'—':(dl>=0?'+':'')+dl.toFixed(1))+'</span>'
+      + '<span>'+(o.n?fmt(o.load)+' ('+o.n+')':'—')+'</span></div>';
+    if (o.avgW!=null) prevAvg = o.avgW;
   }
-  msgEl.classList.remove('show');
-  return true;
+  $('wkTbl').innerHTML = h + '<div class="sub" style="margin-top:8px">Week 1 Δ is measured from your start weight. Weight Δ target is +0.25 to +0.5 lb/wk. Load = RPE × min from the Home tab.</div>';
 }
-
-// ═══════════════════════════════════════════════
-//  RECOVERY SCORE
-// ═══════════════════════════════════════════════
-function calculateRecoveryScore(c) {
-  const sleepScore    = Math.min(c.sleep_hours / 9, 1) * 40;
-  const qualityScore  = (c.sleep_quality / 5) * 20;
-  const energyScore   = (c.energy_score / 10) * 25;
-  const sorenessMap   = { none: 100, mild: 75, moderate: 40, severe: 10 };
-  const sorenessScore = ((sorenessMap[c.soreness] || 0) / 100) * 15;
-  return Math.round(sleepScore + qualityScore + energyScore + sorenessScore);
-}
-
-// ═══════════════════════════════════════════════
-//  SUBMIT
-// ═══════════════════════════════════════════════
-async function handleSubmit() {
-  if (!validateForm()) return;
-  const btn = $('submitCheckin');
-  btn.disabled = true; btn.textContent = 'Saving…';
-  const checkin = {
-    date: todayKey(),
-    sleep_hours:   checkInState.sleep_hours,
-    sleep_quality: checkInState.sleep_quality,
-    energy_score:  checkInState.energy_score,
-    soreness:      checkInState.soreness,
-    protein_grams: checkInState.protein_grams,
-    hydration:     checkInState.hydration,
-    calorie_hit:   checkInState.calorie_hit
-  };
-  try {
-    const { error: e1 } = await sb.from('daily_checkins').upsert(checkin, { onConflict: 'date' });
-    if (e1) throw e1;
-    const recoveryScore = calculateRecoveryScore(checkin);
-    const { error: e2 } = await sb.from('recovery_scores').upsert({ date: todayKey(), score: recoveryScore }, { onConflict: 'date' });
-    if (e2) throw e2;
-    const { data: last7 } = await sb.from('recovery_scores').select('score').order('date', { ascending: false }).limit(7);
-    const avg7 = last7 && last7.length ? Math.round(last7.reduce((s, r) => s + r.score, 0) / last7.length) : recoveryScore;
-    await sb.from('app_state').upsert(
-      { key: APP_KEY, data: { recovery_score_today: recoveryScore, recovery_score_7day_avg: avg7, checkin_date: todayKey(), protein_target: +($('proteinTarget').textContent.replace('g','')) || null }, updated_at: new Date().toISOString() },
-      { onConflict: 'key' }
-    );
-    showSummary(checkin, recoveryScore);
-  } catch (e) {
-    console.error(e);
-    btn.disabled = false; btn.textContent = 'Submit Check-in';
-    const msgEl = $('validationMsg');
-    msgEl.textContent = '❌ Save failed: ' + (e.message || 'Check console');
-    msgEl.classList.add('show');
+function renderStream(){
+  const end = parse(sel); let h = '<div class="tr h st"><span>Day</span><span>kcal</span><span>C g</span><span>P g</span><span>Wt</span><span>Load</span></div>';
+  for (let i=0;i<14;i++){
+    const d = addDays(end,-i), k = key(d), t = tot(k), r = S.days[k], tr = train(k);
+    const any = t.kc>0 || (r && r.w!=null) || tr.n;
+    if (!any){ h += '<div class="tr st"><span class="dim">'+DOW[d.getDay()].slice(0,1)+DOW[d.getDay()].slice(1,3).toLowerCase()+' '+(d.getMonth()+1)+'/'+d.getDate()+'</span><span class="dim">·</span><span class="dim">·</span><span class="dim">·</span><span class="dim">·</span><span class="dim">·</span></div>'; continue; }
+    h += '<div class="tr st"><span>'+DOW[d.getDay()].slice(0,1)+DOW[d.getDay()].slice(1,3).toLowerCase()+' '+(d.getMonth()+1)+'/'+d.getDate()+'</span>'
+      + '<span class="'+(t.kc?(t.kc>=S.t.kmin&&t.kc<=S.t.kmax?'g':'w'):'dim')+'">'+(t.kc?fmt(t.kc):'—')+'</span>'
+      + '<span class="'+(t.kc?(t.c>=0.9*carbTarget(k)?'g':'w'):'dim')+'">'+(t.kc?fmt(t.c):'—')+'</span>'
+      + '<span class="'+(t.kc?(t.p>=S.t.pmin?'g':'w'):'dim')+'">'+(t.kc?fmt(t.p):'—')+'</span>'
+      + '<span>'+(r && r.w!=null ? r.w.toFixed(1) : '—')+'</span>'
+      + '<span>'+(tr.n?fmt(tr.load):'—')+'</span></div>';
   }
+  $('stream').innerHTML = h;
+}
+function renderTargets(){
+  const T = S.t; $('tKmin').value=T.kmin; $('tKmax').value=T.kmax; $('tPmin').value=T.pmin; $('tPmax').value=T.pmax; $('tCh').value=T.ch; $('tCl').value=T.cl; $('tW0').value=T.w0;
 }
 
-// ═══════════════════════════════════════════════
-//  SUMMARY (post-save read-only view)
-// ═══════════════════════════════════════════════
-function showSummary(checkin, recoveryScore) {
-  const card = $('checkinCard');
-  const sc = scoreClass(recoveryScore);
-  const starStr = '★'.repeat(checkin.sleep_quality) + '☆'.repeat(5 - checkin.sleep_quality);
+/* =========================================================
+   EVENTS
+   ========================================================= */
+$('prevD').addEventListener('click',()=>{ sel = key(addDays(parse(sel),-1)); renderAll(); });
+$('nextD').addEventListener('click',()=>{ sel = key(addDays(parse(sel),1)); renderAll(); });
+$('todayD').addEventListener('click',()=>{ sel = todayKey(); renderAll(); });
 
-  // Compute protein adherence
-  const targetGrams = parseInt($('proteinTarget')?.textContent?.replace('g','')) || 150;
-  const actualGrams = checkin.protein_grams || 0;
-  const pct = targetGrams > 0 ? Math.round((actualGrams / targetGrams) * 100) : 0;
-  let proteinAdherenceColor = 'var(--text-primary)';
-  let proteinAdherenceMsg = '';
-  if (pct >= 90) {
-    proteinAdherenceColor = 'var(--success)';
-    proteinAdherenceMsg = '✓ You hit ' + actualGrams + 'g of ' + targetGrams + 'g protein (' + pct + '%)';
-  } else if (pct >= 70) {
-    proteinAdherenceColor = 'var(--warning)';
-    proteinAdherenceMsg = '⚠ You hit ' + actualGrams + 'g of ' + targetGrams + 'g protein (' + pct + '%)';
-  } else {
-    proteinAdherenceColor = 'var(--danger)';
-    proteinAdherenceMsg = '✗ You hit ' + actualGrams + 'g of ' + targetGrams + 'g protein (' + pct + '%)';
-  }
-  card.innerHTML = `
-    <div class="card-header">
-      <h2>Today's Check-in</h2>
-      <span style="font-size:13px;color:var(--success)">✓ Completed</span>
-    </div>
-    <div id="adaptiveTargets" style="background:rgba(107,227,164,0.06);border:1px solid rgba(107,227,164,0.15);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--text-secondary);display:none"></div>
-    <div class="success-anim">
-      <div class="summary-row"><span class="summary-label">Sleep</span><span class="summary-value">${checkin.sleep_hours}h &nbsp; ${starStr}</span></div>
-      <div class="summary-row"><span class="summary-label">Energy</span><span class="summary-value">${checkin.energy_score}/10</span></div>
-      <div class="summary-row"><span class="summary-label">Soreness</span><span class="summary-value" style="text-transform:capitalize">${checkin.soreness}</span></div>
-      <div class="summary-row"><span class="summary-label">Protein</span><span class="summary-value" style="${proteinAdherenceColor}">${checkin.protein_grams}g</span></div>
-      <div style="font-size:11px;color:${proteinAdherenceColor};margin-bottom:8px">${proteinAdherenceMsg}</div>
-      <div class="summary-row"><span class="summary-label">Hydration</span><span class="summary-value" style="text-transform:capitalize">${checkin.hydration}</span></div>
-      <div class="summary-row"><span class="summary-label">Calories hit?</span><span class="summary-value" style="text-transform:capitalize">${checkin.calorie_hit}</span></div>
-      <div style="margin-top:16px;padding:16px;background:rgba(255,255,255,.03);border-radius:8px;text-align:center">
-        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:6px">Recovery Score</div>
-        <div class="recovery-score ${sc}" style="font-size:40px;margin:6px 0">${recoveryScore}</div>
-        <div style="font-size:12px;color:var(--text-tertiary)">${sc==='good'?'💪 Great recovery!':sc==='warn'?'⚡ Moderate — prioritise sleep':'🛑 Low — rest today'}</div>
-      </div>
-      <button class="submit-btn" id="editCheckin" style="margin-top:16px;background:var(--surface);color:var(--text-primary);border:1px solid var(--border)">✏️ Edit Check-in</button>
-    </div>`;
-  $('editCheckin').addEventListener('click', () => resetForm(checkin));
-  const rsEl = $('recoveryScore');
-  if (rsEl) { rsEl.textContent = recoveryScore; rsEl.className = 'recovery-score ' + sc; }
+$('wtIn').addEventListener('change',()=>{ day(sel).w = num($('wtIn').value); save(); renderAll(); });
+
+$('enAdd').addEventListener('click',()=>{
+  const kc = num($('enKc').value)||0, c = num($('enC').value)||0, p = num($('enP').value)||0;
+  if (kc<=0){ $('enKc').focus(); return; }
+  day(sel).entries.push({ lbl:$('enLbl').value, kc, c, p, t:Date.now() });
+  ['enKc','enC','enP'].forEach(i=>$(i).value='');
+  // advance the label to the next likely meal
+  const sl = $('enLbl'); if (sl.selectedIndex < 3) sl.selectedIndex++;
+  save(); renderAll();
+});
+$('entList').addEventListener('click',(e)=>{ const b = e.target.closest('.x'); if(!b) return; day(sel).entries.splice(+b.dataset.i,1); save(); renderAll(); });
+
+[['tKmin','kmin'],['tKmax','kmax'],['tPmin','pmin'],['tPmax','pmax'],['tCh','ch'],['tCl','cl'],['tW0','w0']].forEach(p=>{
+  $(p[0]).addEventListener('change',()=>{ const v = num($(p[0]).value); if (v!=null && v>0) S.t[p[1]] = v; save(); renderAll(); });
+});
+
+$('csvBtn').addEventListener('click',()=>{
+  const ks = Object.keys(S.days).concat(Object.keys(HOME)).filter((v,i,a)=>a.indexOf(v)===i).sort();
+  let csv = 'date,kcal,carbs_g,protein_g,weight_lb,sessions,load_rpe_min,sprint_m,vol_lb\n';
+  ks.forEach(k=>{ const t = tot(k), r = S.days[k], tr = train(k); csv += [k, t.kc, t.c, t.p, r && r.w!=null ? r.w : '', tr.n, tr.load, tr.sprint, tr.vol].join(',')+'\n'; });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download = 'offseason-'+todayKey()+'.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+});
+
+/* =========================================================
+   BOOT
+   ========================================================= */
+function renderAll(){
+  if (!homeRemote) { const h = readHome(); if (h) HOME = h.days; }
+  renderHeader(); renderProg(); renderWeight(); renderEntries(); renderTrack(); renderCharts(); renderWeeks(); renderStream(); renderTargets();
 }
-
-// ═══════════════════════════════════════════════
-//  RESET / EDIT FORM
-// ═══════════════════════════════════════════════
-function resetForm(prefill) {
-  const card = $('checkinCard');
-  card.innerHTML = `
-    <div class="card-header"><h2>Daily Check-in</h2><span id="checkinStatus" style="font-size:13px;color:var(--text-secondary)">Editing today</span></div>
-    <div id="adaptiveTargets" style="background:rgba(107,227,164,0.06);border:1px solid rgba(107,227,164,0.15);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--text-secondary);display:none"></div>
-    <div id="validationMsg" class="validation-msg"></div>
-    <div class="form-group"><label>Sleep Hours: <strong id="sleepValue">${prefill?prefill.sleep_hours:7}</strong>h</label><input type="range" id="sleepHours" min="4" max="12" step="0.5" value="${prefill?prefill.sleep_hours:7}"></div>
-    <div class="form-group"><label>Sleep Quality</label><div class="star-rating" id="sleepQuality"><button type="button" data-rating="1">★</button><button type="button" data-rating="2">★</button><button type="button" data-rating="3">★</button><button type="button" data-rating="4">★</button><button type="button" data-rating="5">★</button></div></div>
-    <div class="form-group"><label>Energy Level: <strong id="energyValue">${prefill?prefill.energy_score:7}</strong>/10</label><input type="range" id="energyScore" min="1" max="10" step="1" value="${prefill?prefill.energy_score:7}"></div>
-    <div class="form-group"><label>Muscle Soreness</label><div class="btn-group" id="sorenessGroup"><button type="button" data-value="none">None</button><button type="button" data-value="mild">Mild</button><button type="button" data-value="moderate">Moderate</button><button type="button" data-value="severe">Severe</button></div></div>
-    <div class="form-group"><label>Protein (g) yesterday <span style="font-size:10px;color:var(--text-tertiary)">(auto-filled if Jarvis logged it)</span></label><input type="number" id="proteinGrams" placeholder="e.g., 150" inputmode="numeric" value="${prefill?prefill.protein_grams:''}"></div>
-    <div class="form-group"><label>Hydration</label><div class="btn-group" id="hydrationGroup"><button type="button" data-value="good">Good</button><button type="button" data-value="okay">Okay</button><button type="button" data-value="poor">Poor</button></div></div>
-    <div class="form-group"><label>Hit Calorie Target?</label><div class="btn-group" id="calorieGroup"><button type="button" data-value="yes">Yes</button><button type="button" data-value="roughly">Roughly</button><button type="button" data-value="no">No</button></div></div>
-    <button class="submit-btn" id="submitCheckin">Update Check-in</button>`;
-  if (prefill) {
-    checkInState.sleep_hours=prefill.sleep_hours; checkInState.sleep_quality=prefill.sleep_quality;
-    checkInState.energy_score=prefill.energy_score; checkInState.soreness=prefill.soreness;
-    checkInState.protein_grams=prefill.protein_grams; checkInState.hydration=prefill.hydration;
-    checkInState.calorie_hit=prefill.calorie_hit;
-  }
-  initSliders(); initStarRating();
-  initButtonGroup('sorenessGroup','soreness'); initButtonGroup('hydrationGroup','hydration'); initButtonGroup('calorieGroup','calorie_hit');
-  initProteinInput();
-  $('submitCheckin').addEventListener('click', handleSubmit);
-  if (prefill) {
-    ['sorenessGroup','hydrationGroup','calorieGroup'].forEach(gid => {
-      const key = gid==='sorenessGroup'?'soreness':gid==='hydrationGroup'?'hydration':'calorie_hit';
-      const btn = document.querySelector(`#${gid} button[data-value="${checkInState[key]}"]`);
-      if (btn) btn.classList.add('active');
-    });
-    const stars = document.querySelectorAll('#sleepQuality button');
-    stars.forEach(s => { if (parseInt(s.dataset.rating)<=prefill.sleep_quality) s.classList.add('filled'); });
-  }
-}
-
-// ═══════════════════════════════════════════════
-//  LOAD TODAY'S CHECKIN
-// ═══════════════════════════════════════════════
-async function loadTodayCheckin() {
-  try {
-    const { data } = await sb.from('daily_checkins').select('*').eq('date', todayKey()).maybeSingle();
-    if (data) {
-      const { data: rs } = await sb.from('recovery_scores').select('score').eq('date', todayKey()).maybeSingle();
-      showSummary(data, rs ? rs.score : calculateRecoveryScore(data));
-    } else {
-      const el = $('checkinStatus');
-      if (el) el.textContent = 'Not completed today';
-      // Auto-fill protein from AI-logged data (Jarvis food logging)
-      // Jarvis logs to today's daily_checkins, but check-in asks about "yesterday"
-      // Query yesterday's daily_checkins for AI estimates
-      try {
-        const yest = new Date(); yest.setDate(yest.getDate() - 1);
-        const yestKey = yest.getFullYear() + '-' + String(yest.getMonth()+1).padStart(2,'0') + '-' + String(yest.getDate()).padStart(2,'0');
-        // Pull yesterday's food_logs (AI-logged meals) and SUM calories + protein_g across all entries
-        const { data: yestRows } = await sb.from('food_logs').select('calories,protein_g').eq('date', yestKey);
-        if (yestRows && yestRows.length) {
-          const totalCal = Math.round(yestRows.reduce((s, r) => s + (parseFloat(r.calories)  || 0), 0));
-          const totalPro = Math.round(yestRows.reduce((s, r) => s + (parseFloat(r.protein_g) || 0), 0));
-          if (totalPro > 0) {
-            const pEl = $('proteinGrams');
-            if (pEl && !pEl.value) {
-              pEl.value = totalPro;
-              pEl.placeholder = 'Auto-filled from Jarvis: ' + totalPro + 'g (' + totalCal + ' kcal)';
-              checkInState.protein_grams = totalPro;
-            }
-          }
-        }
-      } catch(_) {}
-    }
-  } catch(e) { console.error(e); }
-}
-
-// ═══════════════════════════════════════════════
-//  RECOVERY SCORE CARD
-// ═══════════════════════════════════════════════
-async function loadRecoveryScore() {
-  try {
-    const { data } = await sb.from('recovery_scores').select('score').eq('date', todayKey()).maybeSingle();
-    if (data) { $('recoveryScore').textContent = data.score; $('recoveryScore').className = 'recovery-score ' + scoreClass(data.score); }
-    const { data: last7 } = await sb.from('recovery_scores').select('score').order('date',{ascending:false}).limit(7);
-    if (last7&&last7.length) $('recoveryAvg').textContent = Math.round(last7.reduce((s,r)=>s+r.score,0)/last7.length);
-    // 5+ consecutive days below 55 → fatigue warning
-    const { data: recent } = await sb.from('recovery_scores').select('score').order('date',{ascending:false}).limit(14);
-    if (recent) {
-      let consecBelow55 = 0, maxConsec = 0;
-      for (const r of recent) {
-        if (r.score < 55) { consecBelow55++; maxConsec = Math.max(maxConsec, consecBelow55); }
-        else consecBelow55 = 0;
-      }
-      if (maxConsec >= 5) $('fatigueWarning').classList.remove('hidden');
-      else $('fatigueWarning').classList.add('hidden');
-    }
-  } catch(e) {}
-}
-
-// ═══════════════════════════════════════════════
-//  PROTEIN TARGET — fixed 145-155g/day (flat, no training/rest/match variation)
-// ═══════════════════════════════════════════════
-async function updateProteinTarget() {
-  try {
-    // Fixed target: midpoint of 145-155g range
-    const target = 150;
-    const label = 'fixed 145–155g/day';
-
-    $('proteinTarget').textContent = target + 'g';
-    const noteEl = $('proteinWeightNote');
-    if (noteEl) noteEl.textContent = 'Target: 145–155g protein per day (flat — no training/rest variation)';
-
-    // Set protein input placeholder with target
-    const pEl = $('proteinGrams');
-    if (pEl) pEl.placeholder = 'Target: ' + target + 'g';
-
-    // Update adaptive targets banner (pass null for weightLbs since we no longer calc from bodyweight)
-    renderAdaptiveTargets(target, null);
-
-    const { data: checkins } = await sb.from('daily_checkins').select('protein_grams').order('date',{ascending:false}).limit(7);
-    if (checkins && checkins.length) {
-      const streak = checkins.filter(c => c.protein_grams >= target).length;
-      const avg = Math.round(checkins.reduce((s,c)=>s+c.protein_grams,0)/checkins.length);
-      $('proteinStreak').textContent = streak;
-      $('proteinAvg').textContent = avg;
-      if (streak === 0 && checkins.length >= 3) $('proteinAlert').classList.remove('hidden');
-      else $('proteinAlert').classList.add('hidden');
-    }
-  } catch(e) { console.error('Protein target error:', e); }
-}
-
-// ═══════════════════════════════════════════════
-//  CALORIE TARGET — fixed ranges with time-based ramp
-//  Base: 2,900–3,000 kcal/day
-//  After 14 days of food_logs data → ramped: 3,200–3,400 kcal/day
-// ═══════════════════════════════════════════════
-async function updateCalorieTarget() {
-  try {
-    // Detect ramp: days since first food_logs entry
-    const { data: firstLog } = await sb.from('food_logs').select('date').order('date',{ascending:true}).limit(1);
-    let daysSinceFirstLog = 0;
-    if (firstLog?.date) {
-      const firstDate = new Date(firstLog.date + 'T00:00:00');
-      const todayDate = new Date(todayKey() + 'T00:00:00');
-      daysSinceFirstLog = Math.floor((todayDate - firstDate) / 86400000);
-    }
-    const isRamped = daysSinceFirstLog >= 14;
-
-    let min, max, label;
-    if (isRamped) {
-      min = 3200; max = 3400;
-      label = 'Ramped (14+ days of food logs)';
-    } else {
-      min = 2900; max = 3000;
-      label = 'Starting (' + (14 - daysSinceFirstLog) + ' days until ramp)';
-    }
-
-    // Match day adjustments
-    const in48 = appStateData['match_in_48_hours'];
-    const in24 = appStateData['match_in_24_hours_recovery'];
-    if (in48 === true || in48 === 'true') {
-      min = Math.round(min * 1.15);
-      max = Math.round(max * 1.15);
-    }
-    if (in24 === true || in24 === 'true') {
-      min = Math.round(min * 1.10);
-      max = Math.round(max * 1.10);
-    }
-
-    $('tdeeValue').textContent = Math.round((min + max) / 2) + ' kcal';
-    $('tdeeValue').style.color = isRamped ? 'var(--success)' : 'var(--warning)';
-    $('tdeeRange').textContent = `Target: ${min} – ${max} kcal`;
-
-    // Fetch profile for downstream use (renderMatchBanners carb-loading calc)
-    const { data: profile } = await sb.from('nutrition_profile').select('*').maybeSingle();
-    if (profile) profileState = profile;
-
-    const adjEl = $('tdeeAdjustment');
-    if (adjEl) {
-      adjEl.textContent = isRamped
-        ? `Ramped calorie target — ${daysSinceFirstLog} days of food logging.`
-        : `Starting calorie target — ramp to 3,200–3,400 after 14 days of food logs (${14 - daysSinceFirstLog} days remaining).`;
-      adjEl.style.color = isRamped ? 'var(--success)' : 'var(--text-secondary)';
-    }
-  } catch(e) { console.error('Calorie target error:', e); }
-}
-
-// ═══════════════════════════════════════════════
-//  SPARKLINE CHART HELPER
-// ═══════════════════════════════════════════════
-function drawSparkline(svg, values, color){
-  if(!values || values.length < 2){ svg.innerHTML=''; return; }
-  const W=400, H=80, pad=8;
-  const min=Math.min(...values), max=Math.max(...values);
-  const range = (max-min) || 1;
-  const pts = values.map((v,i)=>({
-    x: pad + (i/(values.length-1))*(W-pad*2),
-    y: H - pad - ((v-min)/range)*(H-pad*2)
-  }));
-  const line = pts.map((p,i)=>(i?'L':'M')+p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
-  const area = line + ` L${pts[pts.length-1].x},${H} L${pts[0].x},${H} Z`;
-  svg.innerHTML = `
-    <defs>
-      <linearGradient id="sg${color.replace('#','')}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="${color}" stop-opacity=".4"/>
-        <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
-      </linearGradient>
-    </defs>
-    <path d="${area}" fill="url(#sg${color.replace('#','')})" />
-    <path d="${line}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="${pts[pts.length-1].x}" cy="${pts[pts.length-1].y}" r="4" fill="${color}"/>
-  `;
-}
-
-// ═══════════════════════════════════════════════
-//  30-DAY RECOVERY SPARKLINE
-// ═══════════════════════════════════════════════
-async function loadRecoveryChart(){
-  try {
-    const { data } = await sb.from('recovery_scores').select('score,date').order('date',{ascending:false}).limit(30);
-    if(data && data.length >= 2){
-      const scores = data.reverse().map(r=>r.score);
-      const svg = document.getElementById('recoveryChartSvg');
-      if(svg) drawSparkline(svg, scores, '#6BE3A4');
-    }
-  } catch(e){}
-}
-
-// ═══════════════════════════════════════════════
-//  4-WEEK WEIGHT TREND SPARKLINE
-//  (Calorie ramp logic handled by updateCalorieTarget)
-// ═══════════════════════════════════════════════
-async function loadWeightTrend(){
-  try {
-    const { data } = await sb.from('weight_logs').select('weight,date').order('date',{ascending:false}).limit(28);
-    if(data && data.length >= 2){
-      const weights = data.reverse().map(r=>parseFloat(r.weight));
-      const svg = document.getElementById('weightTrendChartSvg');
-      if(svg) drawSparkline(svg, weights, '#F2C063');
-    }
-  } catch(e){}
-}
-
-// ═══════════════════════════════════════════════
-//  CALORIES & PROTEIN HISTORY SPARKLINES
-// ═══════════════════════════════════════════════
-async function loadCalorieProteinHistory(){
-  try {
-    // 30-day window (today + 29 prior days)
-    const startDate = (function(){
-      const d = new Date();
-      d.setDate(d.getDate() - 29);
-      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-    })();
-
-    // Pull food_logs rows in the 30-day window; SUM calories/protein_g per date in JS.
-    // Charts histogram actual AI-logged food, not stale check-in estimates.
-    const { data } = await sb.from('food_logs')
-      .select('date,calories,protein_g')
-      .gte('date', startDate);
-
-    // Aggregate to per-date totals: SUM(calories), SUM(protein_g) per date
-    const byDate = {};
-    (data || []).forEach(function(r){
-      const k = r.date;
-      if (!byDate[k]) byDate[k] = { calories: 0, protein_g: 0 };
-      byDate[k].calories  += parseFloat(r.calories)  || 0;
-      byDate[k].protein_g += parseFloat(r.protein_g) || 0;
-    });
-
-    // Build a full 30-day timeline (oldest → newest), zero-filling days with no log
-    const reversed = [];
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const k = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-      reversed.push(byDate[k] || { calories: 0, protein_g: 0 });
-    }
-
-    // Need at least 2 days with logged entries to draw a meaningful trend
-    if(Object.keys(byDate).length < 2){
-      const svgP = document.getElementById('proteinHistorySvg');
-      const svgC = document.getElementById('calorieHistorySvg');
-      if(svgP) svgP.innerHTML = '<text x="200" y="40" text-anchor="middle" fill="#76746E" font-size="12">Log 2+ days of protein to see trend</text>';
-      if(svgC) svgC.innerHTML = '<text x="200" y="40" text-anchor="middle" fill="#76746E" font-size="12">Tell Jarvis what you ate to see calorie estimates</text>';
-      return;
-    }
-    const proteins = reversed.map(r => r.protein_g || 0);
-    const calories = reversed.map(r => r.calories  || 0);
-
-    // Protein sparkline
-    const svgP = document.getElementById('proteinHistorySvg');
-    if(svgP) drawSparkline(svgP, proteins, '#6BE3A4');
-
-    // Calorie sparkline (only if there's actual calorie data)
-    const svgC = document.getElementById('calorieHistorySvg');
-    const hasCalories = calories.some(c => c > 0);
-    if(svgC && hasCalories){
-      drawSparkline(svgC, calories, '#F2C063');
-    } else if(svgC){
-      svgC.innerHTML = '<text x="200" y="40" text-anchor="middle" fill="#76746E" font-size="12">Tell Jarvis what you ate to log calories</text>';
-    }
-
-    // Averages
-    const avgP = Math.round(proteins.reduce((s,v)=>s+v,0) / proteins.length);
-    const elP = document.getElementById('proteinHistoryAvg');
-    if(elP) elP.textContent = `avg ${avgP}g`;
-
-    if(hasCalories){
-      const calWithData = calories.filter(c => c > 0);
-      const avgC = Math.round(calWithData.reduce((s,v)=>s+v,0) / calWithData.length);
-      const elC = document.getElementById('calorieHistoryAvg');
-      if(elC) elC.textContent = `avg ${avgC} kcal (${calWithData.length} days)`;
-    }
-  } catch(e){}
-}
-
-// ═══════════════════════════════════════════════
-//  NUTRITION-AWARE COMPOSITION DIAGNOSIS
-//  Uses canonical gain-rate flag from app_state.latest_weight (set by index.html)
-//  Flat bulk target — no phase-dependent branching
-// ═══════════════════════════════════════════════
-async function updateDiagnosis(){
-  try {
-    const { data: checkins } = await sb.from('daily_checkins').select('*').order('date',{ascending:false}).limit(7);
-
-    if(!checkins || checkins.length < 3){
-      $('diagnosisContent').innerHTML = '<span style="color:var(--text-tertiary);font-size:13px">Check in for 3+ days to see diagnosis</span>';
-      return;
-    }
-
-    // Protein: flat 145-155g target (same as updateProteinTarget)
-    const proteinTarget = 150;
-    const proteinHits = checkins.filter(c => c.protein_grams >= proteinTarget).length;
-    const lowProtein = proteinHits < checkins.length * 0.5;
-
-    // Weight trend: read canonical weekly gain rate from app_state
-    const weightData = appStateData['latest_weight'];
-    const weeklyGainRate = (weightData && typeof weightData === 'object') ? weightData.gain_rate : null;
-    const gainFlag = (weightData && typeof weightData === 'object') ? weightData.gain_flag : null;
-    const gainMsg = (weightData && typeof weightData === 'object') ? weightData.gain_message : null;
-
-    const avgRecovery = Math.round(checkins.reduce((s,c)=>s+calculateRecoveryScore(c),0)/checkins.length);
-    let conclusion = '', recommendation = '';
-
-    if(gainFlag==='too_slow' && lowProtein){
-      conclusion = 'Gaining too slowly and protein is below target.';
-      recommendation = 'Increase calories +300–400 kcal/day and hit the 145–155g protein target.';
-    } else if(gainFlag==='too_slow'){
-      conclusion = 'Weekly gain rate is below target.';
-      recommendation = gainMsg || 'Increase calorie surplus by 300–400 kcal/day.';
-    } else if(gainFlag==='too_fast' && lowProtein){
-      conclusion = 'Gaining weight fast but protein intake is low — may be adding fat, not muscle.';
-      recommendation = 'Pull back calories slightly and prioritize 145–155g protein/day.';
-    } else if(gainFlag==='too_fast'){
-      conclusion = 'Gaining faster than target range.';
-      recommendation = gainMsg || 'Reduce daily calories by ~200–300.';
-    } else if(avgRecovery<55 && lowProtein){
-      conclusion = 'Recovery is compromised — fatigue may be masking progress.';
-      recommendation = 'Prioritise sleep (8+ hours) and increase protein intake to 145–155g/day.';
-    } else if(lowProtein){
-      conclusion = 'Protein consistently below 150g target — muscle growth may be limited.';
-      recommendation = 'Hit the daily 145–155g target. Consistency over perfection.';
-    } else if(gainFlag==='on_track' && avgRecovery>=70){
-      conclusion = 'Everything looks balanced — strong momentum.';
-      recommendation = 'Your protein, recovery, and weight trend are aligned. Stay the course.';
-    } else if(gainFlag==='on_track'){
-      conclusion = 'Weight gain is on track.';
-      recommendation = 'Keep hitting 145–155g protein and 2,900–3,400 kcal/day.';
-    } else {
-      conclusion = 'Building your dataset — more check-ins will sharpen insights.';
-      recommendation = 'Keep submitting daily check-ins and logging weight consistently.';
-    }
-
-    const recoveryClass = avgRecovery>=70?'pill-good':avgRecovery>=55?'pill-warn':'pill-bad';
-    const gainClass = gainFlag==='on_track'?'pill-good':gainFlag?'pill-warn':'pill-dim';
-    const gainLabel = weeklyGainRate!==null ? (weeklyGainRate>=0?'+':'')+weeklyGainRate.toFixed(1)+' lbs/wk' : 'no data';
-
-    $('diagnosisContent').innerHTML = `
-      <div style="font-weight:600;color:var(--text-primary);margin-bottom:6px">${conclusion}</div>
-      <div style="color:var(--text-secondary);font-size:13px;margin-bottom:10px;line-height:1.5">${recommendation}</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <span class="pill ${recoveryClass}" style="font-size:10px">Recovery ${avgRecovery}/100</span>
-        <span class="pill pill-dim" style="font-size:10px">Protein ${proteinHits}/${checkins.length} days</span>
-        <span class="pill ${gainClass}" style="font-size:10px">Gain ${gainLabel}</span>
-      </div>`;
-  } catch(e){ console.error('Diagnosis error:', e); }
-}
-
-// ═══════════════════════════════════════════════
-//  CROSS-TAB APP STATE
-// ═══════════════════════════════════════════════
-let appStateData = {};
-async function loadAppState() {
-  try {
-    const keys = ['match_in_48_hours','match_in_24_hours_recovery','next_match_date',
-      'gym_lower_body_blocked','latest_weight','acwr','today_session_count',
-      'current_offseason_phase','equipment_available',
-      'schedule_targets'];
-    const { data } = await sb.from('app_state').select('key,data').in('key', keys);
-    if (data) data.forEach(row => { appStateData[row.key] = row.data?.value ?? row.data; });
-    return appStateData;
-  } catch(e) { console.error('app_state load:', e); return {}; }
-}
-
-// ═══════════════════════════════════════════════
-//  ADAPTIVE TARGETS BANNER
-// ═══════════════════════════════════════════════
-function renderAdaptiveTargets(proteinTarget, weightLbs) {
-  const el = $('adaptiveTargets');
-  if (!el) return;
-
-  if (!proteinTarget) {
-    el.style.display = 'none';
-    return;
-  }
-
-  el.style.display = 'block';
-
-  const in48 = appStateData['match_in_48_hours'];
-  const in24 = appStateData['match_in_24_hours_recovery'];
-  const recoveryScore = parseInt(appStateData['recovery_score_today']?.score) || 70;
-
-  let html = '<span style="color:var(--success);font-weight:700">Protein today: ' + proteinTarget + 'g</span>';
-  html += ' &middot; <span style="color:var(--text-secondary)">Target: 2,900–3,400 kcal</span>';
-
-  if (in48 === true || in48 === 'true') {
-    html += '<div class="match-banner carb" style="margin-top:8px;padding:8px 12px;font-size:12px">';
-    html += '<span style="font-size:16px">🍝</span> ';
-    html += '<span>Match in 48hrs — prioritize carbohydrates today. Pasta, rice, bread. Reduce high-fiber veg.</span>';
-    html += '</div>';
-  }
-
-  if (in24 === true || in24 === 'true') {
-    html += '<div class="match-banner protein" style="margin-top:8px;padding:8px 12px;font-size:12px">';
-    html += '<span style="font-size:16px">🥩</span> ';
-    html += '<span>Recovery day — elevated protein for muscle repair. Anti-inflammatory foods: berries, salmon, turmeric.</span>';
-    html += '</div>';
-  }
-
-  if (recoveryScore < 55) {
-    html += '<div style="margin-top:8px;padding:8px 12px;border-radius:8px;background:rgba(125,211,252,0.08);border:1px solid rgba(125,211,252,0.20);color:#7DD3FC;font-size:12px">';
-    html += '💤 Low recovery — prioritize sleep and magnesium tonight.';
-    html += '</div>';
-  }
-
-  el.innerHTML = html;
-}
-
-// ═══════════════════════════════════════════════
-//  MATCH DAY NUTRITION PROTOCOL
-// ═══════════════════════════════════════════════
-function renderMatchBanners() {
-  const container = $('matchBannerContainer');
-  if (!container) return;
-  container.innerHTML = '';
-
-  const in48 = appStateData['match_in_48_hours'];
-  const in24 = appStateData['match_in_24_hours_recovery'];
-
-  if (in48 === true || in48 === 'true') {
-    // Calculate carb target: standard 4g/kg (~1.8g/lb), then +40% = 5.6g/kg (~2.5g/lb)
-    const estWeight = profileState?.weight_lbs || 150;
-    const baseCarbs = Math.round(estWeight * 1.8);
-    const boostedCarbs = Math.round(estWeight * 2.5);
-    container.innerHTML += `<div class="match-banner carb">
-      <span style="font-size:20px;">🍝</span>
-      <div>
-        <strong>Match in 48 Hours — Carb Loading Phase</strong>
-        <div style="font-size:11px;opacity:0.85;margin-top:2px;">Carb target increased 40%: <strong>${baseCarbs}g → ${boostedCarbs}g</strong>. Prioritise these affordable sources:</div>
-        <div class="carb-sources">
-          <span class="carb-source-pill">Oats</span>
-          <span class="carb-source-pill">White Rice</span>
-          <span class="carb-source-pill">Pasta</span>
-          <span class="carb-source-pill">Bread</span>
-          <span class="carb-source-pill">Bananas</span>
-          <span class="carb-source-pill">Fruit Juice</span>
-        </div>
-      </div>
-    </div>`;
-  }
-
-  if (in24 === true || in24 === 'true') {
-    container.innerHTML += `<div class="match-banner protein">
-      <span style="font-size:20px;">🥩</span>
-      <div>
-        <strong>Post-Match Recovery — Protein Priority</strong>
-        <div style="font-size:11px;opacity:0.85;margin-top:2px;">Protein target +20g · Calorie target +10% to support tissue repair and glycogen replenishment.</div>
-      </div>
-    </div>`;
-  }
-
-  // Protein/TDEE are updated by init() after all renders — no need to call here
-}
-
-// ═══════════════════════════════════════════════
-//  WEEKLY GAIN RATE — reads canonical flag from index.html
-//  (app_state.latest_weight with gain_rate, gain_flag, gain_message)
-// ═══════════════════════════════════════════════
-function renderGainRate() {
-  const el = $('gainRateDisplay');
-  if (!el) return;
-
-  // Read canonical data from app_state.latest_weight (set by index.html's computeDailyState)
-  const weightData = appStateData['latest_weight'];
-  const rate = (weightData && typeof weightData === 'object') ? weightData.gain_rate : null;
-  const flag = (weightData && typeof weightData === 'object') ? weightData.gain_flag : null;
-  const message = (weightData && typeof weightData === 'object') ? weightData.gain_message : null;
-
-  if (rate === null || rate === undefined || flag === null) {
-    el.innerHTML = '';
-    return;
-  }
-
-  const cls = flag === 'on_track' ? 'good' : 'warn';
-  const status = flag === 'on_track' ? 'On track — lean mass gain rate' :
-                 flag === 'too_slow' ? 'Too slow — increase calories' :
-                 'Gaining too fast — pull back slightly';
-  const rec = message || '';
-
-  el.innerHTML = `<div class="gain-rate ${cls}">
-    <strong>Current gain rate: ${rate.toFixed(1)} lbs/week</strong> — Target: 0.5–1.5 lbs for lean mass. ${status}. ${rec}
-  </div>`;
-}
-
-// ═══════════════════════════════════════════════
-//  TRAINING DAY CARB TARGETING
-// ═══════════════════════════════════════════════
-function renderCarbAdjustment() {
-  const el = $('carbAdjustment');
-  if (!el) return;
-
-  const sessionCount = appStateData['today_session_count'];
-  const phase = appStateData['current_offseason_phase'];
-
-  // Detect heavy training days from gym tab context
-  const gymBlocked = appStateData['gym_lower_body_blocked'];
-  const isHeavyDay = (sessionCount && parseInt(sessionCount) >= 1);
-  const isRestDay = (sessionCount === 0 || sessionCount === '0');
-
-  if (isHeavyDay && !isRestDay) {
-    el.innerHTML = `<span style="color:var(--success);">🔥 Heavy training day — carb target +15% to support performance and recovery.</span>`;
-  } else if (isRestDay) {
-    el.innerHTML = `<span style="color:var(--text-tertiary);">😴 Rest day — carb target −10%. Prioritise protein and fats today.</span>`;
-  } else {
-    el.innerHTML = '';
-  }
-}
-
-// ═══════════════════════════════════════════════
-//  SUPPLEMENT TIMING INTELLIGENCE
-// ═══════════════════════════════════════════════
-function renderSupplementTiming() {
-  const el = $('supplementBanner');
-  if (!el) return;
-
-  const sessionType = appStateData['today_session_count']; // presence indicates gym
-  const match48 = appStateData['match_in_48_hours'];
-  const isMatchDay = (match48 === true || match48 === 'true');
-  const isGymDay = sessionType && parseInt(sessionType) >= 1;
-
-  // Check if today is a speed session day (from calendar events or app_state)
-  const phase = appStateData['current_offseason_phase'];
-  const isSpeedDay = phase && typeof phase === 'string' && phase.toLowerCase().includes('speed');
-
-  let html = '';
-
-  if (isMatchDay) {
-    html = `<div class="supplement-banner">
-      <span>⚠️</span>
-      <div><strong>Match Day — Stick to known supplements only.</strong> Avoid trying anything new today. Your regular stack is sufficient.</div>
-    </div>`;
-  } else if (isSpeedDay) {
-    html = `<div class="supplement-banner">
-      <span>☕</span>
-      <div><strong>Caffeine 200–400mg 45–60 min before sprint session</strong> improves speed output by ~3% per research. Ideal window: 7:00–7:30 AM for a 8:15 AM session.</div>
-    </div>`;
-  } else if (isGymDay) {
-    html = `<div class="supplement-banner">
-      <span>💊</span>
-      <div><strong>Take creatine within 30 minutes post-gym</strong> for optimal uptake. Pair with your post-workout protein for best absorption.</div>
-    </div>`;
-  }
-
-  el.innerHTML = html;
-}
-
-// ═══════════════════════════════════════════════
-//  SLEEP COACHING
-// ═══════════════════════════════════════════════
-async function renderSleepCoaching() {
-  const el = $('sleepCoaching');
-  if (!el) return;
-
-  try {
-    const { data: todayCheckin } = await sb.from('daily_checkins')
-      .select('sleep_hours').eq('date', todayKey()).maybeSingle();
-
-    const sleepHours = todayCheckin ? todayCheckin.sleep_hours : null;
-
-    if (sleepHours !== null && parseFloat(sleepHours) < 8) {
-      el.innerHTML = `<div class="sleep-coaching">
-        💤 <strong>9+ hours sleep tonight would directly improve tomorrow's sprint speed and reaction time</strong> per Stanford Sleep Lab research. Prioritise this above any other recovery intervention.
-      </div>`;
-    } else {
-      el.innerHTML = '';
-    }
-  } catch(e) { el.innerHTML = ''; }
-}
-
-// ═══════════════════════════════════════════════
-//  WEEKLY SUMMARY
-// ═══════════════════════════════════════════════
-async function generateWeeklySummary() {
-  try {
-    const { data: checkins } = await sb.from('daily_checkins').select('*').order('date',{ascending:false}).limit(7);
-    const { data: scores }   = await sb.from('recovery_scores').select('score').order('date',{ascending:false}).limit(7);
-    if (!checkins || checkins.length < 7) return;
-    const avgR = scores.reduce((s,r)=>s+r.score,0)/scores.length;
-    const avgP = checkins.reduce((s,c)=>s+c.protein_grams,0)/checkins.length;
-    let rec = "Maintain current approach — you're on track.";
-    if (avgR < 55) rec = 'Prioritise sleep and recovery — your score is low.';
-    else if (avgP < 100) rec = 'Increase protein intake. Aim for 0.82g per lb of bodyweight.';
-    $('weeklySummary').innerHTML = `
-      <div class="summary-row"><span class="summary-label">Avg Recovery</span><span class="summary-value">${Math.round(avgR)}/100</span></div>
-      <div class="summary-row"><span class="summary-label">Avg Protein</span><span class="summary-value">${Math.round(avgP)}g</span></div>
-      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-        <div style="font-weight:600;color:var(--success);margin-bottom:4px">This Week's Focus</div>
-        <div style="font-size:13px;color:var(--text-secondary)">${rec}</div>
-      </div>`;
-  } catch(e) {}
-}
-
-// ═══════════════════════════════════════════════
-//  SETTINGS MODAL
-// ═══════════════════════════════════════════════
-function initSettingsModal() {
-  $('settingsBtn').addEventListener('click', () => $('settingsModal').classList.add('show'));
-  $('closeSettings').addEventListener('click', () => $('settingsModal').classList.remove('show'));
-  $('saveSettings').addEventListener('click', async () => {
-    const btn = $('saveSettings');
-    const origText = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = 'Saving...';
-
-    // Clear any previous error message
-    let errEl = document.getElementById('settingsError');
-    if (errEl) errEl.style.display = 'none';
-
-    try {
-      // Fetch existing profile id so upsert updates rather than inserts a new row
-      const { data: existing } = await sb.from('nutrition_profile').select('id').maybeSingle();
-
-      const profile = {
-        weight_lbs:         parseFloat($('profileWeightLbs').value) || null,
-        age:                parseInt($('profileAge').value) || null,
-        height_in:          parseFloat($('profileHeightIn').value) || null,
-        training_frequency: parseInt($('profileFrequency').value) || 4,
-        goal_weight_lbs:    parseFloat($('profileGoalWeight').value) || null
-      };
-
-      if (existing && existing.id) profile.id = existing.id;
-
-      const result = await sb.from('nutrition_profile').upsert(profile);
-      if (result.error) throw result.error;
-
-      // Show success message
-      btn.textContent = '✓ Saved!';
-      btn.style.background = 'var(--success)';
-      btn.style.color = '#000';
-
-      setTimeout(() => {
-        $('settingsModal').classList.remove('show');
-        Promise.all([updateProteinTarget(), updateCalorieTarget()]).finally(() => {
-          btn.textContent = origText;
-          btn.style.background = '';
-          btn.style.color = '';
-          btn.disabled = false;
-        });
-      }, 800);
-    } catch(e) {
-      btn.textContent = origText;
-      btn.disabled = false;
-
-      // Show error inside the modal (not alert)
-      if (!errEl) {
-        errEl = document.createElement('div');
-        errEl.id = 'settingsError';
-        errEl.style.cssText = 'color:var(--danger);font-size:13px;margin-bottom:12px;padding:10px;background:rgba(255,138,138,.1);border:1px solid var(--danger);border-radius:8px;';
-        btn.parentNode.insertBefore(errEl, btn);
-      }
-      errEl.textContent = '❌ Error saving: ' + (e.message || 'Unknown error');
-      errEl.style.display = 'block';
-    }
-  });
-}
-
-async function prefillSettingsModal() {
-  try {
-    const { data } = await sb.from('nutrition_profile').select('*').maybeSingle();
-    if (!data) return;
-    if (data.weight_lbs)    $('profileWeightLbs').value = data.weight_lbs;
-    if (data.age)           $('profileAge').value       = data.age;
-    if (data.height_in)     $('profileHeightIn').value  = data.height_in;
-    if (data.training_frequency) $('profileFrequency').value = data.training_frequency;
-    if (data.goal_weight_lbs)   $('profileGoalWeight').value = data.goal_weight_lbs;
-    profileState = data;
-  } catch(e) {}
-}
-
-async function checkReminderBadge() {
-  if (new Date().getHours() < 10) return;
-  const { data } = await sb.from('daily_checkins').select('date').eq('date', todayKey()).maybeSingle();
-  if (!data) $('reminderBadge').classList.remove('hidden');
-}
-
-// ═══════════════════════════════════════════════
-//  QUICK FOOD LOG — Gemini estimation + food_logs CRUD
-// ═══════════════════════════════════════════════
-
-let qfGoals = { calorie_target: 2700, protein_target_grams: 140 };
-let qfTodayRows = [];
-let qfYesterdayRows = [];
-let qfLastEstimate = null;
-let qfLastInput = '';
-
-function qfGetMealType(){
-  const h = new Date().getHours();
-  if (h < 10) return 'breakfast';
-  if (h < 14) return 'lunch';
-  if (h < 18) return 'snack';
-  return 'dinner';
-}
-
-function qfMealEmoji(meal){
-  const m = String(meal||'').toLowerCase();
-  if (m === 'breakfast') return '🌅';
-  if (m === 'lunch')     return '🥗';
-  if (m === 'snack')     return '🍎';
-  if (m === 'dinner')    return '🌙';
-  return '🍴';
-}
-
-function qfMealPillClass(meal){
-  const m = String(meal||'').toLowerCase();
-  if (m === 'breakfast' || m === 'lunch') return 'pill-good';
-  if (m === 'dinner')                     return 'pill-dim';
-  return 'pill-warn';
-}
-
-function escHtml(s){
-  return String(s).replace(/[&<>"']/g, function(c){
-    return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
-  });
-}
-
-async function qfLoadGoals(){
-  try {
-    const { data: st } = await sb.from('app_state').select('data').eq('key','schedule_targets').maybeSingle();
-    if (st && st.data) {
-      if (typeof st.data.calorie_target === 'number')      qfGoals.calorie_target      = st.data.calorie_target;
-      if (typeof st.data.protein_target_grams === 'number') qfGoals.protein_target_grams = st.data.protein_target_grams;
-    }
-  } catch(e){ console.warn('[qf] qfLoadGoals:', e); }
-}
-
-async function qfCallGemini(desc){
-  const prompt = `You are a nutrition estimator for an 18-year-old male soccer player in heavy training. Estimate calories and protein for this meal/food description. Be realistic about typical portions for a young male athlete.
-
-Food description: "${desc}"
-
-Respond ONLY with valid JSON, no markdown, no explanation:
-{
-  "items": [
-    {"name": "food item name", "calories": 000, "protein_g": 0}
-  ],
-  "total_calories": 000,
-  "total_protein_g": 0,
-  "confidence": "high|medium|low",
-  "notes": "brief note if portion was assumed or unclear"
-}`;
-
-  let parsed = null;
-  let provider = 'gemini';
-
-  // ── Attempt 1: Gemini ──
-  try {
-    const GEMINI_KEY = window.ENV_GEMINI_API_KEY || '';
-    if (!GEMINI_KEY) throw new Error('NO_KEY');
-    const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + GEMINI_KEY;
-    const response = await fetch(GEMINI_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: 'application/json' }
-      })
-    });
-    if (!response.ok) throw new Error('HTTP_' + response.status);
-    const result = await response.json();
-    const text = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const clean = text.replace(/```json|```/g,'').trim();
-    if (!clean) throw new Error('EMPTY_RESPONSE');
-    parsed = JSON.parse(clean);
-    if (!parsed || typeof parsed.total_calories !== 'number') throw new Error('BAD_PAYLOAD');
-  } catch (geminiErr) {
-    // ── Attempt 2: Groq fallback ──
-    console.warn('[qf] Gemini failed, falling back to Groq:', geminiErr.message);
-    provider = 'groq';
-    const GROQ_KEY = window.ENV_GROQ_API_KEY || '';
-    if (!GROQ_KEY) throw new Error('GROQ_NO_KEY');
-    const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-    const groqResponse = await fetch(GROQ_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + GROQ_KEY
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [{ role: 'user', content: prompt }],
-        response_format: { type: 'json_object' }
-      })
-    });
-    if (!groqResponse.ok) throw new Error('HTTP_' + groqResponse.status);
-    const groqResult = await groqResponse.json();
-    const groqText = groqResult.choices?.[0]?.message?.content || '';
-    const cleanGroq = groqText.replace(/```json|```/g,'').trim();
-    if (!cleanGroq) throw new Error('EMPTY_RESPONSE');
-    parsed = JSON.parse(cleanGroq);
-    if (!parsed || typeof parsed.total_calories !== 'number') throw new Error('BAD_PAYLOAD');
-  }
-
-  console.log('[qf] estimate via:', provider);
-  return parsed;
-}
-
-
-function qfRenderPreview(parsed, rawDesc){
-  qfLastEstimate = parsed;
-  qfLastInput = rawDesc;
-
-  const totalCal = Math.round(parsed.total_calories || 0);
-  const totalPro = Math.round(parsed.total_protein_g || 0);
-  const conf = String(parsed.confidence||'medium').toLowerCase();
-  const notes = parsed.notes ? String(parsed.notes) : '';
-  const items = Array.isArray(parsed.items) ? parsed.items : [];
-
-  $('qfPreviewTotals').textContent = '~' + totalCal + ' cal · ~' + totalPro + 'g protein';
-  $('qfPreviewWarning').classList.toggle('hidden', conf !== 'low');
-  $('qfPreviewNotes').textContent = notes ? 'ℹ️ ' + notes : '';
-
-  $('qfPreviewItems').innerHTML = items.length
-    ? items.map(function(it){
-        return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-top:1px solid var(--border);font-family:ui-monospace,monospace">' +
-          '<span style="color:var(--text-primary);font-family:-apple-system,sans-serif">' + escHtml(it.name||'?') + '</span>' +
-          '<span style="color:var(--text-secondary)">' +
-            Math.round(it.calories||0) + ' cal · ' + Math.round(it.protein_g||0) + 'g' +
-          '</span></div>';
-      }).join('')
-    : '<div style="font-size:12px;color:var(--text-tertiary);font-style:italic">No item breakdown available</div>';
-
-  $('qfPreview').classList.remove('hidden');
-  $('qfStatus').textContent = 'Press Confirm to save';
-}
-
-async function qfEstimateAndShow(){
-  const desc = $('qfInput').value.trim();
-  if (!desc) {
-    $('qfError').textContent = 'Type what you ate first';
-    $('qfError').classList.remove('hidden');
-    return;
-  }
-  const btn = $('qfEstimateBtn');
-  const orig = btn.textContent;
-  btn.disabled = true; btn.textContent = 'Estimating…';
-  $('qfError').classList.add('hidden');
-  $('qfPreview').classList.add('hidden');
-  $('qfStatus').textContent = 'Estimating…';
-  try {
-    const parsed = await qfCallGemini(desc);
-    qfRenderPreview(parsed, desc);
-  } catch(e){
-    console.warn('[qf] qfEstimateAndShow:', e);
-    $('qfError').textContent =
-      e.message === 'NO_KEY' ? 'Gemini API key not set — check env.js / build settings' :
-      e.message === 'GROQ_NO_KEY' ? "Couldn't estimate — Gemini failed AND Groq key not set" :
-      e.message === 'EMPTY_RESPONSE' ? "Couldn't estimate — try describing portions more specifically (e.g. '2 eggs' not 'eggs')" :
-      e.message && e.message.indexOf('HTTP_') === 0 ?
-        (e.message === 'HTTP_429' ? "Couldn't estimate — rate-limited on both providers. Try again in a minute." : "Couldn't estimate (HTTP " + e.message.slice(5) + ") — try again or rephrase") :
-      "Couldn't estimate — try describing portions more specifically (e.g. '2 eggs' not 'eggs')";
-    $('qfError').classList.remove('hidden');
-    $('qfStatus').textContent = '';
-  } finally {
-    btn.disabled = false; btn.textContent = orig;
-  }
-}
-
-async function qfConfirmLog(){
-  if (!qfLastEstimate || !qfLastInput) return;
-  const btn = $('qfConfirmBtn'); const orig = btn.textContent;
-  btn.disabled = true; btn.textContent = 'Saving…';
-  try {
-    const row = {
-      date:        todayKey(),
-      description: qfLastInput,
-      calories:    qfLastEstimate.total_calories   || 0,
-      protein_g:   qfLastEstimate.total_protein_g  || 0,
-      items_json:  JSON.stringify(qfLastEstimate.items || []),
-      meal_type:   qfGetMealType(),
-      logged_at:   new Date().toISOString()
-    };
-    const { error } = await sb.from('food_logs').insert(row);
-    if (error) throw error;
-    $('qfInput').value = '';
-    $('qfPreview').classList.add('hidden');
-    qfLastEstimate = null; qfLastInput = '';
-    $('qfError').classList.add('hidden');
-    $('qfStatus').textContent = '';
-    $('qfInput').focus();
-    qfToast('Logged ✅ ~' + Math.round(row.calories) + ' cal · ~' + Math.round(row.protein_g) + 'g protein');
-    await qfLoadAndRenderAll();
-  } catch(e){
-    console.warn('[qf] qfConfirmLog:', e);
-    $('qfError').textContent = 'Save failed — ' + (e.message||'check console');
-    $('qfError').classList.remove('hidden');
-  } finally {
-    btn.disabled = false; btn.textContent = orig;
-  }
-}
-
-function qfEditClick(){
-  $('qfPreview').classList.add('hidden');
-  $('qfError').classList.add('hidden');
-  $('qfStatus').textContent = '';
-  $('qfInput').focus();
-}
-
-function qfColorBar(barEl, ratio){
-  const pct = Math.min(100, Math.max(0, Math.round((ratio||0) * 100)));
-  barEl.style.width = pct + '%';
-  barEl.style.background = pct > 110 ? 'var(--danger)' : pct > 90 ? 'var(--warning)' : 'var(--success)';
-}
-
-function qfRenderTotals(rows){
-  const logCals = (rows||[]).reduce(function(s,r){ return s + (parseFloat(r.calories)||0); }, 0);
-  const logProt = (rows||[]).reduce(function(s,r){ return s + (parseFloat(r.protein_g)||0); }, 0);
-  const goalC = qfGoals.calorie_target;
-  const goalP = qfGoals.protein_target_grams;
-  qfColorBar($('qfCalBar'),  goalC > 0 ? logCals / goalC : 0);
-  qfColorBar($('qfProtBar'), goalP > 0 ? logProt / goalP : 0);
-  $('qfCalText').textContent  = Math.round(logCals) + ' / ' + goalC + ' kcal';
-  $('qfProtText').textContent = Math.round(logProt) + ' / ' + goalP + 'g';
-}
-
-function qfRenderYesterdayPreview(rows){
-  const logCals = (rows||[]).reduce(function(s,r){ return s + (parseFloat(r.calories)||0); }, 0);
-  const logProt = (rows||[]).reduce(function(s,r){ return s + (parseFloat(r.protein_g)||0); }, 0);
-  const el = $('qfYesterdayPreview');
-  if (!rows || !rows.length) {
-    el.textContent = '0 cal · 0g protein · no entries';
-    return;
-  }
-  el.textContent = Math.round(logCals) + ' cal · ' + Math.round(logProt) + 'g protein · ' +
-    rows.length + ' entr' + (rows.length === 1 ? 'y' : 'ies');
-}
-
-function qfRenderEntries(rows, listEl, emptyText){
-  if (!rows || rows.length === 0) {
-    listEl.innerHTML = '<div style="color:var(--text-tertiary);font-size:13px;padding:6px 0">' + emptyText + '</div>';
-    return;
-  }
-  listEl.innerHTML = rows.map(function(r){
-    const time = new Date(r.logged_at);
-    const hh = String(time.getHours()).padStart(2,'0');
-    const mm = String(time.getMinutes()).padStart(2,'0');
-    const meal = String(r.meal_type||'').toLowerCase() || 'meal';
-    const cal = Math.round(r.calories || 0);
-    const pro = Math.round(r.protein_g || 0);
-    let items = [];
-    try {
-      if (typeof r.items_json === 'string') items = JSON.parse(r.items_json);
-      else if (Array.isArray(r.items_json)) items = r.items_json;
-    } catch(_) { items = []; }
-    const breakdownId = 'qfBreak_' + r.id;
-    const itemRows = items.length
-      ? items.map(function(it){
-          return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:05px 0;border-top:1px solid var(--border);font-family:ui-monospace,monospace">' +
-            '<span style="color:var(--text-secondary);font-family:-apple-system,sans-serif">' + escHtml(it.name||'?') + '</span>' +
-            '<span style="color:var(--text-tertiary)">' +
-              Math.round(it.calories||0) + ' cal · ' + Math.round(it.protein_g||0) + 'g' +
-            '</span></div>';
-        }).join('')
-      : '<div style="font-size:11px;color:var(--text-tertiary);font-style:italic;padding-top:6px">No item breakdown saved</div>';
-    return '<div style="background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px">' +
-      '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">' +
-        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
-          '<span class="pill ' + qfMealPillClass(meal) + '" style="font-size:10px;letter-spacing:.06em;text-transform:uppercase">' +
-            qfMealEmoji(meal) + ' ' + meal +
-          '</span>' +
-          '<span style="font-size:11px;font-family:ui-monospace,monospace;color:var(--text-tertiary)">' + hh + ':' + mm + '</span>' +
-        '</div>' +
-        '<button type="button" class="qf-del-btn" data-id="' + r.id + '" style="background:none;border:none;color:var(--danger);font-size:20px;cursor:pointer;padding:0 4px;line-height:1;font-weight:300" title="Remove entry">×</button>' +
-      '</div>' +
-      '<div style="font-size:13px;color:var(--text-primary);margin-bottom:6px;line-height:1.4">' + escHtml(r.description||'') + '</div>' +
-      '<div style="font-size:12px;font-family:ui-monospace,monospace;color:var(--text-secondary);margin-bottom:6px">~' + cal + ' cal · ~' + pro + 'g protein</div>' +
-      '<button type="button" class="qf-toggle-btn" data-id="' + r.id + '" style="background:none;border:none;color:var(--success);font-size:11px;cursor:pointer;padding:4px 0;font-weight:600">Show breakdown ▼</button>' +
-      '<div id="' + breakdownId + '" class="hidden" style="margin-top:8px;padding:8px;background:rgba(0,0,0,.20);border-radius:6px">' + itemRows + '</div>' +
-    '</div>';
-  }).join('');
-}
-
-async function qfLoadAndRenderAll(){
-  try {
-    const { data: today } = await sb.from('food_logs').select('*').eq('date', todayKey()).order('logged_at',{ascending:true});
-    qfTodayRows = today || [];
-    qfRenderEntries(qfTodayRows, $('qfEntriesList'), 'No entries today');
-    qfRenderTotals(qfTodayRows);
-  } catch(e){ console.warn('[qf] load today:', e); }
-
-  try {
-    const yest = new Date(); yest.setDate(yest.getDate() - 1);
-    const yestKey = yest.getFullYear() + '-' + String(yest.getMonth()+1).padStart(2,'0') + '-' + String(yest.getDate()).padStart(2,'0');
-    const { data: yestData } = await sb.from('food_logs').select('*').eq('date', yestKey).order('logged_at',{ascending:true});
-    qfYesterdayRows = yestData || [];
-    qfRenderYesterdayPreview(qfYesterdayRows);
-  } catch(e){ console.warn('[qf] load yesterday:', e); }
-}
-
-async function qfDeleteEntry(id){
-  try {
-    const { error } = await sb.from('food_logs').delete().eq('id', id);
-    if (error) throw error;
-    qfToast('Entry removed');
-    await qfLoadAndRenderAll();
-  } catch(e){
-    console.warn('[qf] qfDeleteEntry:', e);
-    qfToast('Failed to remove');
-  }
-}
-
-function qfToggleEntryBreakdown(id){
-  const el  = $('qfBreak_' + id);
-  const btn = document.querySelector('.qf-toggle-btn[data-id="' + id + '"]');
-  if (!el) return;
-  const hidden = el.classList.toggle('hidden');
-  if (btn) btn.textContent = hidden ? 'Show breakdown ▼' : 'Hide breakdown ▲';
-}
-
-function qfToggleYesterday(){
-  const body  = $('qfYesterdayBody');
-  const arrow = $('qfYesterdayToggle');
-  if (body.classList.contains('hidden')) {
-    qfRenderEntries(qfYesterdayRows, body, 'No entries yesterday');
-    body.classList.remove('hidden');
-    arrow.textContent = '▼ hide';
-  } else {
-    body.classList.add('hidden');
-    arrow.textContent = '▶ show more';
-  }
-}
-
-function qfShowPreviewBreakdown(){
-  const el  = $('qfPreviewItems');
-  const btn = $('qfPreviewToggle');
-  if (el.classList.contains('hidden')) {
-    el.classList.remove('hidden');
-    btn.textContent = 'Hide breakdown ▲';
-  } else {
-    el.classList.add('hidden');
-    btn.textContent = 'Show breakdown ▼';
-  }
-}
-
-function qfToast(msg){
-  let t = document.getElementById('qfToast');
-  if (!t) {
-    t = document.createElement('div');
-    t.id = 'qfToast';
-    t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(8px);background:rgba(20,20,22,.95);color:var(--success);padding:12px 20px;border-radius:99px;font-size:14px;font-weight:600;border:1px solid rgba(107,227,164,.4);box-shadow:0 6px 20px rgba(0,0,0,.5);opacity:0;transition:opacity .25s ease,transform .25s ease;z-index:9999;pointer-events:none;max-width:90vw;text-align:center';
-    document.body.appendChild(t);
-  }
-  t.textContent = msg;
-  requestAnimationFrame(function(){
-    t.style.opacity = '1';
-    t.style.transform = 'translateX(-50%) translateY(0)';
-  });
-  clearTimeout(window._qfToastTimer);
-  window._qfToastTimer = setTimeout(function(){
-    t.style.opacity = '0';
-    t.style.transform = 'translateX(-50%) translateY(8px)';
-  }, 2200);
-}
-
-(function qfWireHandlers(){
-  const e  = $('qfEstimateBtn');   if (e)  e.addEventListener('click', qfEstimateAndShow);
-  const c  = $('qfConfirmBtn');    if (c)  c.addEventListener('click', qfConfirmLog);
-  const ed = $('qfEditBtn');       if (ed) ed.addEventListener('click', qfEditClick);
-  const pt = $('qfPreviewToggle'); if (pt) pt.addEventListener('click', qfShowPreviewBreakdown);
-  const yh = $('qfYesterdayHeader'); if (yh) yh.addEventListener('click', qfToggleYesterday);
-  const ip = $('qfInput'); if (ip) ip.addEventListener('keydown', function(ev){
-    if (ev.key === 'Enter') { ev.preventDefault(); qfEstimateAndShow(); }
-  });
-  document.addEventListener('click', function(ev){
-    const del = ev.target.closest('.qf-del-btn');
-    if (del) {
-      const id = del.getAttribute('data-id');
-      if (id) qfDeleteEntry(id);
-      return;
-    }
-    const tb = ev.target.closest('.qf-toggle-btn');
-    if (tb) {
-      const id = tb.getAttribute('data-id');
-      if (id) qfToggleEntryBreakdown(id);
-    }
-  });
-})();
-
-// Fire-and-forget initial load (runs alongside existing init())
-(async function qfBoot(){
-  try { await qfLoadGoals(); await qfLoadAndRenderAll(); }
-  catch(e){ console.warn('[qf] qfBoot:', e); }
-})();
-
-
-(async function init() {
-  initSliders(); initStarRating();
-  initButtonGroup('sorenessGroup','soreness');
-  initButtonGroup('hydrationGroup','hydration');
-  initButtonGroup('calorieGroup','calorie_hit');
-  initProteinInput();
-  $('submitCheckin').addEventListener('click', handleSubmit);
-  $('refreshSummary').addEventListener('click', generateWeeklySummary);
-  initSettingsModal();
-  await Promise.all([
-    loadTodayCheckin(), loadRecoveryScore(),
-    generateWeeklySummary(), checkReminderBadge(), prefillSettingsModal(),
-    loadRecoveryChart(), loadWeightTrend(), loadCalorieProteinHistory(),
-    updateDiagnosis(), loadAppState()
-  ]);
-  // Render cross-tab features after app_state is loaded
-  renderMatchBanners();
-  renderGainRate();
-  renderCarbAdjustment();
-  renderSupplementTiming();
-  await renderSleepCoaching();
-  // Now update protein/TDEE with match-day adjustments from appStateData
-  updateProteinTarget();
-  updateCalorieTarget();
+S = load();
+const h0 = readHome(); if (h0) HOME = h0.days;
+if (!sbOn) chip('LOCAL');
+renderAll();
+pull();
+// Keep pulling so this tab shows what was logged elsewhere (Home, Jarvis) instead
+// of sitting on an older copy of the state.
+setInterval(pull, 60 * 1000);
+document.addEventListener('visibilitychange',()=>{ if (!document.hidden) pull(); });
+window.addEventListener('storage',()=>{ renderAll(); });
 })();
 </script>
 </body>
